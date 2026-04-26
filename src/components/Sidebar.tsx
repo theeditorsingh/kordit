@@ -76,8 +76,10 @@ export default function Sidebar() {
                   <button
                     className={`${styles.boardItem} ${board.id === state.activeBoardId ? styles.active : ''}`}
                     onClick={() => {
-                      if (session?.user?.username) {
-                        router.push(`/${session.user.username}/${board.slug}`);
+                      // Use the board's owner username for the URL so shared boards resolve correctly
+                      const targetUsername = board.ownerUsername || session?.user?.username;
+                      if (targetUsername) {
+                        router.push(`/${targetUsername}/${board.slug}`);
                       } else {
                         dispatch({ type: 'SET_ACTIVE_BOARD', boardId: board.id });
                       }

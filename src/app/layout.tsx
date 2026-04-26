@@ -19,11 +19,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   if (session?.user?.id) {
     initialBoards = await prisma.board.findMany({
-      where: { ownerId: session.user.id },
+      where: {
+        members: { some: { userId: session.user.id } }
+      },
       include: {
         columns: { orderBy: { order: 'asc' } },
         cards: { orderBy: { order: 'asc' } },
         members: { include: { user: true } },
+        owner: { select: { username: true } },
       },
       orderBy: { createdAt: 'asc' }
     });

@@ -1,5 +1,5 @@
 'use client';
-import React, { createContext, useContext, useEffect, useReducer } from 'react';
+import React, { createContext, useContext, useEffect, useReducer, useRef } from 'react';
 import { AppState, Board, Card, Column, Member } from '@/types';
 import { createBoardAction, createCardAction, createColumnAction, moveCardAction, deleteCardAction, bulkDeleteCardsAction, bulkMoveCardsAction, bulkCopyCardsAction, deleteBoardAction, inviteMemberAction } from '@/actions/boardActions';
 import { useRouter } from 'next/navigation';
@@ -25,7 +25,8 @@ type Action =
   | { type: 'CLEAR_SELECTION' }
   | { type: 'BULK_DELETE'; boardId: string; cardIds: string[] }
   | { type: 'BULK_MOVE'; boardId: string; cardIds: string[]; targetColId: string }
-  | { type: 'BULK_COPY'; boardId: string; newCards: Card[]; targetColId: string };
+  | { type: 'BULK_COPY'; boardId: string; newCards: Card[]; targetColId: string }
+  | { type: 'SYNC_BOARDS'; boards: Board[] };
 
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -251,6 +252,17 @@ function reducer(state: AppState, action: Action): AppState {
         }),
       };
 
+    case 'SYNC_BOARDS':
+      // Replace boards from server, but preserve active board selection
+      return {
+        ...state,
+        boards: action.boards,
+        // Keep activeBoardId only if that board still exists in fresh data
+        activeBoardId: action.boards.find(b => b.id === state.activeBoardId)
+          ? state.activeBoardId
+          : action.boards[0]?.id ?? null,
+      };
+
     default:
       return state;
   }
@@ -312,6 +324,7 @@ function formatPrismaBoards(prismaBoards: any[]): Board[] {
       slug: pb.slug,
       color: pb.color,
       visibility: pb.visibility as any,
+      ownerUsername: pb.owner?.username ?? null,
       columns: pb.columns.map((col: any) => ({
         id: col.id,
         title: col.title,
@@ -320,10 +333,11 @@ function formatPrismaBoards(prismaBoards: any[]): Board[] {
       })),
       cards: cardsObj,
       members: pb.members.map((m: any) => ({
-        id: m.userId, // use userId as member ID for simplicity in front end
+        id: m.userId,
         name: m.user?.name || m.user?.username || 'Unknown',
         role: m.role as any,
-        color: '#0052CC' // default color
+        color: '#0052CC',
+        status: 'joined' as const,
       })),
       createdAt: pb.createdAt ? new Date(pb.createdAt).toISOString() : new Date().toISOString()
     };
@@ -341,6 +355,42 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
   }));
 
   const activeBoard = state.boards.find((b) => b.id === state.activeBoardId) ?? null;
+
+  // ── Polling for real-time sync ──────────────────────────────────────────────
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    const POLL_INTERVAL_MS = 5000; // 5 seconds
+
+    async function fetchAndSync() {
+      // Only poll if the tab is visible
+      if (document.visibilityState !== 'visible') return;
+      // Only poll if user is authenticated
+      if (!session?.user?.id) return;
+
+      try {
+        const res = await fetch('/api/boards', { cache: 'no-store' });
+        if (!res.ok) return;
+        const freshData = await res.json();
+        const freshBoards = formatPrismaBoards(freshData);
+        dispatch({ type: 'SYNC_BOARDS', boards: freshBoards });
+      } catch {
+        // Silently ignore network errors during polling
+      }
+    }
+
+    // Start polling
+    pollIntervalRef.current = setInterval(fetchAndSync, POLL_INTERVAL_MS);
+
+    // Also re-sync immediately when the tab becomes visible again
+    document.addEventListener('visibilitychange', fetchAndSync);
+
+    return () => {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+      document.removeEventListener('visibilitychange', fetchAndSync);
+    };
+  }, [session?.user?.id]);
+  // ────────────────────────────────────────────────────────────────────────────
 
   async function createBoard(title: string, customColumns?: { title: string, color: string }[]) {
     try {

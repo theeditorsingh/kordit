@@ -52,6 +52,7 @@ export interface Board {
   columns: Column[];
   cards: Record<string, Card>;
   createdAt: string;
+  ownerUsername?: string; // username of the board owner (for URL construction)
 }
 
 export interface AppState {

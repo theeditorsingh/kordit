@@ -24,6 +24,8 @@ export default function BoardPage({ params }: { params: Promise<{ username: stri
   }, []);
 
   // Sync URL slug to Context
+  // Note: we match by slug only — the username segment in the URL belongs to the
+  // board owner, which may differ from the currently logged-in viewer.
   useEffect(() => {
     const boardFromUrl = state.boards.find(b => b.slug === unwrappedParams.boardSlug);
     if (boardFromUrl && boardFromUrl.id !== state.activeBoardId) {
