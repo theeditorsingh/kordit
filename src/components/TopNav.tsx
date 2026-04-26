@@ -1,8 +1,9 @@
 'use client';
 import { useState } from 'react';
+import { signOut } from 'next-auth/react';
 import { useBoardContext } from '@/context/BoardContext';
 import { useTheme } from '@/context/ThemeContext';
-import { Sun, Moon, Search, LayoutGrid, List, Calendar, Plus, X, Menu, Share2 } from 'lucide-react';
+import { Sun, Moon, Search, LayoutGrid, List, Calendar, Plus, X, Menu, Share2, User, LogOut } from 'lucide-react';
 import VisibilityDropdown from './VisibilityDropdown';
 import ShareModal from './ShareModal';
 import { ViewMode } from '@/types';
@@ -19,6 +20,7 @@ export default function TopNav({ view, setView, search, setSearch }: Props) {
   const { theme, toggleTheme } = useTheme();
   const { activeBoard } = useBoardContext();
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   return (
     <header className={styles.nav}>
@@ -91,6 +93,76 @@ export default function TopNav({ view, setView, search, setSearch }: Props) {
         <button className="btn btn-ghost btn-icon" onClick={toggleTheme} title="Toggle theme" style={{ marginLeft: 8 }}>
           {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
         </button>
+
+        <div style={{ position: 'relative', marginLeft: 8 }}>
+          <button 
+            className="btn btn-ghost btn-icon" 
+            onClick={() => setShowUserMenu(!showUserMenu)} 
+            title="User Settings"
+          >
+            <User size={16} />
+          </button>
+
+          {showUserMenu && (
+            <>
+              <div 
+                style={{ position: 'fixed', inset: 0, zIndex: 90 }} 
+                onClick={() => setShowUserMenu(false)}
+              />
+              <div 
+                className={styles.userDropdown}
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  right: 0,
+                  marginTop: '8px',
+                  background: 'var(--bg-surface)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: '6px',
+                  width: '200px',
+                  boxShadow: 'var(--shadow-md)',
+                  zIndex: 100,
+                  padding: '8px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px'
+                }}
+              >
+                <div style={{ padding: '4px 8px', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)' }}>
+                  User Settings
+                </div>
+                <button 
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    width: '100%',
+                    padding: '8px',
+                    background: 'none',
+                    border: 'none',
+                    borderRadius: '4px',
+                    color: 'var(--text-secondary)',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    textAlign: 'left'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 86, 48, 0.1)';
+                    e.currentTarget.style.color = '#FF5630';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.background = 'none';
+                    e.currentTarget.style.color = 'var(--text-secondary)';
+                  }}
+                  onClick={() => signOut({ callbackUrl: '/login' })}
+                >
+                  <LogOut size={14} />
+                  Sign Out
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
       {showShareModal && <ShareModal onClose={() => setShowShareModal(false)} />}
     </header>
