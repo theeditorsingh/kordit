@@ -3,19 +3,30 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import EmailProvider from "next-auth/providers/email";
 
+import { Resend } from "resend";
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
     EmailProvider({
-      server: {
-        host: process.env.EMAIL_SERVER_HOST,
-        port: Number(process.env.EMAIL_SERVER_PORT),
-        auth: {
-          user: process.env.EMAIL_SERVER_USER,
-          pass: process.env.EMAIL_SERVER_PASSWORD
+      from: "onboarding@resend.dev",
+      async sendVerificationRequest({ identifier, url, provider }) {
+        try {
+          await resend.emails.send({
+            from: provider.from as string,
+            to: identifier,
+            subject: "Sign in to Kordit",
+            html: `<p>Click the link below to sign in to your Kordit account:</p>
+                   <p><a href="${url}"><strong>Sign in to Kordit</strong></a></p>
+                   <p>If you didn't request this email, you can safely ignore it.</p>`,
+          });
+        } catch (error) {
+          console.error("Failed to send verification email", error);
+          throw new Error("Failed to send verification email.");
         }
       },
-      from: process.env.EMAIL_FROM
     }),
   ],
   pages: {
