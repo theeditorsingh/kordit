@@ -12,7 +12,8 @@ export async function GET() {
 
   const boards = await prisma.board.findMany({
     where: {
-      members: { some: { userId: session.user.id } }
+      members: { some: { userId: session.user.id } },
+      isArchived: false,
     },
     include: {
       columns: { orderBy: { order: 'asc' } },

@@ -20,7 +20,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   if (session?.user?.id) {
     initialBoards = await prisma.board.findMany({
       where: {
-        members: { some: { userId: session.user.id } }
+        members: { some: { userId: session.user.id } },
+        isArchived: false,
       },
       include: {
         columns: { orderBy: { order: 'asc' } },

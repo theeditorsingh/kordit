@@ -7,6 +7,7 @@
   transition: all 0.15s;
   animation: slideUp 0.2s ease;
   position: relative;
+  overflow: hidden;
 }
 .card:hover {
   border-color: var(--accent);
@@ -17,6 +18,20 @@
   transform: rotate(2deg) scale(1.02);
   border-color: var(--accent);
 }
+.card.selected {
+  border-color: #0052CC;
+  background: rgba(0, 82, 204, 0.05);
+}
+.card.blocked {
+  border-left: 3px solid #FF5630;
+}
+
+/* Cover */
+.cardCover {
+  height: 48px;
+  margin: -10px -10px 8px -10px;
+  border-radius: 8px 8px 0 0;
+}
 
 .labels { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
 
@@ -24,6 +39,46 @@
 .title {
   font-size: 13px; font-weight: 500; color: var(--text-primary);
   line-height: 1.4; flex: 1;
+}
+
+/* Indicators */
+.indicators {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+.blockerBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  background: rgba(255, 86, 48, 0.12);
+  color: #FF5630;
+}
+.recurBadge, .timerBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-size: 10px;
+}
+.recurBadge {
+  background: rgba(101, 84, 192, 0.12);
+  color: #6554C0;
+}
+.timerBadge {
+  background: rgba(0, 184, 217, 0.12);
+  color: #00B8D9;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 .footer {
@@ -41,5 +96,14 @@
   font-size: 11px; color: var(--text-muted); font-weight: 500;
 }
 .allDone { color: #36B37E; }
+
+.timeBadge {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
 
 .avatars { display: flex; align-items: center; }

@@ -3,9 +3,13 @@ import { useState } from 'react';
 import { signOut } from 'next-auth/react';
 import { useBoardContext } from '@/context/BoardContext';
 import { useTheme } from '@/context/ThemeContext';
-import { Sun, Moon, Search, LayoutGrid, List, Calendar, Plus, X, Menu, Share2, User, LogOut } from 'lucide-react';
+import {
+  Sun, Moon, Search, LayoutGrid, List, Calendar, X, Share2, User, LogOut,
+  Zap, Palette, Save, Copy
+} from 'lucide-react';
 import VisibilityDropdown from './VisibilityDropdown';
 import ShareModal from './ShareModal';
+import AutomationPanel from './AutomationPanel';
 import { ViewMode } from '@/types';
 import styles from './TopNav.module.css';
 
@@ -16,11 +20,28 @@ interface Props {
   setSearch: (s: string) => void;
 }
 
+const GRADIENTS = [
+  'linear-gradient(135deg, #0052CC, #6554C0)',
+  'linear-gradient(135deg, #36B37E, #00B8D9)',
+  'linear-gradient(135deg, #FF5630, #FF991F)',
+  'linear-gradient(135deg, #6554C0, #FF7452)',
+  'linear-gradient(135deg, #172B4D, #0052CC)',
+  'linear-gradient(135deg, #00B8D9, #36B37E)',
+];
+
 export default function TopNav({ view, setView, search, setSearch }: Props) {
   const { theme, toggleTheme } = useTheme();
-  const { activeBoard } = useBoardContext();
+  const { activeBoard, updateBoard, saveBoardAsTemplate } = useBoardContext();
   const [showShareModal, setShowShareModal] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showAutomations, setShowAutomations] = useState(false);
+  const [showBgPicker, setShowBgPicker] = useState(false);
+
+  function setBoardBackground(background: string, backgroundType: 'color' | 'gradient' | 'image') {
+    if (!activeBoard) return;
+    updateBoard(activeBoard.id, { background, backgroundType });
+    setShowBgPicker(false);
+  }
 
   return (
     <header className={styles.nav}>
@@ -71,6 +92,68 @@ export default function TopNav({ view, setView, search, setSearch }: Props) {
         {activeBoard && (
           <>
             <VisibilityDropdown />
+
+            {/* Board Background */}
+            <div style={{ position: 'relative', marginLeft: 4 }}>
+              <button
+                className="btn btn-ghost btn-icon btn-sm"
+                onClick={() => setShowBgPicker(!showBgPicker)}
+                title="Board background"
+              >
+                <Palette size={15} />
+              </button>
+              {showBgPicker && (
+                <>
+                  <div style={{ position: 'fixed', inset: 0, zIndex: 90 }} onClick={() => setShowBgPicker(false)} />
+                  <div className={styles.bgPicker}>
+                    <div className={styles.bgPickerTitle}>Board Background</div>
+                    <div className={styles.bgGrid}>
+                      {GRADIENTS.map((g, i) => (
+                        <button
+                          key={i}
+                          className={styles.bgSwatch}
+                          style={{ background: g }}
+                          onClick={() => setBoardBackground(g, 'gradient')}
+                        />
+                      ))}
+                      <button
+                        className={styles.bgSwatch}
+                        style={{ background: 'var(--bg-base)', border: '2px dashed var(--border)' }}
+                        onClick={() => setBoardBackground('', 'color')}
+                        title="Remove background"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Automations */}
+            <button
+              className="btn btn-ghost btn-icon btn-sm"
+              onClick={() => setShowAutomations(true)}
+              title="Automations"
+              style={{ marginLeft: 4 }}
+            >
+              <Zap size={15} />
+            </button>
+
+            {/* Save as Template */}
+            <button
+              className="btn btn-ghost btn-icon btn-sm"
+              onClick={() => {
+                if (confirm('Save this board as a template? A copy will be created with the same columns.')) {
+                  saveBoardAsTemplate(activeBoard.id);
+                }
+              }}
+              title="Save as template"
+              style={{ marginLeft: 4 }}
+            >
+              <Copy size={15} />
+            </button>
+
             <div className={styles.searchWrap} style={{ marginLeft: 8 }}>
               <Search size={14} className={styles.searchIcon} />
               <input
@@ -95,9 +178,9 @@ export default function TopNav({ view, setView, search, setSearch }: Props) {
         </button>
 
         <div style={{ position: 'relative', marginLeft: 8 }}>
-          <button 
-            className="btn btn-ghost btn-icon" 
-            onClick={() => setShowUserMenu(!showUserMenu)} 
+          <button
+            className="btn btn-ghost btn-icon"
+            onClick={() => setShowUserMenu(!showUserMenu)}
             title="User Settings"
           >
             <User size={16} />
@@ -105,11 +188,11 @@ export default function TopNav({ view, setView, search, setSearch }: Props) {
 
           {showUserMenu && (
             <>
-              <div 
-                style={{ position: 'fixed', inset: 0, zIndex: 90 }} 
+              <div
+                style={{ position: 'fixed', inset: 0, zIndex: 90 }}
                 onClick={() => setShowUserMenu(false)}
               />
-              <div 
+              <div
                 className={styles.userDropdown}
                 style={{
                   position: 'absolute',
@@ -131,7 +214,7 @@ export default function TopNav({ view, setView, search, setSearch }: Props) {
                 <div style={{ padding: '4px 8px', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)' }}>
                   User Settings
                 </div>
-                <button 
+                <button
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -165,6 +248,7 @@ export default function TopNav({ view, setView, search, setSearch }: Props) {
         </div>
       </div>
       {showShareModal && <ShareModal onClose={() => setShowShareModal(false)} />}
+      {showAutomations && activeBoard && <AutomationPanel boardId={activeBoard.id} onClose={() => setShowAutomations(false)} />}
     </header>
   );
 }

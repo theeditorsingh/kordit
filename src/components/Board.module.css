@@ -28,3 +28,8 @@
   border-radius: 10px; padding: 12px;
   width: 240px;
 }
+
+.columnDragging {
+  opacity: 0.85;
+  transform: rotate(2deg);
+}

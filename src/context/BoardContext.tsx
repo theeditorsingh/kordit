@@ -1,18 +1,28 @@
 'use client';
-import React, { createContext, useContext, useEffect, useReducer, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useReducer, useRef, useCallback } from 'react';
 import { AppState, Board, Card, Column, Member } from '@/types';
-import { createBoardAction, createCardAction, createColumnAction, moveCardAction, deleteCardAction, bulkDeleteCardsAction, bulkMoveCardsAction, bulkCopyCardsAction, deleteBoardAction, inviteMemberAction } from '@/actions/boardActions';
+import {
+  createBoardAction, createCardAction, createColumnAction, moveCardAction,
+  deleteCardAction, bulkDeleteCardsAction, bulkMoveCardsAction, bulkCopyCardsAction,
+  deleteBoardAction, inviteMemberAction, updateCardAction, moveColumnAction,
+  updateColumnAction, updateBoardAction, toggleBoardFavoriteAction,
+  archiveBoardAction, saveBoardAsTemplateAction
+} from '@/actions/boardActions';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import { supabase } from '@/lib/supabase';
 
 type Action =
   | { type: 'SET_ACTIVE_BOARD'; boardId: string }
   | { type: 'ADD_BOARD'; board: Board }
   | { type: 'UPDATE_BOARD_TITLE'; boardId: string; title: string }
+  | { type: 'UPDATE_BOARD'; boardId: string; updates: Partial<Board> }
   | { type: 'DELETE_BOARD'; boardId: string }
   | { type: 'ADD_COLUMN'; boardId: string; column: Column }
   | { type: 'UPDATE_COLUMN_TITLE'; boardId: string; columnId: string; title: string }
+  | { type: 'UPDATE_COLUMN'; boardId: string; columnId: string; updates: Partial<Column> }
   | { type: 'DELETE_COLUMN'; boardId: string; columnId: string }
+  | { type: 'MOVE_COLUMN'; boardId: string; sourceIndex: number; destIndex: number }
   | { type: 'ADD_CARD'; boardId: string; columnId: string; card: Card }
   | { type: 'UPDATE_CARD'; boardId: string; card: Card }
   | { type: 'DELETE_CARD'; boardId: string; columnId: string; cardId: string }
@@ -26,6 +36,8 @@ type Action =
   | { type: 'BULK_DELETE'; boardId: string; cardIds: string[] }
   | { type: 'BULK_MOVE'; boardId: string; cardIds: string[]; targetColId: string }
   | { type: 'BULK_COPY'; boardId: string; newCards: Card[]; targetColId: string }
+  | { type: 'TOGGLE_FAVORITE'; boardId: string }
+  | { type: 'ARCHIVE_BOARD'; boardId: string }
   | { type: 'SYNC_BOARDS'; boards: Board[] };
 
 function reducer(state: AppState, action: Action): AppState {
@@ -40,6 +52,12 @@ function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         boards: state.boards.map((b) => b.id === action.boardId ? { ...b, title: action.title } : b),
+      };
+
+    case 'UPDATE_BOARD':
+      return {
+        ...state,
+        boards: state.boards.map((b) => b.id === action.boardId ? { ...b, ...action.updates } : b),
       };
 
     case 'UPDATE_BOARD_VISIBILITY':
@@ -72,6 +90,16 @@ function reducer(state: AppState, action: Action): AppState {
         ),
       };
 
+    case 'UPDATE_COLUMN':
+      return {
+        ...state,
+        boards: state.boards.map((b) =>
+          b.id === action.boardId
+            ? { ...b, columns: b.columns.map((c) => c.id === action.columnId ? { ...c, ...action.updates } : c) }
+            : b
+        ),
+      };
+
     case 'DELETE_COLUMN':
       return {
         ...state,
@@ -82,6 +110,18 @@ function reducer(state: AppState, action: Action): AppState {
           const newCards = { ...b.cards };
           col.cardIds.forEach((id) => delete newCards[id]);
           return { ...b, columns: b.columns.filter((c) => c.id !== action.columnId), cards: newCards };
+        }),
+      };
+
+    case 'MOVE_COLUMN':
+      return {
+        ...state,
+        boards: state.boards.map((b) => {
+          if (b.id !== action.boardId) return b;
+          const cols = [...b.columns];
+          const [removed] = cols.splice(action.sourceIndex, 1);
+          cols.splice(action.destIndex, 0, removed);
+          return { ...b, columns: cols };
         }),
       };
 
@@ -210,15 +250,12 @@ function reducer(state: AppState, action: Action): AppState {
         selectedCardIds: [],
         boards: state.boards.map((b) => {
           if (b.id !== action.boardId) return b;
-          
           return {
             ...b,
             columns: b.columns.map((c) => {
               if (c.id === action.targetColId) {
-                // Add to end of target column
                 return { ...c, cardIds: [...c.cardIds, ...action.cardIds] };
               } else {
-                // Remove from other columns
                 return { ...c, cardIds: c.cardIds.filter((id) => !action.cardIds.includes(id)) };
               }
             }),
@@ -232,32 +269,42 @@ function reducer(state: AppState, action: Action): AppState {
         selectedCardIds: [],
         boards: state.boards.map((b) => {
           if (b.id !== action.boardId) return b;
-          
           const newCardsRecord = { ...b.cards };
           const newIds: string[] = [];
           action.newCards.forEach((c) => {
             newCardsRecord[c.id] = c;
             newIds.push(c.id);
           });
-
           return {
             ...b,
             cards: newCardsRecord,
-            columns: b.columns.map((c) => 
-              c.id === action.targetColId 
-                ? { ...c, cardIds: [...c.cardIds, ...newIds] } 
+            columns: b.columns.map((c) =>
+              c.id === action.targetColId
+                ? { ...c, cardIds: [...c.cardIds, ...newIds] }
                 : c
             ),
           };
         }),
       };
 
+    case 'TOGGLE_FAVORITE':
+      return {
+        ...state,
+        boards: state.boards.map((b) =>
+          b.id === action.boardId ? { ...b, isFavorite: !b.isFavorite } : b
+        ),
+      };
+
+    case 'ARCHIVE_BOARD': {
+      const boards = state.boards.filter((b) => b.id !== action.boardId);
+      const activeBoardId = state.activeBoardId === action.boardId ? (boards[0]?.id ?? null) : state.activeBoardId;
+      return { ...state, boards, activeBoardId };
+    }
+
     case 'SYNC_BOARDS':
-      // Replace boards from server, but preserve active board selection
       return {
         ...state,
         boards: action.boards,
-        // Keep activeBoardId only if that board still exists in fresh data
         activeBoardId: action.boards.find(b => b.id === state.activeBoardId)
           ? state.activeBoardId
           : action.boards[0]?.id ?? null,
@@ -278,6 +325,13 @@ interface BoardContextType {
   createColumn: (boardId: string, title: string) => Promise<void>;
   moveCard: (boardId: string, cardId: string, sourceColId: string, destColId: string, sourceIndex: number, destIndex: number) => Promise<void>;
   deleteCard: (boardId: string, columnId: string, cardId: string) => Promise<void>;
+  updateCard: (boardId: string, card: Card) => Promise<void>;
+  moveColumn: (boardId: string, sourceIndex: number, destIndex: number) => Promise<void>;
+  updateColumn: (boardId: string, columnId: string, updates: Partial<Column>) => Promise<void>;
+  updateBoard: (boardId: string, updates: Partial<Board>) => Promise<void>;
+  toggleFavorite: (boardId: string) => Promise<void>;
+  archiveBoard: (boardId: string) => Promise<void>;
+  saveBoardAsTemplate: (boardId: string) => Promise<void>;
   addMember: (boardId: string, name: string, role?: 'Admin' | 'Member') => void;
   removeMember: (boardId: string, memberId: string) => void;
   setActiveBoardId: (id: string | null) => void;
@@ -292,7 +346,6 @@ const BoardContext = createContext<BoardContextType | null>(null);
 
 function formatPrismaBoards(prismaBoards: any[]): Board[] {
   return prismaBoards.map(pb => {
-    // Group cards by column and format cards object
     const cardsObj: Record<string, Card> = {};
     const columnCardIds: Record<string, string[]> = {};
 
@@ -310,9 +363,16 @@ function formatPrismaBoards(prismaBoards: any[]): Board[] {
         labels: Array.isArray(card.labels) ? card.labels : [],
         checklist: Array.isArray(card.checklist) ? card.checklist : [],
         assigneeIds: Array.isArray(card.assigneeIds) ? card.assigneeIds : [],
-        createdAt: new Date(card.createdAt).toISOString()
+        createdAt: new Date(card.createdAt).toISOString(),
+        coverImage: card.coverImage || '',
+        coverColor: card.coverColor || '',
+        timeSpent: card.timeSpent || 0,
+        timerStarted: card.timerStarted ? new Date(card.timerStarted).toISOString() : null,
+        isRecurring: card.isRecurring || false,
+        recurringRule: card.recurringRule || '',
+        blockedBy: Array.isArray(card.blockedBy) ? card.blockedBy : [],
       };
-      
+
       if (columnCardIds[card.columnId]) {
         columnCardIds[card.columnId].push(card.id);
       }
@@ -325,10 +385,17 @@ function formatPrismaBoards(prismaBoards: any[]): Board[] {
       color: pb.color,
       visibility: pb.visibility as any,
       ownerUsername: pb.owner?.username ?? null,
+      background: pb.background || '',
+      backgroundType: pb.backgroundType || 'color',
+      isArchived: pb.isArchived || false,
+      isFavorite: pb.isFavorite || false,
+      categoryId: pb.categoryId || null,
       columns: pb.columns.map((col: any) => ({
         id: col.id,
         title: col.title,
         color: col.color,
+        icon: col.icon || '',
+        wipLimit: col.wipLimit || 0,
         cardIds: columnCardIds[col.id] || []
       })),
       cards: cardsObj,
@@ -347,7 +414,7 @@ function formatPrismaBoards(prismaBoards: any[]): Board[] {
 export function BoardProvider({ children, initialBoards = [] }: { children: React.ReactNode, initialBoards?: any[] }) {
   const router = useRouter();
   const { data: session } = useSession();
-  
+
   const [state, dispatch] = useReducer(reducer, undefined, () => ({
     boards: formatPrismaBoards(initialBoards),
     activeBoardId: initialBoards.length > 0 ? initialBoards[0].id : null,
@@ -356,57 +423,73 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
 
   const activeBoard = state.boards.find((b) => b.id === state.activeBoardId) ?? null;
 
-  // ── Pending write counter ────────────────────────────────────────────────────
-  // Tracks in-flight createCard / other mutations so the poller doesn't
-  // overwrite optimistic state before the server action has committed.
   const pendingOpsRef = useRef(0);
 
-  // ── Polling for real-time sync ──────────────────────────────────────────────
-  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // ── Supabase Realtime + Fallback Polling ──────────────────────────────────
+  const fetchAndSync = useCallback(async () => {
+    if (document.visibilityState !== 'visible') return;
+    if (!session?.user?.id) return;
+    if (pendingOpsRef.current > 0) return;
+
+    try {
+      const res = await fetch('/api/boards', { cache: 'no-store' });
+      if (!res.ok) return;
+      const freshData = await res.json();
+      const freshBoards = formatPrismaBoards(freshData);
+      dispatch({ type: 'SYNC_BOARDS', boards: freshBoards });
+    } catch {
+      // Silently ignore network errors
+    }
+  }, [session?.user?.id]);
 
   useEffect(() => {
-    const POLL_INTERVAL_MS = 5000; // 5 seconds
+    // Try Supabase Realtime first
+    if (supabase && session?.user?.id) {
+      const channel = supabase
+        .channel('board-changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'Card' }, () => {
+          fetchAndSync();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'Column' }, () => {
+          fetchAndSync();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'Board' }, () => {
+          fetchAndSync();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'Member' }, () => {
+          fetchAndSync();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'Activity' }, () => {
+          fetchAndSync();
+        })
+        .subscribe();
 
-    async function fetchAndSync() {
-      // Only poll if the tab is visible
-      if (document.visibilityState !== 'visible') return;
-      // Only poll if user is authenticated
-      if (!session?.user?.id) return;
-      // Skip if there are local writes in flight (avoids flashing optimistic cards)
-      if (pendingOpsRef.current > 0) return;
+      document.addEventListener('visibilitychange', fetchAndSync);
 
-      try {
-        const res = await fetch('/api/boards', { cache: 'no-store' });
-        if (!res.ok) return;
-        const freshData = await res.json();
-        const freshBoards = formatPrismaBoards(freshData);
-        dispatch({ type: 'SYNC_BOARDS', boards: freshBoards });
-      } catch {
-        // Silently ignore network errors during polling
-      }
+      return () => {
+        supabase!.removeChannel(channel);
+        document.removeEventListener('visibilitychange', fetchAndSync);
+      };
     }
 
-    // Start polling
-    pollIntervalRef.current = setInterval(fetchAndSync, POLL_INTERVAL_MS);
-
-    // Also re-sync immediately when the tab becomes visible again
+    // Fallback: polling if Supabase env vars not configured
+    const POLL_INTERVAL_MS = 5000;
+    const pollInterval = setInterval(fetchAndSync, POLL_INTERVAL_MS);
     document.addEventListener('visibilitychange', fetchAndSync);
 
     return () => {
-      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+      clearInterval(pollInterval);
       document.removeEventListener('visibilitychange', fetchAndSync);
     };
-  }, [session?.user?.id]);
-  // ────────────────────────────────────────────────────────────────────────────
+  }, [session?.user?.id, fetchAndSync]);
+
+  // ── Board Actions ─────────────────────────────────────────────────────────
 
   async function createBoard(title: string, customColumns?: { title: string, color: string }[]) {
     try {
       const dbBoard = await createBoardAction(title, customColumns);
-      // Wait, we need to format it first before dispatching
       const formatted = formatPrismaBoards([{...dbBoard, cards: []}])[0];
       dispatch({ type: 'ADD_BOARD', board: formatted });
-      
-      // Navigate to the new board
       if (session?.user?.username) {
         router.push(`/${session.user.username}/${formatted.slug}`);
       }
@@ -416,18 +499,11 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
   }
 
   async function deleteBoard(boardId: string) {
-    // Determine what to navigate to next if we are deleting the active board
     const remainingBoards = state.boards.filter(b => b.id !== boardId);
     const nextBoard = remainingBoards.length > 0 ? remainingBoards[0] : null;
-
-    // 1. Optimistic Update
     dispatch({ type: 'DELETE_BOARD', boardId });
-
-    // 2. Server Action
     try {
       await deleteBoardAction(boardId);
-      
-      // If we just deleted the active board, navigate away
       if (state.activeBoardId === boardId) {
         if (nextBoard && session?.user?.username) {
           router.push(`/${session.user.username}/${nextBoard.slug}`);
@@ -441,7 +517,6 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
   }
 
   async function createCard(boardId: string, columnId: string, title: string, description?: string, dueDate?: string | null) {
-    // 1. Optimistic Update
     const tempId = crypto.randomUUID();
     const tempCard: Card = {
       id: tempId,
@@ -453,17 +528,22 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
       dueDate: dueDate || null,
       assigneeIds: [],
       createdAt: new Date().toISOString(),
+      coverImage: '',
+      coverColor: '',
+      timeSpent: 0,
+      timerStarted: null,
+      isRecurring: false,
+      recurringRule: '',
+      blockedBy: [],
     };
     dispatch({ type: 'ADD_CARD', boardId, columnId, card: tempCard });
 
-    // 2. Server Action — block polling while the write is in flight
     pendingOpsRef.current += 1;
     try {
       await createCardAction(boardId, columnId, title, description, dueDate);
     } catch (e) {
       console.error("Failed to create card on server", e);
     } finally {
-      // Give the server a moment to commit before allowing polls to overwrite
       setTimeout(() => { pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1); }, 2000);
     }
     return tempId;
@@ -471,8 +551,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
 
   async function createColumn(boardId: string, title: string) {
     const tempId = crypto.randomUUID();
-    dispatch({ type: 'ADD_COLUMN', boardId, column: { id: tempId, title, cardIds: [], color: '#0052CC' } });
-    
+    dispatch({ type: 'ADD_COLUMN', boardId, column: { id: tempId, title, cardIds: [], color: '#0052CC', wipLimit: 0 } });
     try {
       await createColumnAction(boardId, title);
     } catch (e) {
@@ -481,36 +560,114 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
   }
 
   async function moveCard(boardId: string, cardId: string, sourceColId: string, destColId: string, sourceIndex: number, destIndex: number) {
-    // 1. Optimistic Update
-    dispatch({
-      type: 'MOVE_CARD',
-      boardId,
-      sourceColId,
-      destColId,
-      sourceIndex,
-      destIndex,
-    });
-
-    // 2. Server Action
+    dispatch({ type: 'MOVE_CARD', boardId, sourceColId, destColId, sourceIndex, destIndex });
     try {
-      // For simplicity in this step, newOrder is just destIndex
       await moveCardAction(cardId, sourceColId, destColId, destIndex);
     } catch (e) {
       console.error("Failed to move card", e);
-      // In a robust app, we'd dispatch a reverse move here to undo the optimistic update
     }
   }
 
   async function deleteCard(boardId: string, columnId: string, cardId: string) {
-    // 1. Optimistic Update
     dispatch({ type: 'DELETE_CARD', boardId, columnId, cardId });
-
-    // 2. Server Action
     try {
       await deleteCardAction(boardId, cardId);
     } catch (e) {
       console.error("Failed to delete card", e);
-      // In a robust app, we'd restore the card here on failure
+    }
+  }
+
+  async function handleUpdateCard(boardId: string, card: Card) {
+    dispatch({ type: 'UPDATE_CARD', boardId, card });
+    pendingOpsRef.current += 1;
+    try {
+      await updateCardAction(boardId, card.id, {
+        title: card.title,
+        description: card.description,
+        priority: card.priority,
+        dueDate: card.dueDate,
+        labels: card.labels,
+        checklist: card.checklist,
+        assigneeIds: card.assigneeIds,
+        coverImage: card.coverImage,
+        coverColor: card.coverColor,
+        timeSpent: card.timeSpent,
+        timerStarted: card.timerStarted,
+        isRecurring: card.isRecurring,
+        recurringRule: card.recurringRule,
+        blockedBy: card.blockedBy,
+      });
+    } catch (e) {
+      console.error("Failed to update card", e);
+    } finally {
+      setTimeout(() => { pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1); }, 2000);
+    }
+  }
+
+  async function moveColumn(boardId: string, sourceIndex: number, destIndex: number) {
+    dispatch({ type: 'MOVE_COLUMN', boardId, sourceIndex, destIndex });
+    try {
+      const board = state.boards.find(b => b.id === boardId);
+      if (!board) return;
+      const cols = [...board.columns];
+      const [removed] = cols.splice(sourceIndex, 1);
+      cols.splice(destIndex, 0, removed);
+      await moveColumnAction(boardId, cols.map((c, i) => ({ id: c.id, order: i })));
+    } catch (e) {
+      console.error("Failed to move column", e);
+    }
+  }
+
+  async function handleUpdateColumn(boardId: string, columnId: string, updates: Partial<Column>) {
+    dispatch({ type: 'UPDATE_COLUMN', boardId, columnId, updates });
+    try {
+      await updateColumnAction(boardId, columnId, updates);
+    } catch (e) {
+      console.error("Failed to update column", e);
+    }
+  }
+
+  async function handleUpdateBoard(boardId: string, updates: Partial<Board>) {
+    dispatch({ type: 'UPDATE_BOARD', boardId, updates });
+    try {
+      await updateBoardAction(boardId, updates);
+    } catch (e) {
+      console.error("Failed to update board", e);
+    }
+  }
+
+  async function toggleFavorite(boardId: string) {
+    dispatch({ type: 'TOGGLE_FAVORITE', boardId });
+    try {
+      await toggleBoardFavoriteAction(boardId);
+    } catch (e) {
+      console.error("Failed to toggle favorite", e);
+    }
+  }
+
+  async function archiveBoard(boardId: string) {
+    const remainingBoards = state.boards.filter(b => b.id !== boardId);
+    const nextBoard = remainingBoards.length > 0 ? remainingBoards[0] : null;
+    dispatch({ type: 'ARCHIVE_BOARD', boardId });
+    try {
+      await archiveBoardAction(boardId);
+      if (state.activeBoardId === boardId) {
+        if (nextBoard && session?.user?.username) {
+          router.push(`/${session.user.username}/${nextBoard.slug}`);
+        } else {
+          router.push(`/`);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to archive board", e);
+    }
+  }
+
+  async function handleSaveBoardAsTemplate(boardId: string) {
+    try {
+      await saveBoardAsTemplateAction(boardId);
+    } catch (e) {
+      console.error("Failed to save board as template", e);
     }
   }
 
@@ -541,40 +698,27 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
   }
 
   async function bulkCopy(boardId: string, cardIds: string[], targetColId: string) {
-    // For optimistic update of copy, we need to generate new temp IDs
     const currentBoard = state.boards.find(b => b.id === boardId);
     if (!currentBoard) return;
-    
     const newCards: Card[] = cardIds.map(id => {
       const original = currentBoard.cards[id];
-      return {
-        ...original,
-        id: crypto.randomUUID(),
-        createdAt: new Date().toISOString()
-      };
+      return { ...original, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
     }).filter(Boolean);
-
     dispatch({ type: 'BULK_COPY', boardId, newCards, targetColId });
     try {
       await bulkCopyCardsAction(boardId, cardIds, targetColId);
-      // The server action will revalidate, swapping temp cards with real DB ones.
     } catch (e) {
       console.error("Failed bulk copy", e);
     }
   }
 
   async function addMember(boardId: string, name: string, role: 'Admin' | 'Member' = 'Member') {
-    // Optimistic Update
     const member: Member = { id: crypto.randomUUID(), name, color: '#0052CC', role, status: 'pending' };
     dispatch({ type: 'ADD_MEMBER', boardId, member });
-
-    // Server Action
     try {
-      // name is the email address provided in the ShareModal
       await inviteMemberAction(boardId, name, role);
     } catch (error) {
       console.error("Failed to invite member", error);
-      // In a robust app, we'd remove the member from state on failure
     }
   }
 
@@ -587,9 +731,12 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
   }
 
   return (
-    <BoardContext.Provider value={{ 
-      state, activeBoard, dispatch, 
-      createBoard, deleteBoard, createCard, createColumn, moveCard, deleteCard, 
+    <BoardContext.Provider value={{
+      state, activeBoard, dispatch,
+      createBoard, deleteBoard, createCard, createColumn, moveCard, deleteCard,
+      updateCard: handleUpdateCard, moveColumn, updateColumn: handleUpdateColumn,
+      updateBoard: handleUpdateBoard, toggleFavorite, archiveBoard,
+      saveBoardAsTemplate: handleSaveBoardAsTemplate,
       addMember, removeMember, setActiveBoardId,
       toggleCardSelection, clearSelection, bulkDelete, bulkMove, bulkCopy
     }}>

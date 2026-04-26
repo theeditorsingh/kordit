@@ -1,0 +1,69 @@
+.feed {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+.item:hover {
+  background: var(--bg-hover);
+}
+
+.iconWrap {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.content {
+  flex: 1;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.userName {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.target {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.detail {
+  color: var(--text-muted);
+}
+
+.time {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.loading, .empty {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 16px;
+  font-size: 13px;
+  color: var(--text-muted);
+  justify-content: center;
+}

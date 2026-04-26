@@ -7,7 +7,10 @@
   display: flex;
   flex-direction: column;
   max-height: calc(100vh - 100px);
-  transition: box-shadow 0.15s;
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+.overWip {
+  border-color: rgba(255, 86, 48, 0.4);
 }
 
 .header {
@@ -18,11 +21,62 @@
 
 .headerLeft { display: flex; align-items: center; gap: 8px; }
 .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-.title { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.title { font-size: 13px; font-weight: 700; color: var(--text-primary); cursor: text; }
+.titleEdit {
+  font-size: 13px; font-weight: 700; color: var(--text-primary);
+  background: var(--bg-overlay); border: 1px solid var(--accent);
+  border-radius: 4px; padding: 2px 6px; outline: none;
+  font-family: inherit; width: 120px;
+}
 .count {
   font-size: 11px; font-weight: 600;
   background: var(--bg-overlay); color: var(--text-muted);
   padding: 1px 7px; border-radius: 10px;
+}
+.countOver {
+  background: rgba(255, 86, 48, 0.15);
+  color: #FF5630;
+}
+
+/* WIP Warning */
+.wipWarning {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #FF5630;
+  background: rgba(255, 86, 48, 0.06);
+  border-bottom: 1px solid rgba(255, 86, 48, 0.15);
+}
+
+/* Column Settings Panel */
+.settingsPanel {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.settingsTitle {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+.settingsRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.settingsLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  min-width: 60px;
 }
 
 .cardList {
@@ -69,16 +123,23 @@
   position: absolute; right: 0; top: 100%; margin-top: 4px;
   background: var(--bg-elevated); border: 1px solid var(--border);
   border-radius: 8px; box-shadow: var(--shadow-md);
-  padding: 4px; min-width: 160px; z-index: 50;
+  padding: 4px; min-width: 170px; z-index: 50;
 }
 .menuItem {
   display: flex; align-items: center; gap: 8px;
   width: 100%; padding: 7px 10px; border-radius: 6px;
-  font-size: 12px; color: #FF5630;
+  font-size: 12px; color: var(--text-secondary);
   background: none; border: none; cursor: pointer; font-family: inherit;
   transition: background 0.15s;
 }
-.menuItem:hover { background: rgba(255,86,48,0.1); }
+.menuItem:hover { background: var(--bg-hover); color: var(--text-primary); }
+.menuDanger { color: #FF5630; }
+.menuDanger:hover { background: rgba(255,86,48,0.1); color: #FF5630; }
+.menuDivider {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 4px 0;
+}
 
 .titleInput {
   width: 100%; font-size: 13px; font-weight: 500; color: var(--text-primary);
@@ -124,4 +185,3 @@
   position: absolute; inset: 0; width: 100%; height: 100%;
   opacity: 0; cursor: pointer;
 }
-

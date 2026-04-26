@@ -46,8 +46,10 @@ model User {
   sessions      Session[]
 
   // Kordit Relations
-  ownedBoards Board[] @relation("BoardOwner")
+  ownedBoards Board[]    @relation("BoardOwner")
   memberships Member[]
+  activities  Activity[]
+  comments    Comment[]
 }
 
 model VerificationToken {
@@ -59,21 +61,43 @@ model VerificationToken {
 }
 
 // Kordit Models
+
+model BoardCategory {
+  id        String   @id @default(cuid())
+  name      String
+  color     String   @default("#0052CC")
+  order     Int      @default(0)
+  userId    String
+  createdAt DateTime @default(now())
+
+  boards Board[]
+
+  @@unique([userId, name])
+}
+
 model Board {
-  id         String   @id @default(cuid())
-  title      String
-  slug       String
-  color      String   @default("#0052CC")
-  visibility String   @default("Workspace") // Private, Workspace, Public
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id             String   @id @default(cuid())
+  title          String
+  slug           String
+  color          String   @default("#0052CC")
+  visibility     String   @default("Workspace") // Private, Workspace, Public
+  background     String   @default("")          // URL or gradient CSS
+  backgroundType String   @default("color")     // color, gradient, image
+  isArchived     Boolean  @default(false)
+  isFavorite     Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  ownerId String
-  owner   User   @relation("BoardOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId    String
+  owner      User           @relation("BoardOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  categoryId String?
+  category   BoardCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
-  columns Column[]
-  cards   Card[]
-  members Member[]
+  columns     Column[]
+  cards       Card[]
+  members     Member[]
+  activities  Activity[]
+  automations Automation[]
 
   @@unique([ownerId, slug])
 }
@@ -82,7 +106,9 @@ model Column {
   id        String   @id @default(cuid())
   title     String
   color     String   @default("#0052CC")
+  icon      String   @default("")
   order     Int      @default(0)
+  wipLimit  Int      @default(0) // 0 = no limit
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -99,20 +125,36 @@ model Card {
   priority    String    @default("medium") // urgent, high, medium, low
   dueDate     DateTime?
   order       Int       @default(0)
+  coverImage  String    @default("")       // URL of cover image
+  coverColor  String    @default("")       // Solid color cover
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  // Time Tracking
+  timeSpent    Int      @default(0)        // Total seconds tracked
+  timerStarted DateTime?                   // When timer was last started (null = not running)
+
+  // Recurring
+  isRecurring     Boolean @default(false)
+  recurringRule   String  @default("")     // e.g. "daily", "weekly:mon,wed,fri", "monthly:1"
+  lastRecurredAt  DateTime?
+
   boardId  String
   board    Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
-  
+
   columnId String
   column   Column @relation(fields: [columnId], references: [id], onDelete: Cascade)
 
-  // In a real app, you'd map labels, checklists, and assignees to separate tables
-  // For simplicity right now, we can use JSON if using PostgreSQL
+  // JSON fields
   labels      Json @default("[]")
   checklist   Json @default("[]")
   assigneeIds Json @default("[]")
+
+  // Dependencies (JSON array of card IDs this card is blocked by)
+  blockedBy Json @default("[]")
+
+  comments   Comment[]
+  activities Activity[]
 }
 
 model Member {
@@ -127,4 +169,57 @@ model Member {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([boardId, userId])
+}
+
+// Activity Feed
+model Activity {
+  id        String   @id @default(cuid())
+  action    String   // card_created, card_moved, card_updated, card_deleted, member_added, column_created, etc.
+  details   Json     @default("{}") // { cardTitle, fromColumn, toColumn, fieldChanged, ... }
+  createdAt DateTime @default(now())
+
+  boardId String
+  board   Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  cardId String?
+  card   Card?   @relation(fields: [cardId], references: [id], onDelete: SetNull)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([boardId, createdAt])
+}
+
+// Card Comments
+model Comment {
+  id        String   @id @default(cuid())
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cardId String
+  card   Card   @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([cardId, createdAt])
+}
+
+// Automations
+model Automation {
+  id        String   @id @default(cuid())
+  name      String
+  isActive  Boolean  @default(true)
+  trigger   String   // card_moved_to, due_date_passed, checklist_completed, card_created
+  condition Json     @default("{}") // { columnId, priority, ... }
+  action    String   // move_card, set_priority, complete_checklist, set_due_date
+  actionConfig Json  @default("{}") // { targetColumnId, priority, ... }
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  boardId String
+  board   Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  @@index([boardId, trigger])
 }

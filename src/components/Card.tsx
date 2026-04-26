@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 import { Board, Card } from '@/types';
-import { Calendar, CheckSquare } from 'lucide-react';
+import { Calendar, CheckSquare, AlertTriangle, Clock, Repeat } from 'lucide-react';
 import { getInitials } from '@/utils/storage';
 import CardModal from './CardModal';
 import { useBoardContext } from '@/context/BoardContext';
@@ -26,16 +26,24 @@ function formatDate(date: string) {
   return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+function formatTimeShort(seconds: number) {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
 export default function CardItem({ card, index, board, columnId }: Props) {
   const [open, setOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number } | null>(null);
   const { deleteCard, toggleCardSelection, state } = useBoardContext();
 
   const isSelected = state.selectedCardIds.includes(card.id);
-
   const doneItems = card.checklist.filter((c) => c.done).length;
   const totalItems = card.checklist.length;
   const assignees = card.assigneeIds.map((id) => board.members.find((m) => m.id === id)).filter(Boolean);
+  const hasBlockers = (card.blockedBy || []).length > 0;
+  const isTimerRunning = !!card.timerStarted;
 
   return (
     <>
@@ -45,7 +53,7 @@ export default function CardItem({ card, index, board, columnId }: Props) {
             ref={provided.innerRef}
             {...provided.draggableProps}
             {...provided.dragHandleProps}
-            className={`${styles.card} ${snapshot.isDragging ? styles.dragging : ''} ${isSelected ? styles.selected : ''}`}
+            className={`${styles.card} ${snapshot.isDragging ? styles.dragging : ''} ${isSelected ? styles.selected : ''} ${hasBlockers ? styles.blocked : ''}`}
             style={{
               ...provided.draggableProps.style,
               ...(isSelected ? { border: '2px solid #0052CC', backgroundColor: 'rgba(0, 82, 204, 0.05)' } : {})
@@ -63,6 +71,16 @@ export default function CardItem({ card, index, board, columnId }: Props) {
               setContextMenu({ x: e.clientX, y: e.clientY });
             }}
           >
+            {/* Cover */}
+            {(card.coverColor || card.coverImage) && (
+              <div
+                className={styles.cardCover}
+                style={{
+                  background: card.coverImage ? `url(${card.coverImage}) center/cover` : card.coverColor,
+                }}
+              />
+            )}
+
             {/* Labels */}
             {card.labels.length > 0 && (
               <div className={styles.labels}>
@@ -80,6 +98,27 @@ export default function CardItem({ card, index, board, columnId }: Props) {
               <span className={styles.title}>{card.title}</span>
             </div>
 
+            {/* Indicators row */}
+            {(hasBlockers || card.isRecurring || isTimerRunning) && (
+              <div className={styles.indicators}>
+                {hasBlockers && (
+                  <span className={styles.blockerBadge}>
+                    <AlertTriangle size={10} /> Blocked
+                  </span>
+                )}
+                {card.isRecurring && (
+                  <span className={styles.recurBadge}>
+                    <Repeat size={10} />
+                  </span>
+                )}
+                {isTimerRunning && (
+                  <span className={styles.timerBadge}>
+                    <Clock size={10} />
+                  </span>
+                )}
+              </div>
+            )}
+
             {/* Footer */}
             <div className={styles.footer}>
               <div className={styles.footerLeft}>
@@ -91,6 +130,11 @@ export default function CardItem({ card, index, board, columnId }: Props) {
                 {totalItems > 0 && (
                   <span className={`${styles.checklist} ${doneItems === totalItems ? styles.allDone : ''}`}>
                     <CheckSquare size={11}/> {doneItems}/{totalItems}
+                  </span>
+                )}
+                {(card.timeSpent || 0) > 0 && (
+                  <span className={styles.timeBadge}>
+                    <Clock size={10} /> {formatTimeShort(card.timeSpent || 0)}
                   </span>
                 )}
               </div>
@@ -117,16 +161,16 @@ export default function CardItem({ card, index, board, columnId }: Props) {
 
       {contextMenu && (
         <>
-          <div 
-            style={{ position: 'fixed', inset: 0, zIndex: 999 }} 
-            onClick={(e) => { e.stopPropagation(); setContextMenu(null); }} 
+          <div
+            style={{ position: 'fixed', inset: 0, zIndex: 999 }}
+            onClick={(e) => { e.stopPropagation(); setContextMenu(null); }}
             onContextMenu={(e) => { e.preventDefault(); setContextMenu(null); }}
           />
-          <div 
-            style={{ 
-              position: 'fixed', 
-              top: contextMenu.y, 
-              left: contextMenu.x, 
+          <div
+            style={{
+              position: 'fixed',
+              top: contextMenu.y,
+              left: contextMenu.x,
               zIndex: 1000,
               background: 'var(--bg-surface)',
               border: '1px solid var(--border-subtle)',
@@ -138,7 +182,7 @@ export default function CardItem({ card, index, board, columnId }: Props) {
               minWidth: '120px'
             }}
           >
-            <button 
+            <button
               style={{ padding: '8px 12px', textAlign: 'left', fontSize: '13px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-primary)', borderRadius: '4px' }}
               onClick={(e) => { e.stopPropagation(); setContextMenu(null); setOpen(true); }}
               onMouseOver={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
@@ -146,21 +190,17 @@ export default function CardItem({ card, index, board, columnId }: Props) {
             >
               Edit Card
             </button>
-            <button 
+            <button
               style={{ padding: '8px 12px', textAlign: 'left', fontSize: '13px', background: 'none', border: 'none', cursor: 'pointer', color: '#ff5630', borderRadius: '4px' }}
-              onClick={(e) => { 
-                e.stopPropagation(); 
-                setContextMenu(null); 
+              onClick={(e) => {
+                e.stopPropagation();
+                setContextMenu(null);
                 if (confirm('Delete this card?')) {
                    deleteCard(board.id, columnId, card.id);
                 }
               }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.background = 'rgba(255, 86, 48, 0.1)';
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.background = 'none';
-              }}
+              onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255, 86, 48, 0.1)'}
+              onMouseOut={(e) => e.currentTarget.style.background = 'none'}
             >
               Delete
             </button>

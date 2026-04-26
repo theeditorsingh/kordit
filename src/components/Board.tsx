@@ -1,5 +1,5 @@
 'use client';
-import { DragDropContext, DropResult } from '@hello-pangea/dnd';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { Board as BoardType } from '@/types';
 import { useBoardContext } from '@/context/BoardContext';
 import Column from './Column';
@@ -11,7 +11,7 @@ import styles from './Board.module.css';
 interface Props { board: BoardType; search: string; }
 
 export default function Board({ board, search }: Props) {
-  const { dispatch, createColumn, moveCard } = useBoardContext();
+  const { dispatch, createColumn, moveCard, moveColumn } = useBoardContext();
   const [addingCol, setAddingCol] = useState(false);
   const [colTitle, setColTitle] = useState('');
   const boardRef = useRef<HTMLDivElement>(null);
@@ -25,7 +25,7 @@ export default function Board({ board, search }: Props) {
 
       let el: HTMLElement | null = e.target as HTMLElement;
       let isScrollableVertically = false;
-      
+
       while (el && el !== boardEl) {
         const style = window.getComputedStyle(el);
         if (el.scrollHeight > el.clientHeight && (style.overflowY === 'auto' || style.overflowY === 'scroll')) {
@@ -46,10 +46,15 @@ export default function Board({ board, search }: Props) {
   }, []);
 
   function onDragEnd(result: DropResult) {
-    const { source, destination, draggableId } = result;
+    const { source, destination, draggableId, type } = result;
     if (!destination) return;
     if (source.droppableId === destination.droppableId && source.index === destination.index) return;
-    
+
+    if (type === 'COLUMN') {
+      moveColumn(board.id, source.index, destination.index);
+      return;
+    }
+
     moveCard(
       board.id,
       draggableId,
@@ -67,37 +72,70 @@ export default function Board({ board, search }: Props) {
     setAddingCol(false);
   }
 
+  const boardStyle: React.CSSProperties = {};
+  if (board.backgroundType === 'gradient' && board.background) {
+    boardStyle.background = board.background;
+  } else if (board.backgroundType === 'image' && board.background) {
+    boardStyle.backgroundImage = `url(${board.background})`;
+    boardStyle.backgroundSize = 'cover';
+    boardStyle.backgroundPosition = 'center';
+  }
+
   return (
     <>
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className={styles.board} ref={boardRef}>
-          {board.columns.map((col) => (
-            <Column key={col.id} column={col} board={board} search={search} />
-          ))}
+        <Droppable droppableId="board-columns" direction="horizontal" type="COLUMN">
+          {(provided) => (
+            <div
+              className={styles.board}
+              ref={(el) => {
+                provided.innerRef(el);
+                (boardRef as any).current = el;
+              }}
+              {...provided.droppableProps}
+              style={boardStyle}
+            >
+              {board.columns.map((col, index) => (
+                <Draggable key={col.id} draggableId={`col-${col.id}`} index={index}>
+                  {(colProvided, colSnapshot) => (
+                    <div
+                      ref={colProvided.innerRef}
+                      {...colProvided.draggableProps}
+                      {...colProvided.dragHandleProps}
+                      className={colSnapshot.isDragging ? styles.columnDragging : ''}
+                    >
+                      <Column column={col} board={board} search={search} />
+                    </div>
+                  )}
+                </Draggable>
+              ))}
+              {provided.placeholder}
 
-          <div className={styles.addColWrap}>
-            {addingCol ? (
-              <div className={styles.addColForm}>
-                <input
-                  className="input"
-                  placeholder="Column name..."
-                  value={colTitle}
-                  onChange={(e) => setColTitle(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleAddCol(); if (e.key === 'Escape') setAddingCol(false); }}
-                  autoFocus
-                />
-                <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-                  <button className="btn btn-primary btn-sm" onClick={handleAddCol}>Add Column</button>
-                  <button className="btn btn-ghost btn-sm" onClick={() => setAddingCol(false)}>Cancel</button>
-                </div>
+              <div className={styles.addColWrap}>
+                {addingCol ? (
+                  <div className={styles.addColForm}>
+                    <input
+                      className="input"
+                      placeholder="Column name..."
+                      value={colTitle}
+                      onChange={(e) => setColTitle(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleAddCol(); if (e.key === 'Escape') setAddingCol(false); }}
+                      autoFocus
+                    />
+                    <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                      <button className="btn btn-primary btn-sm" onClick={handleAddCol}>Add Column</button>
+                      <button className="btn btn-ghost btn-sm" onClick={() => setAddingCol(false)}>Cancel</button>
+                    </div>
+                  </div>
+                ) : (
+                  <button className={styles.addColBtn} onClick={() => setAddingCol(true)}>
+                    <Plus size={16}/> Add Column
+                  </button>
+                )}
               </div>
-            ) : (
-              <button className={styles.addColBtn} onClick={() => setAddingCol(true)}>
-                <Plus size={16}/> Add Column
-              </button>
-            )}
-          </div>
-        </div>
+            </div>
+          )}
+        </Droppable>
       </DragDropContext>
       <BulkActionBar />
     </>
