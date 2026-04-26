@@ -13,7 +13,7 @@ export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
     EmailProvider({
-      from: "onboarding@resend.dev",
+      from: "magiclink@theeditorsingh.com",
       async sendVerificationRequest({ identifier, url, provider }) {
         try {
           await resend.emails.send({
