@@ -1,7 +1,7 @@
 'use client';
 import React, { createContext, useContext, useEffect, useReducer } from 'react';
 import { AppState, Board, Card, Column, Member } from '@/types';
-import { createBoardAction, createCardAction, createColumnAction, moveCardAction, deleteCardAction, bulkDeleteCardsAction, bulkMoveCardsAction, bulkCopyCardsAction, deleteBoardAction } from '@/actions/boardActions';
+import { createBoardAction, createCardAction, createColumnAction, moveCardAction, deleteCardAction, bulkDeleteCardsAction, bulkMoveCardsAction, bulkCopyCardsAction, deleteBoardAction, inviteMemberAction } from '@/actions/boardActions';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 
@@ -507,10 +507,19 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
     }
   }
 
-  function addMember(boardId: string, name: string, role: 'Admin' | 'Member' = 'Member') {
-    // Local only for now, would need a server action
+  async function addMember(boardId: string, name: string, role: 'Admin' | 'Member' = 'Member') {
+    // Optimistic Update
     const member: Member = { id: crypto.randomUUID(), name, color: '#0052CC', role, status: 'pending' };
     dispatch({ type: 'ADD_MEMBER', boardId, member });
+
+    // Server Action
+    try {
+      // name is the email address provided in the ShareModal
+      await inviteMemberAction(boardId, name, role);
+    } catch (error) {
+      console.error("Failed to invite member", error);
+      // In a robust app, we'd remove the member from state on failure
+    }
   }
 
   function removeMember(boardId: string, memberId: string) {

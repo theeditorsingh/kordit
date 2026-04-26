@@ -4,6 +4,9 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { Resend } from "resend";
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Helper to get authenticated user
 async function getAuthUser() {
@@ -259,6 +262,69 @@ export async function bulkCopyCardsAction(boardId: string, cardIds: string[], ta
     await prisma.card.createMany({
       data: newCardsData
     });
+  }
+
+  revalidatePath('/');
+}
+
+export async function inviteMemberAction(boardId: string, email: string, role: 'Admin' | 'Member') {
+  const authUser = await getAuthUser();
+  
+  // Verify access of the user inviting
+  const member = await prisma.member.findUnique({
+    where: { boardId_userId: { boardId, userId: authUser.id } }
+  });
+  if (!member || member.role !== 'Admin') throw new Error("Unauthorized to invite");
+
+  const board = await prisma.board.findUnique({ where: { id: boardId } });
+  if (!board) throw new Error("Board not found");
+
+  // Check if user exists by email
+  let invitedUser = await prisma.user.findUnique({ where: { email } });
+
+  // If user doesn't exist, create a placeholder user
+  if (!invitedUser) {
+    invitedUser = await prisma.user.create({
+      data: {
+        email,
+        // Using email prefix as a temporary name/username
+        name: email.split('@')[0],
+        username: email.split('@')[0] + '_' + Math.random().toString(36).substring(2, 8),
+      }
+    });
+  }
+
+  // Create member relation
+  try {
+    await prisma.member.create({
+      data: {
+        boardId,
+        userId: invitedUser.id,
+        role
+      }
+    });
+  } catch (e) {
+    // Unique constraint failed likely means they are already a member
+    console.error("User is already a member", e);
+  }
+
+  // Send Email
+  try {
+    const appUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+    const inviteLink = `${appUrl}/login`; 
+
+    await resend.emails.send({
+      from: "magiclink@theeditorsingh.com",
+      to: email,
+      subject: `You have been invited to join the board "${board.title}"`,
+      html: `<p>${authUser.name || authUser.email} has invited you to collaborate on the board <strong>${board.title}</strong> in Kordit.</p>
+             <p>Click the link below to sign in or create an account to access the board:</p>
+             <p><a href="${inviteLink}"><strong>Join Board</strong></a></p>
+             <p>If you don't have an account, one has been reserved for you. Just sign in with this email!</p>`,
+    });
+  } catch (error) {
+    console.error("Failed to send invite email", error);
+    throw new Error("Failed to send invite email.");
   }
 
   revalidatePath('/');
