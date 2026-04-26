@@ -31,7 +31,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="en" data-theme="dark" suppressHydrationWarning>
-      <body>
+      <body suppressHydrationWarning>
         <AuthProvider>
           <ThemeProvider>
             <BoardProvider initialBoards={initialBoards}>

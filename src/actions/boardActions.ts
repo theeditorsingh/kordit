@@ -59,7 +59,19 @@ export async function createBoardAction(title: string, customColumns?: { title: 
   revalidatePath('/');
   return board;
 }
+export async function deleteBoardAction(boardId: string) {
+  const user = await getAuthUser();
+  const member = await prisma.member.findUnique({
+    where: { boardId_userId: { boardId, userId: user.id } }
+  });
+  if (!member || member.role !== 'Admin') throw new Error("Unauthorized to delete board");
 
+  await prisma.board.delete({
+    where: { id: boardId }
+  });
+
+  revalidatePath('/');
+}
 export async function createCardAction(boardId: string, columnId: string, title: string, description: string = '', dueDate: string | null = null) {
   const user = await getAuthUser();
   

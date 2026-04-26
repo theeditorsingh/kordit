@@ -11,7 +11,6 @@
 .card:hover {
   border-color: var(--accent);
   box-shadow: var(--shadow-md);
-  transform: translateY(-1px);
 }
 .card.dragging {
   box-shadow: var(--shadow-lg);

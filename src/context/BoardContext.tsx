@@ -1,7 +1,7 @@
 'use client';
 import React, { createContext, useContext, useEffect, useReducer } from 'react';
 import { AppState, Board, Card, Column, Member } from '@/types';
-import { createBoardAction, createCardAction, createColumnAction, moveCardAction, deleteCardAction, bulkDeleteCardsAction, bulkMoveCardsAction, bulkCopyCardsAction } from '@/actions/boardActions';
+import { createBoardAction, createCardAction, createColumnAction, moveCardAction, deleteCardAction, bulkDeleteCardsAction, bulkMoveCardsAction, bulkCopyCardsAction, deleteBoardAction } from '@/actions/boardActions';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 
@@ -50,7 +50,7 @@ function reducer(state: AppState, action: Action): AppState {
     case 'DELETE_BOARD': {
       const boards = state.boards.filter((b) => b.id !== action.boardId);
       const activeBoardId = state.activeBoardId === action.boardId ? (boards[0]?.id ?? null) : state.activeBoardId;
-      return { boards, activeBoardId };
+      return { ...state, boards, activeBoardId };
     }
 
     case 'ADD_COLUMN':
@@ -261,6 +261,7 @@ interface BoardContextType {
   activeBoard: Board | null;
   dispatch: React.Dispatch<Action>;
   createBoard: (title: string, customColumns?: { title: string, color: string }[]) => Promise<void>;
+  deleteBoard: (boardId: string) => Promise<void>;
   createCard: (boardId: string, columnId: string, title: string, description?: string, dueDate?: string | null) => Promise<string>;
   createColumn: (boardId: string, title: string) => Promise<void>;
   moveCard: (boardId: string, cardId: string, sourceColId: string, destColId: string, sourceIndex: number, destIndex: number) => Promise<void>;
@@ -352,6 +353,23 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
       }
     } catch (e) {
       console.error("Failed to create board", e);
+    }
+  }
+
+  async function deleteBoard(boardId: string) {
+    // 1. Optimistic Update
+    dispatch({ type: 'DELETE_BOARD', boardId });
+
+    // 2. Server Action
+    try {
+      await deleteBoardAction(boardId);
+      
+      // If we just deleted the active board, navigate to home
+      if (session?.user?.username && state.activeBoardId === boardId) {
+        router.push(`/${session.user.username}`);
+      }
+    } catch (e) {
+      console.error("Failed to delete board", e);
     }
   }
 
@@ -492,7 +510,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
   return (
     <BoardContext.Provider value={{ 
       state, activeBoard, dispatch, 
-      createBoard, createCard, createColumn, moveCard, deleteCard, 
+      createBoard, deleteBoard, createCard, createColumn, moveCard, deleteCard, 
       addMember, setActiveBoardId,
       toggleCardSelection, clearSelection, bulkDelete, bulkMove, bulkCopy
     }}>
