@@ -41,29 +41,35 @@ export default function Home() {
         <Sidebar />
         <main className="main-content" style={{ padding: '40px', background: 'var(--bg-default)' }}>
           <div style={{ maxWidth: '800px', margin: '0 auto', textAlign: 'center' }}>
-            <h2 style={{ fontSize: '24px', marginBottom: '12px', color: 'var(--text-primary)' }}>Welcome to Kordit!</h2>
+            <h2 style={{ fontSize: '24px', marginBottom: '12px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+              <span style={{ display: 'inline-block', transform: 'scaleX(-1)' }}>🎉</span>
+              Welcome to Kordit!
+              <span style={{ display: 'inline-block' }}>🎉</span>
+            </h2>
             <p style={{ color: 'var(--text-secondary)', marginBottom: '32px' }}>Get started by choosing a template below.</p>
             
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '16px', textAlign: 'left' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', textAlign: 'left' }}>
               {TEMPLATES.map((tpl) => (
                 <button
                   key={tpl.id}
                   onClick={() => createBoard(tpl.title, tpl.columns)}
                   style={{
                     display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    padding: '16px',
+                    flexDirection: 'column',
                     background: 'var(--bg-card)',
                     border: '1px solid var(--border-subtle)',
                     borderRadius: '8px',
                     cursor: 'pointer',
                     transition: 'all 0.2s ease',
-                    boxShadow: 'var(--shadow-sm)'
+                    boxShadow: 'var(--shadow-sm)',
+                    overflow: 'hidden',
+                    height: '100px',
+                    textAlign: 'left',
+                    padding: 0
                   }}
                   onMouseOver={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--text-primary)';
-                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.borderColor = 'var(--accent)';
+                    e.currentTarget.style.transform = 'translateY(-3px)';
                     e.currentTarget.style.boxShadow = 'var(--shadow-md)';
                   }}
                   onMouseOut={(e) => {
@@ -72,8 +78,10 @@ export default function Home() {
                     e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
                   }}
                 >
-                  <div style={{ width: '24px', height: '24px', borderRadius: '4px', backgroundColor: tpl.color, flexShrink: 0 }} />
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-primary)' }}>{tpl.title}</span>
+                  <div style={{ width: '100%', height: '35%', backgroundColor: tpl.color, opacity: 0.9 }} />
+                  <div style={{ padding: '8px 12px', width: '100%', flex: 1, display: 'flex', alignItems: 'center' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.3 }}>{tpl.title}</span>
+                  </div>
                 </button>
               ))}
             </div>

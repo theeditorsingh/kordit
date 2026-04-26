@@ -358,6 +358,10 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
   }
 
   async function deleteBoard(boardId: string) {
+    // Determine what to navigate to next if we are deleting the active board
+    const remainingBoards = state.boards.filter(b => b.id !== boardId);
+    const nextBoard = remainingBoards.length > 0 ? remainingBoards[0] : null;
+
     // 1. Optimistic Update
     dispatch({ type: 'DELETE_BOARD', boardId });
 
@@ -365,9 +369,13 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
     try {
       await deleteBoardAction(boardId);
       
-      // If we just deleted the active board, navigate to home
-      if (session?.user?.username && state.activeBoardId === boardId) {
-        router.push(`/${session.user.username}`);
+      // If we just deleted the active board, navigate away
+      if (state.activeBoardId === boardId) {
+        if (nextBoard && session?.user?.username) {
+          router.push(`/${session.user.username}/${nextBoard.slug}`);
+        } else {
+          router.push(`/`);
+        }
       }
     } catch (e) {
       console.error("Failed to delete board", e);

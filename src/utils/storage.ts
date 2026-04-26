@@ -33,6 +33,7 @@ export function createDefaultBoard(): Board {
   return {
     id: crypto.randomUUID(),
     title: 'My First Board',
+    slug: 'my-first-board',
     color: '#0052CC',
     visibility: 'Workspace',
     members: [],
