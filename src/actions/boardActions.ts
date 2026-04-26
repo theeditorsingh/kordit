@@ -252,7 +252,7 @@ export async function bulkCopyCardsAction(boardId: string, cardIds: string[], ta
     labels: c.labels as any,
     checklist: c.checklist as any,
     dueDate: c.dueDate,
-    assigneeIds: c.assigneeIds
+    assigneeIds: c.assigneeIds ? (c.assigneeIds as any) : []
   }));
 
   if (newCardsData.length > 0) {

@@ -30,9 +30,9 @@ export default function Column({ column, board, search }: Props) {
     resetForm();
   }
 
-  function handleSaveAndOpen() {
+  async function handleSaveAndOpen() {
     const title = cardTitle.trim() || 'Untitled Card';
-    const newId = createCard(board.id, column.id, title, cardDesc.trim(), cardDue);
+    const newId = await createCard(board.id, column.id, title, cardDesc.trim(), cardDue);
     resetForm();
     setOpeningCardId(newId);
   }

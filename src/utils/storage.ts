@@ -43,16 +43,20 @@ export function createDefaultBoard(): Board {
 }
 
 export function getInitialState(): AppState {
-  if (typeof window === 'undefined') return { boards: [], activeBoardId: null };
+  if (typeof window === 'undefined') return { boards: [], activeBoardId: null, selectedCardIds: [] };
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as AppState;
-      if (parsed.boards && parsed.boards.length > 0) return parsed;
+      if (parsed.boards && parsed.boards.length > 0) {
+        // Ensure selectedCardIds exists when reading from old storage
+        if (!parsed.selectedCardIds) parsed.selectedCardIds = [];
+        return parsed;
+      }
     }
   } catch (_) {}
   const board = createDefaultBoard();
-  return { boards: [board], activeBoardId: board.id };
+  return { boards: [board], activeBoardId: board.id, selectedCardIds: [] };
 }
 
 export function saveState(state: AppState): void {

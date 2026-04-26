@@ -323,7 +323,8 @@ function formatPrismaBoards(prismaBoards: any[]): Board[] {
         name: m.user?.name || m.user?.username || 'Unknown',
         role: m.role as any,
         color: '#0052CC' // default color
-      }))
+      })),
+      createdAt: pb.createdAt ? new Date(pb.createdAt).toISOString() : new Date().toISOString()
     };
   });
 }

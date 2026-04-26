@@ -44,6 +44,7 @@ export interface Column {
 export interface Board {
   id: string;
   title: string;
+  slug: string;
   color: string;
   visibility: Visibility;
   members: Member[];
