@@ -267,6 +267,7 @@ interface BoardContextType {
   moveCard: (boardId: string, cardId: string, sourceColId: string, destColId: string, sourceIndex: number, destIndex: number) => Promise<void>;
   deleteCard: (boardId: string, columnId: string, cardId: string) => Promise<void>;
   addMember: (boardId: string, name: string, role?: 'Admin' | 'Member') => void;
+  removeMember: (boardId: string, memberId: string) => void;
   setActiveBoardId: (id: string | null) => void;
   toggleCardSelection: (cardId: string) => void;
   clearSelection: () => void;
@@ -508,8 +509,12 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
 
   function addMember(boardId: string, name: string, role: 'Admin' | 'Member' = 'Member') {
     // Local only for now, would need a server action
-    const member: Member = { id: crypto.randomUUID(), name, color: '#0052CC', role };
+    const member: Member = { id: crypto.randomUUID(), name, color: '#0052CC', role, status: 'pending' };
     dispatch({ type: 'ADD_MEMBER', boardId, member });
+  }
+
+  function removeMember(boardId: string, memberId: string) {
+    dispatch({ type: 'REMOVE_MEMBER', boardId, memberId });
   }
 
   function setActiveBoardId(id: string | null) {
@@ -520,7 +525,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
     <BoardContext.Provider value={{ 
       state, activeBoard, dispatch, 
       createBoard, deleteBoard, createCard, createColumn, moveCard, deleteCard, 
-      addMember, setActiveBoardId,
+      addMember, removeMember, setActiveBoardId,
       toggleCardSelection, clearSelection, bulkDelete, bulkMove, bulkCopy
     }}>
       {children}

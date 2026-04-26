@@ -12,7 +12,7 @@ interface Props {
 
 export default function ShareModal({ onClose }: Props) {
   const { data: session } = useSession();
-  const { activeBoard, addMember, dispatch } = useBoardContext();
+  const { activeBoard, addMember, removeMember, dispatch } = useBoardContext();
   const [inviteText, setInviteText] = useState('');
   const [role, setRole] = useState<'Admin' | 'Member'>('Member');
   const [activeTab, setActiveTab] = useState<'members' | 'requests'>('members');
@@ -20,15 +20,27 @@ export default function ShareModal({ onClose }: Props) {
   if (!activeBoard) return null;
 
   const handleShare = () => {
-    if (inviteText.trim()) {
-      addMember(activeBoard.id, inviteText.trim(), role);
+    const email = inviteText.trim();
+    if (email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        alert("Please enter a valid email address");
+        return;
+      }
+      addMember(activeBoard.id, email, role);
       setInviteText('');
     }
   };
 
-  const handleRoleChange = (memberId: string, newRole: 'Admin' | 'Member') => {
-    dispatch({ type: 'UPDATE_MEMBER_ROLE', boardId: activeBoard.id, memberId, role: newRole });
+  const handleRoleChange = (memberId: string, newRole: 'Admin' | 'Member' | 'Remove') => {
+    if (newRole === 'Remove') {
+      removeMember(activeBoard.id, memberId);
+    } else {
+      dispatch({ type: 'UPDATE_MEMBER_ROLE', boardId: activeBoard.id, memberId, role: newRole });
+    }
   };
+
+  const filteredMembers = activeBoard.members.filter(m => session?.user?.id ? m.id !== session.user.id : true);
 
   return (
     <div className={styles.overlay} onClick={onClose}>
@@ -80,7 +92,7 @@ export default function ShareModal({ onClose }: Props) {
               className={`${styles.tab} ${activeTab === 'members' ? styles.active : ''}`}
               onClick={() => setActiveTab('members')}
             >
-              Board members <span className={styles.badge}>{activeBoard.members.length + 1}</span>
+              Board members <span className={styles.badge}>{filteredMembers.length + 1}</span>
             </button>
             <button
               className={`${styles.tab} ${activeTab === 'requests' ? styles.active : ''}`}
@@ -111,25 +123,33 @@ export default function ShareModal({ onClose }: Props) {
               </div>
 
               {/* Invited Members */}
-              {activeBoard.members.map((member) => (
+              {filteredMembers.map((member) => (
                 <div className={styles.memberItem} key={member.id}>
                   <div className={styles.memberInfo}>
                     <div className={styles.avatar} style={{ backgroundColor: member.color }}>
                       {getInitials(member.name)}
                     </div>
                     <div className={styles.memberDetails}>
-                      <span className={styles.memberName}>{member.name}</span>
-                      <span className={styles.memberUsername}>@{member.name.toLowerCase().replace(/\s+/g, '')}</span>
+                      <span className={styles.memberName}>
+                        {member.name}
+                        {member.status === 'pending' && (
+                          <span style={{ fontSize: 11, color: 'var(--text-secondary)', marginLeft: 8, padding: '2px 6px', background: 'var(--bg-surface)', borderRadius: 10, border: '1px solid var(--border-subtle)' }}>
+                            Requested
+                          </span>
+                        )}
+                      </span>
+                      <span className={styles.memberUsername}>@{member.name.split('@')[0].toLowerCase().replace(/\s+/g, '')}</span>
                     </div>
                   </div>
                   <select
                     className={styles.roleSelect}
                     style={{ padding: '4px 8px', height: 'auto' }}
                     value={member.role || 'Member'}
-                    onChange={(e) => handleRoleChange(member.id, e.target.value as 'Admin' | 'Member')}
+                    onChange={(e) => handleRoleChange(member.id, e.target.value as 'Admin' | 'Member' | 'Remove')}
                   >
                     <option value="Admin">Admin</option>
                     <option value="Member">Member</option>
+                    <option value="Remove">Remove from board</option>
                   </select>
                 </div>
               ))}

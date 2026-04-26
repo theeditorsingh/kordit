@@ -20,6 +20,7 @@ export interface Member {
   name: string;
   color: string;
   role: 'Admin' | 'Member';
+  status?: 'pending' | 'joined';
 }
 
 export interface Card {
