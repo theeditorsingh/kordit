@@ -6,7 +6,7 @@ import TopNav from '@/components/TopNav';
 import Board from '@/components/Board';
 import ListView from '@/components/ListView';
 import CalendarView from '@/components/CalendarView';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ViewMode } from '@/types';
 
 export default function Home() {
@@ -14,6 +14,15 @@ export default function Home() {
   const { activeBoard } = useBoardContext();
   const [view, setView] = useState<ViewMode>('board');
   const [search, setSearch] = useState('');
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return null; // Prevent hydration mismatch
+  }
 
   return (
     <div className="app-layout" data-theme={theme}>
