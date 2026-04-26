@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { useSession } from 'next-auth/react';
 import { useBoardContext } from '@/context/BoardContext';
 import { X, Link as LinkIcon, ChevronDown } from 'lucide-react';
 import { getInitials } from '@/utils/storage';
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export default function ShareModal({ onClose }: Props) {
+  const { data: session } = useSession();
   const { activeBoard, addMember, dispatch } = useBoardContext();
   const [inviteText, setInviteText] = useState('');
   const [role, setRole] = useState<'Admin' | 'Member'>('Member');
@@ -90,13 +92,17 @@ export default function ShareModal({ onClose }: Props) {
 
           {activeTab === 'members' && (
             <div className={styles.memberList}>
-              {/* Current User Mock */}
+              {/* Current User */}
               <div className={styles.memberItem}>
                 <div className={styles.memberInfo}>
-                  <div className={styles.avatar} style={{ backgroundColor: '#6554C0' }}>HS</div>
+                  <div className={styles.avatar} style={{ backgroundColor: '#6554C0' }}>
+                    {session?.user?.name ? session.user.name.charAt(0).toUpperCase() : 'U'}
+                  </div>
                   <div className={styles.memberDetails}>
-                    <span className={styles.memberName}>Harmeet Singh (you)</span>
-                    <span className={styles.memberUsername}>@harmeet__singh • Workspace admin</span>
+                    <span className={styles.memberName}>{session?.user?.name || 'User'} (you)</span>
+                    <span className={styles.memberUsername}>
+                      {session?.user?.username ? `@${session.user.username}` : session?.user?.email || ''} • Board admin
+                    </span>
                   </div>
                 </div>
                 <div className={styles.memberRole}>
