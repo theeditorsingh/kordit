@@ -1,7 +1,9 @@
 'use client';
 import React, { createContext, useContext, useEffect, useReducer } from 'react';
 import { AppState, Board, Card, Column, Member } from '@/types';
-import { getInitialState, saveState, getMemberColor } from '@/utils/storage';
+import { createBoardAction, createCardAction, createColumnAction, moveCardAction, deleteCardAction, bulkDeleteCardsAction, bulkMoveCardsAction, bulkCopyCardsAction } from '@/actions/boardActions';
+import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 
 type Action =
   | { type: 'SET_ACTIVE_BOARD'; boardId: string }
@@ -18,7 +20,12 @@ type Action =
   | { type: 'ADD_MEMBER'; boardId: string; member: Member }
   | { type: 'REMOVE_MEMBER'; boardId: string; memberId: string }
   | { type: 'UPDATE_BOARD_VISIBILITY'; boardId: string; visibility: 'Private' | 'Workspace' | 'Public' }
-  | { type: 'UPDATE_MEMBER_ROLE'; boardId: string; memberId: string; role: 'Admin' | 'Member' };
+  | { type: 'UPDATE_MEMBER_ROLE'; boardId: string; memberId: string; role: 'Admin' | 'Member' }
+  | { type: 'TOGGLE_CARD_SELECTION'; cardId: string }
+  | { type: 'CLEAR_SELECTION' }
+  | { type: 'BULK_DELETE'; boardId: string; cardIds: string[] }
+  | { type: 'BULK_MOVE'; boardId: string; cardIds: string[]; targetColId: string }
+  | { type: 'BULK_COPY'; boardId: string; newCards: Card[]; targetColId: string };
 
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -167,6 +174,83 @@ function reducer(state: AppState, action: Action): AppState {
         }),
       };
 
+    case 'TOGGLE_CARD_SELECTION': {
+      const selected = state.selectedCardIds.includes(action.cardId)
+        ? state.selectedCardIds.filter((id) => id !== action.cardId)
+        : [...state.selectedCardIds, action.cardId];
+      return { ...state, selectedCardIds: selected };
+    }
+
+    case 'CLEAR_SELECTION':
+      return { ...state, selectedCardIds: [] };
+
+    case 'BULK_DELETE':
+      return {
+        ...state,
+        selectedCardIds: [],
+        boards: state.boards.map((b) => {
+          if (b.id !== action.boardId) return b;
+          const newCards = { ...b.cards };
+          action.cardIds.forEach((id) => delete newCards[id]);
+          return {
+            ...b,
+            columns: b.columns.map((c) => ({
+              ...c,
+              cardIds: c.cardIds.filter((id) => !action.cardIds.includes(id)),
+            })),
+            cards: newCards,
+          };
+        }),
+      };
+
+    case 'BULK_MOVE':
+      return {
+        ...state,
+        selectedCardIds: [],
+        boards: state.boards.map((b) => {
+          if (b.id !== action.boardId) return b;
+          
+          return {
+            ...b,
+            columns: b.columns.map((c) => {
+              if (c.id === action.targetColId) {
+                // Add to end of target column
+                return { ...c, cardIds: [...c.cardIds, ...action.cardIds] };
+              } else {
+                // Remove from other columns
+                return { ...c, cardIds: c.cardIds.filter((id) => !action.cardIds.includes(id)) };
+              }
+            }),
+          };
+        }),
+      };
+
+    case 'BULK_COPY':
+      return {
+        ...state,
+        selectedCardIds: [],
+        boards: state.boards.map((b) => {
+          if (b.id !== action.boardId) return b;
+          
+          const newCardsRecord = { ...b.cards };
+          const newIds: string[] = [];
+          action.newCards.forEach((c) => {
+            newCardsRecord[c.id] = c;
+            newIds.push(c.id);
+          });
+
+          return {
+            ...b,
+            cards: newCardsRecord,
+            columns: b.columns.map((c) => 
+              c.id === action.targetColId 
+                ? { ...c, cardIds: [...c.cardIds, ...newIds] } 
+                : c
+            ),
+          };
+        }),
+      };
+
     default:
       return state;
   }
@@ -176,37 +260,106 @@ interface BoardContextType {
   state: AppState;
   activeBoard: Board | null;
   dispatch: React.Dispatch<Action>;
-  createBoard: (title: string) => void;
-  createCard: (boardId: string, columnId: string, title: string, description?: string, dueDate?: string | null) => string;
-  createColumn: (boardId: string, title: string) => void;
+  createBoard: (title: string, customColumns?: { title: string, color: string }[]) => Promise<void>;
+  createCard: (boardId: string, columnId: string, title: string, description?: string, dueDate?: string | null) => Promise<string>;
+  createColumn: (boardId: string, title: string) => Promise<void>;
+  moveCard: (boardId: string, cardId: string, sourceColId: string, destColId: string, sourceIndex: number, destIndex: number) => Promise<void>;
+  deleteCard: (boardId: string, columnId: string, cardId: string) => Promise<void>;
   addMember: (boardId: string, name: string, role?: 'Admin' | 'Member') => void;
+  setActiveBoardId: (id: string | null) => void;
+  toggleCardSelection: (cardId: string) => void;
+  clearSelection: () => void;
+  bulkDelete: (boardId: string, cardIds: string[]) => Promise<void>;
+  bulkMove: (boardId: string, cardIds: string[], targetColId: string) => Promise<void>;
+  bulkCopy: (boardId: string, cardIds: string[], targetColId: string) => Promise<void>;
 }
 
 const BoardContext = createContext<BoardContextType | null>(null);
 
-export function BoardProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, undefined, getInitialState);
+function formatPrismaBoards(prismaBoards: any[]): Board[] {
+  return prismaBoards.map(pb => {
+    // Group cards by column and format cards object
+    const cardsObj: Record<string, Card> = {};
+    const columnCardIds: Record<string, string[]> = {};
+
+    pb.columns.forEach((col: any) => {
+      columnCardIds[col.id] = [];
+    });
+
+    pb.cards.forEach((card: any) => {
+      cardsObj[card.id] = {
+        id: card.id,
+        title: card.title,
+        description: card.description || '',
+        priority: card.priority as any,
+        dueDate: card.dueDate ? new Date(card.dueDate).toISOString() : null,
+        labels: Array.isArray(card.labels) ? card.labels : [],
+        checklist: Array.isArray(card.checklist) ? card.checklist : [],
+        assigneeIds: Array.isArray(card.assigneeIds) ? card.assigneeIds : [],
+        createdAt: new Date(card.createdAt).toISOString()
+      };
+      
+      if (columnCardIds[card.columnId]) {
+        columnCardIds[card.columnId].push(card.id);
+      }
+    });
+
+    return {
+      id: pb.id,
+      title: pb.title,
+      slug: pb.slug,
+      color: pb.color,
+      visibility: pb.visibility as any,
+      columns: pb.columns.map((col: any) => ({
+        id: col.id,
+        title: col.title,
+        color: col.color,
+        cardIds: columnCardIds[col.id] || []
+      })),
+      cards: cardsObj,
+      members: pb.members.map((m: any) => ({
+        id: m.userId, // use userId as member ID for simplicity in front end
+        name: m.user?.name || m.user?.username || 'Unknown',
+        role: m.role as any,
+        color: '#0052CC' // default color
+      }))
+    };
+  });
+}
+
+export function BoardProvider({ children, initialBoards = [] }: { children: React.ReactNode, initialBoards?: any[] }) {
+  const router = useRouter();
+  const { data: session } = useSession();
+  
+  const [state, dispatch] = useReducer(reducer, undefined, () => ({
+    boards: formatPrismaBoards(initialBoards),
+    activeBoardId: initialBoards.length > 0 ? initialBoards[0].id : null,
+    selectedCardIds: [],
+  }));
 
   const activeBoard = state.boards.find((b) => b.id === state.activeBoardId) ?? null;
 
-  useEffect(() => {
-    saveState(state);
-  }, [state]);
-
-  function createBoard(title: string) {
-    const { createDefaultBoard } = require('@/utils/storage');
-    const board: Board = { ...createDefaultBoard(), title, cards: {}, columns: [
-      { id: crypto.randomUUID(), title: 'To Do', cardIds: [], color: '#0052CC' },
-      { id: crypto.randomUUID(), title: 'In Progress', cardIds: [], color: '#FF991F' },
-      { id: crypto.randomUUID(), title: 'Review', cardIds: [], color: '#6554C0' },
-      { id: crypto.randomUUID(), title: 'Done', cardIds: [], color: '#36B37E' },
-    ], visibility: 'Workspace' };
-    dispatch({ type: 'ADD_BOARD', board });
+  async function createBoard(title: string, customColumns?: { title: string, color: string }[]) {
+    try {
+      const dbBoard = await createBoardAction(title, customColumns);
+      // Wait, we need to format it first before dispatching
+      const formatted = formatPrismaBoards([{...dbBoard, cards: []}])[0];
+      dispatch({ type: 'ADD_BOARD', board: formatted });
+      
+      // Navigate to the new board
+      if (session?.user?.username) {
+        router.push(`/${session.user.username}/${formatted.slug}`);
+      }
+    } catch (e) {
+      console.error("Failed to create board", e);
+    }
   }
 
-  function createCard(boardId: string, columnId: string, title: string, description?: string, dueDate?: string | null) {
-    const card: Card = {
-      id: crypto.randomUUID(),
+  async function createCard(boardId: string, columnId: string, title: string, description?: string, dueDate?: string | null) {
+    // 1. Optimistic Update
+    const tempId = crypto.randomUUID();
+    const tempCard: Card = {
+      id: tempId,
       title,
       description: description || '',
       priority: 'medium',
@@ -216,29 +369,133 @@ export function BoardProvider({ children }: { children: React.ReactNode }) {
       assigneeIds: [],
       createdAt: new Date().toISOString(),
     };
-    dispatch({ type: 'ADD_CARD', boardId, columnId, card });
-    return card.id;
+    dispatch({ type: 'ADD_CARD', boardId, columnId, card: tempCard });
+
+    // 2. Server Action
+    try {
+      const dbCard = await createCardAction(boardId, columnId, title, description, dueDate);
+      // Replace temp ID with real ID from DB
+      // We'd need an action to swap the ID, but Next.js Server Actions typically revalidate the path
+      // meaning the layout fetches fresh data. For seamless UI, we might just let it be temp until hard refresh
+      // or swap it. For now, it's optimistic!
+    } catch (e) {
+      console.error("Failed to create card on server", e);
+      // dispatch({ type: 'DELETE_CARD', boardId, columnId, cardId: tempId });
+    }
+    return tempId;
   }
 
-  function createColumn(boardId: string, title: string) {
-    const column: Column = {
-      id: crypto.randomUUID(),
-      title,
-      cardIds: [],
-      color: '#0052CC',
-    };
-    dispatch({ type: 'ADD_COLUMN', boardId, column });
+  async function createColumn(boardId: string, title: string) {
+    const tempId = crypto.randomUUID();
+    dispatch({ type: 'ADD_COLUMN', boardId, column: { id: tempId, title, cardIds: [], color: '#0052CC' } });
+    
+    try {
+      await createColumnAction(boardId, title);
+    } catch (e) {
+      console.error("Failed to create column", e);
+    }
+  }
+
+  async function moveCard(boardId: string, cardId: string, sourceColId: string, destColId: string, sourceIndex: number, destIndex: number) {
+    // 1. Optimistic Update
+    dispatch({
+      type: 'MOVE_CARD',
+      boardId,
+      sourceColId,
+      destColId,
+      sourceIndex,
+      destIndex,
+    });
+
+    // 2. Server Action
+    try {
+      // For simplicity in this step, newOrder is just destIndex
+      await moveCardAction(cardId, sourceColId, destColId, destIndex);
+    } catch (e) {
+      console.error("Failed to move card", e);
+      // In a robust app, we'd dispatch a reverse move here to undo the optimistic update
+    }
+  }
+
+  async function deleteCard(boardId: string, columnId: string, cardId: string) {
+    // 1. Optimistic Update
+    dispatch({ type: 'DELETE_CARD', boardId, columnId, cardId });
+
+    // 2. Server Action
+    try {
+      await deleteCardAction(boardId, cardId);
+    } catch (e) {
+      console.error("Failed to delete card", e);
+      // In a robust app, we'd restore the card here on failure
+    }
+  }
+
+  function toggleCardSelection(cardId: string) {
+    dispatch({ type: 'TOGGLE_CARD_SELECTION', cardId });
+  }
+
+  function clearSelection() {
+    dispatch({ type: 'CLEAR_SELECTION' });
+  }
+
+  async function bulkDelete(boardId: string, cardIds: string[]) {
+    dispatch({ type: 'BULK_DELETE', boardId, cardIds });
+    try {
+      await bulkDeleteCardsAction(boardId, cardIds);
+    } catch (e) {
+      console.error("Failed bulk delete", e);
+    }
+  }
+
+  async function bulkMove(boardId: string, cardIds: string[], targetColId: string) {
+    dispatch({ type: 'BULK_MOVE', boardId, cardIds, targetColId });
+    try {
+      await bulkMoveCardsAction(boardId, cardIds, targetColId);
+    } catch (e) {
+      console.error("Failed bulk move", e);
+    }
+  }
+
+  async function bulkCopy(boardId: string, cardIds: string[], targetColId: string) {
+    // For optimistic update of copy, we need to generate new temp IDs
+    const currentBoard = state.boards.find(b => b.id === boardId);
+    if (!currentBoard) return;
+    
+    const newCards: Card[] = cardIds.map(id => {
+      const original = currentBoard.cards[id];
+      return {
+        ...original,
+        id: crypto.randomUUID(),
+        createdAt: new Date().toISOString()
+      };
+    }).filter(Boolean);
+
+    dispatch({ type: 'BULK_COPY', boardId, newCards, targetColId });
+    try {
+      await bulkCopyCardsAction(boardId, cardIds, targetColId);
+      // The server action will revalidate, swapping temp cards with real DB ones.
+    } catch (e) {
+      console.error("Failed bulk copy", e);
+    }
   }
 
   function addMember(boardId: string, name: string, role: 'Admin' | 'Member' = 'Member') {
-    const board = state.boards.find((b) => b.id === boardId);
-    const color = getMemberColor(board?.members.length ?? 0);
-    const member: Member = { id: crypto.randomUUID(), name, color, role };
+    // Local only for now, would need a server action
+    const member: Member = { id: crypto.randomUUID(), name, color: '#0052CC', role };
     dispatch({ type: 'ADD_MEMBER', boardId, member });
   }
 
+  function setActiveBoardId(id: string | null) {
+    if (id) dispatch({ type: 'SET_ACTIVE_BOARD', boardId: id });
+  }
+
   return (
-    <BoardContext.Provider value={{ state, activeBoard, dispatch, createBoard, createCard, createColumn, addMember }}>
+    <BoardContext.Provider value={{ 
+      state, activeBoard, dispatch, 
+      createBoard, createCard, createColumn, moveCard, deleteCard, 
+      addMember, setActiveBoardId,
+      toggleCardSelection, clearSelection, bulkDelete, bulkMove, bulkCopy
+    }}>
       {children}
     </BoardContext.Provider>
   );

@@ -37,6 +37,8 @@ model Session {
 model User {
   id            String    @id @default(cuid())
   name          String?
+  username      String?   @unique
+  password      String?
   email         String?   @unique
   emailVerified DateTime?
   image         String?
@@ -60,6 +62,7 @@ model VerificationToken {
 model Board {
   id         String   @id @default(cuid())
   title      String
+  slug       String
   color      String   @default("#0052CC")
   visibility String   @default("Workspace") // Private, Workspace, Public
   createdAt  DateTime @default(now())
@@ -71,6 +74,8 @@ model Board {
   columns Column[]
   cards   Card[]
   members Member[]
+
+  @@unique([ownerId, slug])
 }
 
 model Column {

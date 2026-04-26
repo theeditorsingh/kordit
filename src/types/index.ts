@@ -55,4 +55,5 @@ export interface Board {
 export interface AppState {
   boards: Board[];
   activeBoardId: string | null;
+  selectedCardIds: string[];
 }

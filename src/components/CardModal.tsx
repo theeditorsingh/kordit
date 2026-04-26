@@ -12,7 +12,7 @@ const PRIORITIES: Priority[] = ['urgent', 'high', 'medium', 'low'];
 const LABEL_COLORS = ['#0052CC','#36B37E','#FF5630','#FF991F','#6554C0','#00B8D9','#FF7452','#FFC400'];
 
 export default function CardModal({ card, board, columnId, onClose }: Props) {
-  const { dispatch } = useBoardContext();
+  const { dispatch, deleteCard: deleteCardFn } = useBoardContext();
   const [data, setData] = useState<Card>({ ...card });
   const [newCheckItem, setNewCheckItem] = useState('');
   const [newLabelName, setNewLabelName] = useState('');
@@ -26,7 +26,7 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
 
   function deleteCard() {
     if (confirm('Delete this card?')) {
-      dispatch({ type: 'DELETE_CARD', boardId: board.id, columnId, cardId: card.id });
+      deleteCardFn(board.id, columnId, card.id);
       onClose();
     }
   }

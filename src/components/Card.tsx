@@ -5,6 +5,7 @@ import { Board, Card } from '@/types';
 import { Calendar, CheckSquare } from 'lucide-react';
 import { getInitials } from '@/utils/storage';
 import CardModal from './CardModal';
+import { useBoardContext } from '@/context/BoardContext';
 import styles from './Card.module.css';
 
 interface Props { card: Card; index: number; board: Board; columnId: string; }
@@ -27,6 +28,11 @@ function formatDate(date: string) {
 
 export default function CardItem({ card, index, board, columnId }: Props) {
   const [open, setOpen] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number, y: number } | null>(null);
+  const { deleteCard, toggleCardSelection, state } = useBoardContext();
+
+  const isSelected = state.selectedCardIds.includes(card.id);
+
   const doneItems = card.checklist.filter((c) => c.done).length;
   const totalItems = card.checklist.length;
   const assignees = card.assigneeIds.map((id) => board.members.find((m) => m.id === id)).filter(Boolean);
@@ -39,8 +45,23 @@ export default function CardItem({ card, index, board, columnId }: Props) {
             ref={provided.innerRef}
             {...provided.draggableProps}
             {...provided.dragHandleProps}
-            className={`${styles.card} ${snapshot.isDragging ? styles.dragging : ''}`}
-            onClick={() => setOpen(true)}
+            className={`${styles.card} ${snapshot.isDragging ? styles.dragging : ''} ${isSelected ? styles.selected : ''}`}
+            style={{
+              ...provided.draggableProps.style,
+              ...(isSelected ? { border: '2px solid #0052CC', backgroundColor: 'rgba(0, 82, 204, 0.05)' } : {})
+            }}
+            onClick={(e) => {
+              if (e.ctrlKey || e.metaKey) {
+                e.preventDefault();
+                toggleCardSelection(card.id);
+              } else {
+                setOpen(true);
+              }
+            }}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              setContextMenu({ x: e.clientX, y: e.clientY });
+            }}
           >
             {/* Labels */}
             {card.labels.length > 0 && (
@@ -93,6 +114,59 @@ export default function CardItem({ card, index, board, columnId }: Props) {
           </div>
         )}
       </Draggable>
+
+      {contextMenu && (
+        <>
+          <div 
+            style={{ position: 'fixed', inset: 0, zIndex: 999 }} 
+            onClick={(e) => { e.stopPropagation(); setContextMenu(null); }} 
+            onContextMenu={(e) => { e.preventDefault(); setContextMenu(null); }}
+          />
+          <div 
+            style={{ 
+              position: 'fixed', 
+              top: contextMenu.y, 
+              left: contextMenu.x, 
+              zIndex: 1000,
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: '6px',
+              padding: '4px',
+              boxShadow: 'var(--shadow-md)',
+              display: 'flex',
+              flexDirection: 'column',
+              minWidth: '120px'
+            }}
+          >
+            <button 
+              style={{ padding: '8px 12px', textAlign: 'left', fontSize: '13px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-primary)', borderRadius: '4px' }}
+              onClick={(e) => { e.stopPropagation(); setContextMenu(null); setOpen(true); }}
+              onMouseOver={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
+              onMouseOut={(e) => e.currentTarget.style.background = 'none'}
+            >
+              Edit Card
+            </button>
+            <button 
+              style={{ padding: '8px 12px', textAlign: 'left', fontSize: '13px', background: 'none', border: 'none', cursor: 'pointer', color: '#ff5630', borderRadius: '4px' }}
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                setContextMenu(null); 
+                if (confirm('Delete this card?')) {
+                   deleteCard(board.id, columnId, card.id);
+                }
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 86, 48, 0.1)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.background = 'none';
+              }}
+            >
+              Delete
+            </button>
+          </div>
+        </>
+      )}
 
       {open && (
         <CardModal card={card} board={board} columnId={columnId} onClose={() => setOpen(false)} />

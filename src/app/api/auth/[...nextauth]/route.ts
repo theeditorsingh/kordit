@@ -2,6 +2,8 @@ import NextAuth, { NextAuthOptions } from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import EmailProvider from "next-auth/providers/email";
+import CredentialsProvider from "next-auth/providers/credentials";
+import bcrypt from "bcryptjs";
 
 import { Resend } from "resend";
 
@@ -28,6 +30,39 @@ export const authOptions: NextAuthOptions = {
         }
       },
     }),
+    CredentialsProvider({
+      name: "Credentials",
+      credentials: {
+        identifier: { label: "Email or Username", type: "text" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(credentials) {
+        if (!credentials?.identifier || !credentials?.password) {
+          throw new Error("Missing identifier or password");
+        }
+
+        const user = await prisma.user.findFirst({
+          where: {
+            OR: [
+              { email: credentials.identifier },
+              { username: credentials.identifier },
+            ],
+          },
+        });
+
+        if (!user || !user.password) {
+          throw new Error("Invalid credentials");
+        }
+
+        const isValid = await bcrypt.compare(credentials.password, user.password);
+
+        if (!isValid) {
+          throw new Error("Invalid credentials");
+        }
+
+        return user;
+      },
+    }),
   ],
   pages: {
     signIn: "/login",
@@ -36,9 +71,23 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt",
   },
   callbacks: {
+    async jwt({ token, user, trigger, session }) {
+      if (trigger === "update" && session?.username) {
+        token.username = session.username;
+      }
+      
+      if (user) {
+        token.id = user.id;
+        // User object from authorize or email provider
+        const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
+        token.username = dbUser?.username || null;
+      }
+      return token;
+    },
     async session({ session, token }) {
-      if (session.user && token.sub) {
-        session.user.id = token.sub;
+      if (session.user && token) {
+        session.user.id = (token.id || token.sub) as string;
+        session.user.username = token.username as string | null;
       }
       return session;
     },

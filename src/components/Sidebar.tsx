@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
-import { signOut } from 'next-auth/react';
+import { signOut, useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { useBoardContext } from '@/context/BoardContext';
 import { Plus, Trash2, ChevronDown, LayoutGrid, Users, Edit2, Check, X, LayoutTemplate, LogOut } from 'lucide-react';
 import MembersPanel from './MembersPanel';
@@ -8,6 +9,8 @@ import TemplateModal from './TemplateModal';
 import styles from './Sidebar.module.css';
 
 export default function Sidebar() {
+  const { data: session } = useSession();
+  const router = useRouter();
   const { state, activeBoard, dispatch, createBoard } = useBoardContext();
   const [newBoardTitle, setNewBoardTitle] = useState('');
   const [adding, setAdding] = useState(false);
@@ -69,7 +72,13 @@ export default function Sidebar() {
               ) : (
                 <button
                   className={`${styles.boardItem} ${board.id === state.activeBoardId ? styles.active : ''}`}
-                  onClick={() => dispatch({ type: 'SET_ACTIVE_BOARD', boardId: board.id })}
+                  onClick={() => {
+                    if (session?.user?.username) {
+                      router.push(`/${session.user.username}/${board.slug}`);
+                    } else {
+                      dispatch({ type: 'SET_ACTIVE_BOARD', boardId: board.id });
+                    }
+                  }}
                 >
                   <span className={styles.boardDot} style={{ background: BOARD_COLORS[i % BOARD_COLORS.length] }} />
                   <span className={styles.boardTitle}>{board.title}</span>

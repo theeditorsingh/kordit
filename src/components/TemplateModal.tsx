@@ -1,31 +1,18 @@
 'use client';
 import { useBoardContext } from '@/context/BoardContext';
 import { X, ExternalLink, ArrowLeft } from 'lucide-react';
+import { TEMPLATES, BoardTemplate } from '@/utils/templates';
 import styles from './TemplateModal.module.css';
 
 interface Props {
   onClose: () => void;
 }
 
-const TEMPLATES = [
-  { id: '1', title: '1-on-1 Meeting Agenda', color: '#8b5a2b' },
-  { id: '2', title: 'Agile Board Template | Kordit', color: '#ff7f50' },
-  { id: '3', title: 'Company Overview', color: '#87ceeb' },
-  { id: '4', title: 'Design Huddle', color: '#ff69b4' },
-  { id: '5', title: 'Go To Market Strategy Template', color: '#00ced1' },
-  { id: '6', title: 'Mise-En-Place Personal Productivity', color: '#556b2f' },
-  { id: '7', title: 'Project Management', color: '#9370db' },
-  { id: '8', title: 'Remote Team Meetings', color: '#e6e6fa' },
-  { id: '9', title: 'Simple Project Board', color: '#32cd32' },
-  { id: '10', title: 'Teaching: Weekly Planning', color: '#ffa07a' },
-];
-
 export default function TemplateModal({ onClose }: Props) {
   const { createBoard } = useBoardContext();
 
-  const handleSelect = (template: typeof TEMPLATES[0]) => {
-    // In a real app, this would clone the template's columns and cards
-    createBoard(template.title);
+  const handleSelect = (template: BoardTemplate) => {
+    createBoard(template.title, template.columns);
     onClose();
   };
 
