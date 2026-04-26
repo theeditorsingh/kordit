@@ -1,7 +1,8 @@
 'use client';
 import { useState } from 'react';
+import { signOut } from 'next-auth/react';
 import { useBoardContext } from '@/context/BoardContext';
-import { Plus, Trash2, ChevronDown, LayoutGrid, Users, Edit2, Check, X, LayoutTemplate } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, LayoutGrid, Users, Edit2, Check, X, LayoutTemplate, LogOut } from 'lucide-react';
 import MembersPanel from './MembersPanel';
 import TemplateModal from './TemplateModal';
 import styles from './Sidebar.module.css';
@@ -129,6 +130,16 @@ export default function Sidebar() {
       )}
 
       {showTemplates && <TemplateModal onClose={() => setShowTemplates(false)} />}
+
+      <div className={styles.logoutSection}>
+        <button
+          className={styles.logoutBtn}
+          onClick={() => signOut({ callbackUrl: '/login' })}
+        >
+          <LogOut size={14} />
+          Sign Out
+        </button>
+      </div>
     </aside>
   );
 }

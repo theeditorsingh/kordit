@@ -84,3 +84,30 @@
 
 .editRow { display: flex; align-items: center; gap: 4px; }
 .editInput { padding: 5px 8px; font-size: 12px; }
+
+.logoutSection {
+  margin-top: auto;
+  padding: 12px 8px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.logoutBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+.logoutBtn:hover {
+  background: rgba(255, 86, 48, 0.1);
+  color: #FF5630;
+}
