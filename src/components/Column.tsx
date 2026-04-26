@@ -111,8 +111,8 @@ export default function Column({ column, board, search }: Props) {
             placeholder="Title"
             value={cardTitle}
             onChange={(e) => setCardTitle(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleAddCard();
+          onKeyDown={(e) => {
+              if (e.key === 'Enter') { e.preventDefault(); handleAddCard(); }
               if (e.key === 'Escape') resetForm();
             }}
             autoFocus
@@ -124,7 +124,7 @@ export default function Column({ column, board, search }: Props) {
               placeholder="Details"
               value={cardDesc}
               onChange={(e) => setCardDesc(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleAddCard()}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddCard(); } }}
             />
           </div>
           
@@ -143,13 +143,14 @@ export default function Column({ column, board, search }: Props) {
           </div>
 
           <div style={{ display: 'flex', gap: 6, marginTop: 12, alignItems: 'center' }}>
-            <button className="btn btn-primary btn-sm" onClick={handleAddCard}>Add</button>
-            <button className="btn btn-ghost btn-sm" onClick={resetForm}>Cancel</button>
+            <button type="button" className="btn btn-primary btn-sm" onClick={handleAddCard}>Add</button>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={resetForm}>Cancel</button>
             <button 
+               type="button"
                className="btn btn-ghost btn-icon btn-sm" 
                style={{ marginLeft: 'auto' }} 
                onClick={handleSaveAndOpen}
-               title="Save and edit details"
+               title="Save and open editor"
             >
               <Edit2 size={14} />
             </button>

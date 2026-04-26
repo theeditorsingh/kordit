@@ -356,6 +356,11 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
 
   const activeBoard = state.boards.find((b) => b.id === state.activeBoardId) ?? null;
 
+  // ── Pending write counter ────────────────────────────────────────────────────
+  // Tracks in-flight createCard / other mutations so the poller doesn't
+  // overwrite optimistic state before the server action has committed.
+  const pendingOpsRef = useRef(0);
+
   // ── Polling for real-time sync ──────────────────────────────────────────────
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -367,6 +372,8 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
       if (document.visibilityState !== 'visible') return;
       // Only poll if user is authenticated
       if (!session?.user?.id) return;
+      // Skip if there are local writes in flight (avoids flashing optimistic cards)
+      if (pendingOpsRef.current > 0) return;
 
       try {
         const res = await fetch('/api/boards', { cache: 'no-store' });
@@ -449,16 +456,15 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
     };
     dispatch({ type: 'ADD_CARD', boardId, columnId, card: tempCard });
 
-    // 2. Server Action
+    // 2. Server Action — block polling while the write is in flight
+    pendingOpsRef.current += 1;
     try {
-      const dbCard = await createCardAction(boardId, columnId, title, description, dueDate);
-      // Replace temp ID with real ID from DB
-      // We'd need an action to swap the ID, but Next.js Server Actions typically revalidate the path
-      // meaning the layout fetches fresh data. For seamless UI, we might just let it be temp until hard refresh
-      // or swap it. For now, it's optimistic!
+      await createCardAction(boardId, columnId, title, description, dueDate);
     } catch (e) {
       console.error("Failed to create card on server", e);
-      // dispatch({ type: 'DELETE_CARD', boardId, columnId, cardId: tempId });
+    } finally {
+      // Give the server a moment to commit before allowing polls to overwrite
+      setTimeout(() => { pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1); }, 2000);
     }
     return tempId;
   }
