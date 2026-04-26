@@ -1,0 +1,74 @@
+.calView {
+  padding: 20px;
+  height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.calHeader {
+  display: flex; align-items: center; gap: 16px;
+  justify-content: center;
+}
+.monthTitle { font-size: 18px; font-weight: 700; color: var(--text-primary); min-width: 200px; text-align: center; }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  flex: 1;
+}
+
+.dayLabel {
+  text-align: center;
+  font-size: 11px; font-weight: 700;
+  color: var(--text-muted); text-transform: uppercase;
+  padding: 6px 0;
+  letter-spacing: 0.6px;
+}
+
+.cell {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px;
+  min-height: 100px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  transition: border-color 0.15s;
+}
+.cell:hover { border-color: var(--accent); }
+.cell.empty { background: var(--bg-base); border-color: transparent; }
+.cell.today { border-color: var(--accent); background: var(--accent-subtle); }
+
+.dayNum {
+  font-size: 12px; font-weight: 700;
+  color: var(--text-secondary);
+  align-self: flex-end;
+}
+.today .dayNum {
+  background: var(--accent); color: #fff;
+  width: 22px; height: 22px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.cellCards { display: flex; flex-direction: column; gap: 3px; flex: 1; }
+
+.calCard {
+  display: flex; align-items: center; gap: 5px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 6px;
+  cursor: pointer; width: 100%;
+  text-align: left; font-family: inherit;
+  transition: all 0.15s;
+}
+.calCard:hover { background: var(--bg-hover); transform: translateY(-1px); }
+
+.calCardTitle {
+  font-size: 11px; font-weight: 500; color: var(--text-primary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;
+}

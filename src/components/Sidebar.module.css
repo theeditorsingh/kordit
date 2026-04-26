@@ -1,0 +1,86 @@
+.sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.section {
+  padding: 12px 8px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 4px 8px;
+  margin-bottom: 6px;
+  background: none;
+  border: none;
+  font-family: inherit;
+}
+
+.boardList { display: flex; flex-direction: column; gap: 2px; }
+
+.boardItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s;
+}
+.boardItem:hover { background: var(--bg-hover); color: var(--text-primary); }
+.boardItem.active { background: var(--accent-subtle); color: var(--accent); }
+
+.boardDot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.boardTitle { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.boardActions {
+  display: none;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+}
+.boardItem:hover .boardActions { display: flex; }
+.actionBtn {
+  display: flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; border-radius: 4px;
+  color: var(--text-muted);
+  transition: all 0.15s;
+  cursor: pointer;
+}
+.actionBtn:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+.addBoardBtn {
+  display: flex; align-items: center; gap: 6px;
+  width: 100%; padding: 7px 8px; border-radius: 6px;
+  font-size: 13px; font-weight: 500; color: var(--text-muted);
+  background: none; border: none; cursor: pointer;
+  transition: all 0.15s; font-family: inherit; margin-top: 4px;
+}
+.addBoardBtn:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+.addForm { padding: 4px 0; }
+
+.editRow { display: flex; align-items: center; gap: 4px; }
+.editInput { padding: 5px 8px; font-size: 12px; }

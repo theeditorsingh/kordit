@@ -1,0 +1,30 @@
+.board {
+  display: flex;
+  flex-direction: row;
+  gap: 14px;
+  padding: 20px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  height: 100%;
+  align-items: flex-start;
+}
+
+.addColWrap { flex-shrink: 0; }
+
+.addColBtn {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; border-radius: 10px;
+  background: var(--bg-overlay);
+  border: 2px dashed var(--border);
+  color: var(--text-muted); font-size: 13px; font-weight: 500;
+  cursor: pointer; white-space: nowrap; font-family: inherit;
+  transition: all 0.15s; width: 220px;
+}
+.addColBtn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-subtle); }
+
+.addColForm {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px;
+  width: 240px;
+}
