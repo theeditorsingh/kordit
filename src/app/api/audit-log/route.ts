@@ -29,7 +29,17 @@ export async function GET(req: NextRequest) {
 
   const [logs, total] = await Promise.all([
     prisma.auditLog.findMany({
-      where: { actorId: { not: undefined } },
+      where: {
+        OR: [
+          { target: boardId },
+          {
+            details: {
+              path: ['boardId'],
+              equals: boardId,
+            }
+          }
+        ]
+      },
       include: {
         actor: { select: { name: true, username: true, image: true } },
       },
@@ -37,7 +47,19 @@ export async function GET(req: NextRequest) {
       skip,
       take: limit,
     }),
-    prisma.auditLog.count(),
+    prisma.auditLog.count({
+      where: {
+        OR: [
+          { target: boardId },
+          {
+            details: {
+              path: ['boardId'],
+              equals: boardId,
+            }
+          }
+        ]
+      }
+    }),
   ]);
 
   return NextResponse.json({ logs, total, page, pages: Math.ceil(total / limit) });

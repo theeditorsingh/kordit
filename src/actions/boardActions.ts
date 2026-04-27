@@ -188,6 +188,10 @@ export async function moveColumnAction(boardId: string, columnOrders: { id: stri
   const user = await getAuthUser();
   await verifyBoardAccess(boardId, user.id);
 
+  const columnIds = columnOrders.map(c => c.id);
+  const columns = await prisma.column.findMany({ where: { id: { in: columnIds } } });
+  if (columns.some(c => c.boardId !== boardId)) throw new Error("Unauthorized");
+
   await prisma.$transaction(
     columnOrders.map(({ id, order }) =>
       prisma.column.update({ where: { id }, data: { order } })
@@ -199,6 +203,9 @@ export async function moveColumnAction(boardId: string, columnOrders: { id: stri
 export async function updateColumnAction(boardId: string, columnId: string, updates: Record<string, any>) {
   const user = await getAuthUser();
   await verifyBoardAccess(boardId, user.id);
+
+  const column = await prisma.column.findUnique({ where: { id: columnId } });
+  if (column?.boardId !== boardId) throw new Error("Unauthorized");
 
   const allowedFields = ['title', 'color', 'icon', 'wipLimit'];
   const data: Record<string, any> = {};
@@ -217,6 +224,8 @@ export async function deleteColumnAction(boardId: string, columnId: string) {
   await verifyBoardAccess(boardId, user.id);
 
   const column = await prisma.column.findUnique({ where: { id: columnId } });
+  if (column?.boardId !== boardId) throw new Error("Unauthorized");
+
   await prisma.column.delete({ where: { id: columnId } });
   if (column) {
     await logActivity(boardId, user.id, 'column_deleted', { columnTitle: column.title });
@@ -289,6 +298,9 @@ export async function updateCardAction(boardId: string, cardId: string, updates:
   const user = await getAuthUser();
   await verifyBoardAccess(boardId, user.id);
 
+  const card = await prisma.card.findUnique({ where: { id: cardId } });
+  if (card?.boardId !== boardId) throw new Error("Unauthorized");
+
   const data: Record<string, any> = {};
   const directFields = ['title', 'description', 'priority', 'coverImage', 'coverColor', 'timeSpent', 'isRecurring', 'recurringRule'];
   for (const key of directFields) {
@@ -328,6 +340,8 @@ export async function deleteCardAction(boardId: string, cardId: string) {
   await verifyBoardAccess(boardId, user.id);
 
   const card = await prisma.card.findUnique({ where: { id: cardId } });
+  if (card?.boardId !== boardId) throw new Error("Unauthorized");
+
   await prisma.card.delete({ where: { id: cardId } });
   if (card) {
     await logActivity(boardId, user.id, 'card_deleted', { cardTitle: card.title });
@@ -348,6 +362,10 @@ export async function bulkDeleteCardsAction(boardId: string, cardIds: string[]) 
 export async function bulkMoveCardsAction(boardId: string, cardIds: string[], targetColId: string) {
   const user = await getAuthUser();
   await verifyBoardAccess(boardId, user.id);
+
+  const targetCol = await prisma.column.findUnique({ where: { id: targetColId } });
+  if (targetCol?.boardId !== boardId) throw new Error("Unauthorized");
+
   await prisma.card.updateMany({
     where: { id: { in: cardIds }, boardId },
     data: { columnId: targetColId }
@@ -358,6 +376,9 @@ export async function bulkMoveCardsAction(boardId: string, cardIds: string[], ta
 export async function bulkCopyCardsAction(boardId: string, cardIds: string[], targetColId: string) {
   const user = await getAuthUser();
   await verifyBoardAccess(boardId, user.id);
+
+  const targetCol = await prisma.column.findUnique({ where: { id: targetColId } });
+  if (targetCol?.boardId !== boardId) throw new Error("Unauthorized");
 
   const cardsToCopy = await prisma.card.findMany({
     where: { id: { in: cardIds }, boardId }
@@ -437,11 +458,32 @@ export async function inviteMemberAction(boardId: string, email: string, role: '
   revalidatePath('/');
 }
 
+export async function removeMemberAction(boardId: string, memberId: string) {
+  const authUser = await getAuthUser();
+  await verifyBoardAccess(boardId, authUser.id, 'Admin');
+
+  const memberToRemove = await prisma.member.findUnique({ where: { id: memberId } });
+  if (memberToRemove?.boardId !== boardId) throw new Error("Unauthorized");
+
+  const board = await prisma.board.findUnique({ where: { id: boardId } });
+  if (board?.ownerId === memberToRemove.userId) {
+    throw new Error("Cannot remove the board owner");
+  }
+
+  await prisma.member.delete({ where: { id: memberId } });
+  await logActivity(boardId, authUser.id, 'member_removed', { removedUserId: memberToRemove.userId });
+  await logAuditEvent(authUser.id, 'member_removed', boardId, { removedUserId: memberToRemove.userId });
+  revalidatePath('/');
+}
+
 // ── Comment Actions ─────────────────────────────────────────────────────────
 
 export async function addCommentAction(boardId: string, cardId: string, content: string) {
   const user = await getAuthUser();
   await verifyBoardAccess(boardId, user.id);
+
+  const card = await prisma.card.findUnique({ where: { id: cardId } });
+  if (card?.boardId !== boardId) throw new Error("Unauthorized");
 
   const comment = await prisma.comment.create({
     data: { cardId, userId: user.id, content },
@@ -490,6 +532,9 @@ export async function updateAutomationAction(boardId: string, automationId: stri
   const user = await getAuthUser();
   await verifyBoardAccess(boardId, user.id, 'Admin');
 
+  const auto = await prisma.automation.findUnique({ where: { id: automationId } });
+  if (auto?.boardId !== boardId) throw new Error("Unauthorized");
+
   const allowedFields = ['name', 'isActive', 'trigger', 'condition', 'action', 'actionConfig'];
   const data: Record<string, any> = {};
   for (const key of allowedFields) {
@@ -503,6 +548,10 @@ export async function updateAutomationAction(boardId: string, automationId: stri
 export async function deleteAutomationAction(boardId: string, automationId: string) {
   const user = await getAuthUser();
   await verifyBoardAccess(boardId, user.id, 'Admin');
+
+  const auto = await prisma.automation.findUnique({ where: { id: automationId } });
+  if (auto?.boardId !== boardId) throw new Error("Unauthorized");
+
   await prisma.automation.delete({ where: { id: automationId } });
   revalidatePath('/');
 }
@@ -587,6 +636,9 @@ export async function createBoardCategoryAction(name: string, color: string = '#
 
 export async function deleteBoardCategoryAction(categoryId: string) {
   const user = await getAuthUser();
+  const category = await prisma.boardCategory.findUnique({ where: { id: categoryId } });
+  if (category?.userId !== user.id) throw new Error("Unauthorized");
+
   await prisma.boardCategory.delete({ where: { id: categoryId } });
   revalidatePath('/');
 }

@@ -4,7 +4,7 @@ import { AppState, Board, Card, Column, Member } from '@/types';
 import {
   createBoardAction, createCardAction, createColumnAction, moveCardAction,
   deleteCardAction, bulkDeleteCardsAction, bulkMoveCardsAction, bulkCopyCardsAction,
-  deleteBoardAction, inviteMemberAction, updateCardAction, moveColumnAction,
+  deleteBoardAction, inviteMemberAction, removeMemberAction, updateCardAction, moveColumnAction,
   updateColumnAction, deleteColumnAction, updateBoardAction, toggleBoardFavoriteAction,
   archiveBoardAction, saveBoardAsTemplateAction
 } from '@/actions/boardActions';
@@ -865,8 +865,17 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
     }
   }
 
-  function removeMember(boardId: string, memberId: string) {
+  async function removeMember(boardId: string, memberId: string) {
     dispatch({ type: 'REMOVE_MEMBER', boardId, memberId });
+    pendingOpsRef.current += 1;
+    try {
+      await removeMemberAction(boardId, memberId);
+    } catch (error) {
+      console.error("Failed to remove member", error);
+      fetchAndSync();
+    } finally {
+      setTimeout(() => { pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1); }, 2000);
+    }
   }
 
   function setActiveBoardId(id: string | null) {

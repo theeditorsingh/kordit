@@ -22,6 +22,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
+  const card = await prisma.card.findUnique({ where: { id: cardId } });
+  if (card?.boardId !== boardId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+  }
+
   const comments = await prisma.comment.findMany({
     where: { cardId },
     include: {
