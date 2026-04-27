@@ -28,6 +28,8 @@ async function verifyBoardAccess(boardId: string, userId: string, requiredRole?:
     where: { boardId_userId: { boardId, userId } }
   });
   if (!member) throw new Error("Unauthorized");
+  // Guests are read-only — block all write mutations
+  if (member.role === 'Guest') throw new Error("Guests have read-only access");
   if (requiredRole && member.role !== requiredRole) throw new Error(`Requires ${requiredRole} role`);
   return member;
 }
@@ -36,6 +38,17 @@ async function logActivity(boardId: string, userId: string, action: string, deta
   await prisma.activity.create({
     data: { boardId, userId, action, details, cardId }
   });
+}
+
+// Persist sensitive actions to the AuditLog table (admin-visible)
+async function logAuditEvent(actorId: string, action: string, target: string, details: Record<string, any> = {}) {
+  try {
+    await prisma.auditLog.create({
+      data: { actorId, action, target, details }
+    });
+  } catch {
+    // Non-fatal — audit logging should never break the main operation
+  }
 }
 
 // ── Board Actions ───────────────────────────────────────────────────────────
@@ -76,6 +89,7 @@ export async function deleteBoardAction(boardId: string) {
   const user = await getAuthUser();
   await verifyBoardAccess(boardId, user.id, 'Admin');
   await prisma.board.delete({ where: { id: boardId } });
+  await logAuditEvent(user.id, 'board_deleted', boardId, { boardId });
   revalidatePath('/');
 }
 
@@ -304,6 +318,7 @@ export async function deleteCardAction(boardId: string, cardId: string) {
   await prisma.card.delete({ where: { id: cardId } });
   if (card) {
     await logActivity(boardId, user.id, 'card_deleted', { cardTitle: card.title });
+    await logAuditEvent(user.id, 'card_deleted', cardId, { cardTitle: card.title, boardId });
   }
   revalidatePath('/');
 }
@@ -313,6 +328,7 @@ export async function bulkDeleteCardsAction(boardId: string, cardIds: string[]) 
   await verifyBoardAccess(boardId, user.id);
   await prisma.card.deleteMany({ where: { id: { in: cardIds }, boardId } });
   await logActivity(boardId, user.id, 'cards_bulk_deleted', { count: cardIds.length });
+  await logAuditEvent(user.id, 'cards_bulk_deleted', boardId, { count: cardIds.length, boardId });
   revalidatePath('/');
 }
 
@@ -385,6 +401,7 @@ export async function inviteMemberAction(boardId: string, email: string, role: '
   }
 
   await logActivity(boardId, authUser.id, 'member_invited', { email, role });
+  await logAuditEvent(authUser.id, 'member_invited', boardId, { email, role });
 
   try {
     const appUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";

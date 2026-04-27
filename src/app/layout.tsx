@@ -3,10 +3,21 @@ import './globals.css';
 import { BoardProvider } from '@/context/BoardContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 import AuthProvider from '@/components/AuthProvider';
+import OfflineBanner from '@/components/OfflineBanner';
+import Script from 'next/script';
 
 export const metadata: Metadata = {
   title: 'Kordit — Task Management',
   description: 'A modern Kanban board and task management tool inspired by Trello and Google Tasks.',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Kordit',
+  },
+  other: {
+    'mobile-web-app-capable': 'yes',
+  },
 };
 
 import { getServerSession } from "next-auth/next";
@@ -35,14 +46,38 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="en" data-theme="dark" suppressHydrationWarning>
+      <head>
+        <meta name="theme-color" content="#0052CC" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <link rel="manifest" href="/manifest.json" />
+        <link rel="apple-touch-icon" href="/icon-192.png" />
+      </head>
       <body suppressHydrationWarning>
         <AuthProvider>
           <ThemeProvider>
             <BoardProvider initialBoards={initialBoards}>
+              <OfflineBanner />
               {children}
             </BoardProvider>
           </ThemeProvider>
         </AuthProvider>
+        {/* Register Service Worker */}
+        <Script id="sw-register" strategy="afterInteractive">
+          {`
+            if ('serviceWorker' in navigator) {
+              window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js')
+                  .then(function(reg) {
+                    console.log('SW registered:', reg.scope);
+                  })
+                  .catch(function(err) {
+                    console.log('SW registration failed:', err);
+                  });
+              });
+            }
+          `}
+        </Script>
       </body>
     </html>
   );

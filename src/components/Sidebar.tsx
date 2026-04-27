@@ -13,7 +13,7 @@ import ActivityFeed from './ActivityFeed';
 import AutomationPanel from './AutomationPanel';
 import styles from './Sidebar.module.css';
 
-export default function Sidebar() {
+export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: boolean; onClose?: () => void }) {
   const { data: session } = useSession();
   const router = useRouter();
   const { state, activeBoard, dispatch, createBoard, deleteBoard: contextDeleteBoard, toggleFavorite, archiveBoard } = useBoardContext();
@@ -67,7 +67,19 @@ export default function Sidebar() {
   });
 
   return (
-    <aside className={styles.sidebar} style={{ overflowY: 'hidden' }}>
+    <>
+      {/* Mobile overlay backdrop */}
+      {isMobileOpen && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 198 }}
+          onClick={onClose}
+        />
+      )}
+      <aside
+        className={`${styles.sidebar} ${isMobileOpen ? styles.mobileOpen : ''}`}
+        style={{ overflowY: 'hidden' }}
+        id="sidebar-boards-section"
+      >
 
       {/* Scrollable Boards Area */}
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto' }}>
@@ -147,7 +159,7 @@ export default function Sidebar() {
             </div>
           ) : (
             <div style={{ display: 'flex', gap: 4 }}>
-              <button className={styles.addBoardBtn} onClick={() => setAdding(true)} style={{ flex: 1, marginTop: 0 }}>
+              <button className={styles.addBoardBtn} onClick={() => setAdding(true)} style={{ flex: 1, marginTop: 0 }} id="btn-new-board">
                 <Plus size={14}/> New Board
               </button>
               <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowTemplates(true)} title="Create from template" style={{ alignSelf: 'center', marginTop: 0 }}>
@@ -213,5 +225,6 @@ export default function Sidebar() {
       {showTemplates && <TemplateModal onClose={() => setShowTemplates(false)} />}
       {showAutomations && activeBoard && <AutomationPanel boardId={activeBoard.id} onClose={() => setShowAutomations(false)} />}
     </aside>
+    </>
   );
 }

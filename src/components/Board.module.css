@@ -33,3 +33,14 @@
   opacity: 0.85;
   transform: rotate(2deg);
 }
+
+/* ─── TOUCH / MOBILE ─── */
+@media (max-width: 768px) {
+  .board {
+    padding: 12px;
+    gap: 10px;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+  }
+}
+

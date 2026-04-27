@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Activity } from '@/types';
 import { getInitials } from '@/utils/storage';
+import EmptyState from './EmptyState';
 import {
   ArrowRight, Plus, Trash2, UserPlus, Edit2, MessageSquare,
   Layout, Columns, Zap, Clock
@@ -67,7 +68,7 @@ export default function ActivityFeed({ boardId }: Props) {
   }
 
   if (activities.length === 0) {
-    return <div className={styles.empty}>No activity yet</div>;
+    return <EmptyState variant="no-activity" />;
   }
 
   return (

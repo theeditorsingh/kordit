@@ -1,5 +1,5 @@
 'use client';
-import React, { createContext, useContext, useEffect, useReducer, useRef, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useReducer, useRef, useCallback, useState } from 'react';
 import { AppState, Board, Card, Column, Member } from '@/types';
 import {
   createBoardAction, createCardAction, createColumnAction, moveCardAction,
@@ -11,6 +11,16 @@ import {
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { supabase } from '@/lib/supabase';
+import UndoRedoToast from '@/components/UndoRedoToast';
+
+const UNDO_STACK_MAX = 30;
+
+// Actions that should be tracked for undo/redo
+const UNDOABLE_ACTIONS = new Set([
+  'ADD_CARD', 'DELETE_CARD', 'MOVE_CARD', 'UPDATE_CARD',
+  'ADD_COLUMN', 'DELETE_COLUMN', 'MOVE_COLUMN',
+  'BULK_DELETE', 'BULK_MOVE',
+]);
 
 type Action =
   | { type: 'SET_ACTIVE_BOARD'; boardId: string }
@@ -38,9 +48,19 @@ type Action =
   | { type: 'BULK_COPY'; boardId: string; newCards: Card[]; targetColId: string }
   | { type: 'TOGGLE_FAVORITE'; boardId: string }
   | { type: 'ARCHIVE_BOARD'; boardId: string }
-  | { type: 'SYNC_BOARDS'; boards: Board[] };
+  | { type: 'SYNC_BOARDS'; boards: Board[] }
+  | { type: 'UNDO' }
+  | { type: 'REDO' };
 
-function reducer(state: AppState, action: Action): AppState {
+// Extended state shape including undo/redo stacks
+interface FullState {
+  present: AppState;
+  past: AppState[];
+  future: AppState[];
+}
+
+// Pure reducer for AppState (no undo stacks)
+function boardReducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case 'SET_ACTIVE_BOARD':
       return { ...state, activeBoardId: action.boardId };
@@ -315,6 +335,41 @@ function reducer(state: AppState, action: Action): AppState {
   }
 }
 
+// Wrapper reducer that manages undo/redo stacks
+function reducer(full: FullState, action: Action): FullState {
+  if (action.type === 'UNDO') {
+    if (full.past.length === 0) return full;
+    const previous = full.past[full.past.length - 1];
+    return {
+      present: previous,
+      past: full.past.slice(0, -1),
+      future: [full.present, ...full.future].slice(0, UNDO_STACK_MAX),
+    };
+  }
+  if (action.type === 'REDO') {
+    if (full.future.length === 0) return full;
+    const next = full.future[0];
+    return {
+      present: next,
+      past: [...full.past, full.present].slice(-UNDO_STACK_MAX),
+      future: full.future.slice(1),
+    };
+  }
+  if (action.type === 'SYNC_BOARDS') {
+    // Sync should not push to undo stack
+    return { ...full, present: boardReducer(full.present, action) };
+  }
+  const nextPresent = boardReducer(full.present, action);
+  if (UNDOABLE_ACTIONS.has(action.type)) {
+    return {
+      present: nextPresent,
+      past: [...full.past, full.present].slice(-UNDO_STACK_MAX),
+      future: [],
+    };
+  }
+  return { ...full, present: nextPresent };
+}
+
 interface BoardContextType {
   state: AppState;
   activeBoard: Board | null;
@@ -340,6 +395,10 @@ interface BoardContextType {
   bulkDelete: (boardId: string, cardIds: string[]) => Promise<void>;
   bulkMove: (boardId: string, cardIds: string[], targetColId: string) => Promise<void>;
   bulkCopy: (boardId: string, cardIds: string[], targetColId: string) => Promise<void>;
+  undo: () => void;
+  redo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
 }
 
 const BoardContext = createContext<BoardContextType | null>(null);
@@ -414,12 +473,33 @@ function formatPrismaBoards(prismaBoards: any[]): Board[] {
 export function BoardProvider({ children, initialBoards = [] }: { children: React.ReactNode, initialBoards?: any[] }) {
   const router = useRouter();
   const { data: session } = useSession();
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
 
-  const [state, dispatch] = useReducer(reducer, undefined, () => ({
-    boards: formatPrismaBoards(initialBoards),
-    activeBoardId: initialBoards.length > 0 ? initialBoards[0].id : null,
-    selectedCardIds: [],
+  const [full, dispatch] = useReducer(reducer, undefined, () => ({
+    present: {
+      boards: formatPrismaBoards(initialBoards),
+      activeBoardId: initialBoards.length > 0 ? initialBoards[0].id : null,
+      selectedCardIds: [],
+    },
+    past: [],
+    future: [],
   }));
+
+  const state = full.present;
+  const canUndo = full.past.length > 0;
+  const canRedo = full.future.length > 0;
+
+  function undo() {
+    if (!canUndo) return;
+    dispatch({ type: 'UNDO' });
+    setToastMsg('Action undone ↩');
+  }
+
+  function redo() {
+    if (!canRedo) return;
+    dispatch({ type: 'REDO' });
+    setToastMsg('Action redone ↪');
+  }
 
   const activeBoard = state.boards.find((b) => b.id === state.activeBoardId) ?? null;
 
@@ -738,9 +818,11 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
       updateBoard: handleUpdateBoard, toggleFavorite, archiveBoard,
       saveBoardAsTemplate: handleSaveBoardAsTemplate,
       addMember, removeMember, setActiveBoardId,
-      toggleCardSelection, clearSelection, bulkDelete, bulkMove, bulkCopy
+      toggleCardSelection, clearSelection, bulkDelete, bulkMove, bulkCopy,
+      undo, redo, canUndo, canRedo,
     }}>
       {children}
+      <UndoRedoToast message={toastMsg} onDismiss={() => setToastMsg(null)} />
     </BoardContext.Provider>
   );
 }

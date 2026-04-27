@@ -179,3 +179,48 @@
   transform: scale(1.08);
   border-color: var(--text-secondary);
 }
+
+/* Hamburger — hidden on desktop, shown on mobile */
+.hamburger {
+  display: none;
+}
+
+/* AI Digest button highlight */
+.aiBtn {
+  background: linear-gradient(135deg, rgba(0,82,204,0.12), rgba(101,84,192,0.12)) !important;
+  border: 1px solid rgba(0,82,204,0.25) !important;
+  color: var(--accent) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  gap: 5px !important;
+  transition: all 0.2s ease !important;
+}
+.aiBtn:hover {
+  background: linear-gradient(135deg, rgba(0,82,204,0.2), rgba(101,84,192,0.2)) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+
+/* Labels that hide on smaller screens */
+.tabLabel {}
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 900px) {
+  .boardName { display: none; }
+  .searchInput { width: 100px; }
+}
+
+@media (max-width: 768px) {
+  .hamburger { display: flex; }
+  .tabLabel { display: none; }
+  .searchInput { width: 80px; }
+  .left { min-width: unset; gap: 6px; }
+  .right { min-width: unset; gap: 4px; }
+  .center { flex: none; }
+}
+
+@media (max-width: 480px) {
+  .nav { padding: 0 8px; gap: 4px; }
+  .logoText { display: none; }
+}
+

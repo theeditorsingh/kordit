@@ -5,7 +5,7 @@ import { useBoardContext } from '@/context/BoardContext';
 import CommentSection from './CommentSection';
 import {
   X, Plus, Trash2, Check, Calendar, Tag, Users, AlignLeft, List,
-  Image, Clock, Play, Pause, Link2, Repeat, AlertTriangle
+  Image, Clock, Play, Pause, Link2, Repeat, AlertTriangle, Sparkles, Loader2
 } from 'lucide-react';
 import { getInitials } from '@/utils/storage';
 import styles from './CardModal.module.css';
@@ -35,9 +35,15 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
   const [showCoverPicker, setShowCoverPicker] = useState(false);
   const [showDependencies, setShowDependencies] = useState(false);
   const [showRecurring, setShowRecurring] = useState(false);
-  const [activeTab, setActiveTab] = useState<'details' | 'comments'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'comments' | 'ai'>('details');
   const [timerDisplay, setTimerDisplay] = useState(data.timeSpent || 0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // AI state
+  const [aiLoading, setAiLoading] = useState<'subtasks' | 'date' | 'categorize' | null>(null);
+  const [aiDateReasoning, setAiDateReasoning] = useState<string | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [suggestedSubtasks, setSuggestedSubtasks] = useState<string[]>([]);
 
   const isTimerRunning = !!data.timerStarted;
 
@@ -134,6 +140,79 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
   const doneCount = data.checklist.filter((c) => c.done).length;
   const totalCount = data.checklist.length;
 
+  // ── AI Functions ────────────────────────────────────────────────────────
+  async function aiGenerateSubtasks() {
+    setAiLoading('subtasks');
+    setAiError(null);
+    setSuggestedSubtasks([]);
+    try {
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'subtasks', payload: { cardTitle: data.title, cardDescription: data.description } }),
+      });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error);
+      setSuggestedSubtasks(json.subtasks || []);
+    } catch (e: any) {
+      setAiError(e.message || 'AI request failed');
+    } finally {
+      setAiLoading(null);
+    }
+  }
+
+  function addSuggestedSubtask(text: string) {
+    const item: ChecklistItem = { id: crypto.randomUUID(), text, done: false };
+    setData(d => ({ ...d, checklist: [...d.checklist, item] }));
+    setSuggestedSubtasks(prev => prev.filter(s => s !== text));
+  }
+
+  function addAllSubtasks() {
+    const items: ChecklistItem[] = suggestedSubtasks.map(text => ({ id: crypto.randomUUID(), text, done: false }));
+    setData(d => ({ ...d, checklist: [...d.checklist, ...items] }));
+    setSuggestedSubtasks([]);
+  }
+
+  async function aiSuggestDueDate() {
+    setAiLoading('date');
+    setAiError(null);
+    try {
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'smart_due_date', payload: { cardTitle: data.title, priority: data.priority } }),
+      });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error);
+      setData(d => ({ ...d, dueDate: json.suggestedDate }));
+      setAiDateReasoning(json.reasoning);
+    } catch (e: any) {
+      setAiError(e.message || 'AI request failed');
+    } finally {
+      setAiLoading(null);
+    }
+  }
+
+  async function aiCategorize() {
+    setAiLoading('categorize');
+    setAiError(null);
+    try {
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'auto_categorize', payload: { cardTitle: data.title } }),
+      });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error);
+      const newLabels: Label[] = json.labels.map((name: string) => ({ id: crypto.randomUUID(), name, color: LABEL_COLORS[Math.floor(Math.random() * LABEL_COLORS.length)] }));
+      setData(d => ({ ...d, priority: json.priority as Priority, labels: [...d.labels, ...newLabels] }));
+    } catch (e: any) {
+      setAiError(e.message || 'AI request failed');
+    } finally {
+      setAiLoading(null);
+    }
+  }
+
   return (
     <div className="modal-overlay animate-fade-in" onClick={(e) => e.target === e.currentTarget && save()}>
       <div className="modal-box animate-scale-in" style={{ maxWidth: 620 }}>
@@ -170,6 +249,13 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
             onClick={() => setActiveTab('details')}
           >
             Details
+          </button>
+          <button
+            className={`${styles.tab} ${activeTab === 'ai' ? styles.tabActive : ''}`}
+            onClick={() => setActiveTab('ai')}
+            id="ai-assistant-tab"
+          >
+            ✨ AI Assistant
           </button>
           <button
             className={`${styles.tab} ${activeTab === 'comments' ? styles.tabActive : ''}`}
@@ -440,9 +526,84 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
                 </div>
               </div>
             </>
+          ) : activeTab === 'ai' ? (
+            <div className={styles.aiPanel}>
+              <div className={styles.aiHeader}>
+                <span className={styles.aiHeaderIcon}>🤖</span>
+                <div>
+                  <div className={styles.aiHeaderTitle}>AI Assistant</div>
+                  <div className={styles.aiHeaderSub}>Powered by Llama-3.1-8B via Groq</div>
+                </div>
+              </div>
+
+              {aiError && (
+                <div className={styles.aiError}>{aiError}</div>
+              )}
+
+              {/* Subtask Generator */}
+              <div className={styles.aiSection}>
+                <div className={styles.aiSectionTitle}>✂️ Break into Subtasks</div>
+                <p className={styles.aiSectionDesc}>AI will analyze your card title and generate actionable subtasks.</p>
+                <button
+                  className={`btn btn-primary btn-sm ${styles.aiActionBtn}`}
+                  onClick={aiGenerateSubtasks}
+                  disabled={!!aiLoading}
+                >
+                  {aiLoading === 'subtasks' ? <><Loader2 size={13} className={styles.spin} /> Generating...</> : <><Sparkles size={13} /> Generate Subtasks</>}
+                </button>
+                {suggestedSubtasks.length > 0 && (
+                  <div className={styles.aiSuggestions}>
+                    <div className={styles.aiSuggestHeader}>
+                      <span>Suggested subtasks:</span>
+                      <button className="btn btn-ghost btn-sm" onClick={addAllSubtasks}>Add All</button>
+                    </div>
+                    {suggestedSubtasks.map((s, i) => (
+                      <div key={i} className={styles.aiSuggestItem}>
+                        <span>{s}</span>
+                        <button className="btn btn-ghost btn-sm" onClick={() => addSuggestedSubtask(s)}
+                          style={{ fontSize: 11, padding: '2px 8px' }}>+ Add</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Smart Due Date */}
+              <div className={styles.aiSection}>
+                <div className={styles.aiSectionTitle}>📅 Smart Due Date</div>
+                <p className={styles.aiSectionDesc}>AI suggests a due date based on task complexity and priority.</p>
+                <button
+                  className={`btn btn-primary btn-sm ${styles.aiActionBtn}`}
+                  onClick={aiSuggestDueDate}
+                  disabled={!!aiLoading}
+                >
+                  {aiLoading === 'date' ? <><Loader2 size={13} className={styles.spin} /> Thinking...</> : <><Calendar size={13} /> Suggest Date</>}
+                </button>
+                {aiDateReasoning && (
+                  <div className={styles.aiReasoning}>
+                    <span>📌 {aiDateReasoning}</span>
+                    <span style={{ color: 'var(--accent)', fontWeight: 600 }}> → {data.dueDate}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Auto-Categorize */}
+              <div className={styles.aiSection}>
+                <div className={styles.aiSectionTitle}>🏷️ Auto-Categorize</div>
+                <p className={styles.aiSectionDesc}>AI suggests priority level and labels based on your card title.</p>
+                <button
+                  className={`btn btn-primary btn-sm ${styles.aiActionBtn}`}
+                  onClick={aiCategorize}
+                  disabled={!!aiLoading}
+                >
+                  {aiLoading === 'categorize' ? <><Loader2 size={13} className={styles.spin} /> Analyzing...</> : <><Tag size={13} /> Auto-Categorize</>}
+                </button>
+              </div>
+            </div>
           ) : (
             <CommentSection boardId={board.id} cardId={card.id} />
           )}
+
         </div>
 
         {/* Footer */}

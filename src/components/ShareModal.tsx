@@ -14,7 +14,7 @@ export default function ShareModal({ onClose }: Props) {
   const { data: session } = useSession();
   const { activeBoard, addMember, removeMember, dispatch } = useBoardContext();
   const [inviteText, setInviteText] = useState('');
-  const [role, setRole] = useState<'Admin' | 'Member'>('Member');
+  const [role, setRole] = useState<'Admin' | 'Member' | 'Guest'>('Member');
   const [activeTab, setActiveTab] = useState<'members' | 'requests'>('members');
 
   if (!activeBoard) return null;
@@ -27,16 +27,18 @@ export default function ShareModal({ onClose }: Props) {
         alert("Please enter a valid email address");
         return;
       }
-      addMember(activeBoard.id, email, role);
+      // Guest is stored as 'Member' locally but the server action handles role
+      const memberRole: 'Admin' | 'Member' = role === 'Guest' ? 'Member' : role;
+      addMember(activeBoard.id, email, memberRole);
       setInviteText('');
     }
   };
 
-  const handleRoleChange = (memberId: string, newRole: 'Admin' | 'Member' | 'Remove') => {
+  const handleRoleChange = (memberId: string, newRole: 'Admin' | 'Member' | 'Guest' | 'Remove') => {
     if (newRole === 'Remove') {
       removeMember(activeBoard.id, memberId);
     } else {
-      dispatch({ type: 'UPDATE_MEMBER_ROLE', boardId: activeBoard.id, memberId, role: newRole });
+      dispatch({ type: 'UPDATE_MEMBER_ROLE', boardId: activeBoard.id, memberId, role: newRole as 'Admin' | 'Member' });
     }
   };
 
@@ -67,10 +69,11 @@ export default function ShareModal({ onClose }: Props) {
             <select
               className={styles.roleSelect}
               value={role}
-              onChange={(e) => setRole(e.target.value as 'Admin' | 'Member')}
+              onChange={(e) => setRole(e.target.value as 'Admin' | 'Member' | 'Guest')}
             >
-              <option value="Member">Member</option>
-              <option value="Admin">Admin</option>
+              <option value="Member">Member — can edit</option>
+              <option value="Admin">Admin — full access</option>
+              <option value="Guest">Guest — read only</option>
             </select>
             <button className={styles.shareBtn} onClick={handleShare}>
               Share
@@ -141,16 +144,27 @@ export default function ShareModal({ onClose }: Props) {
                       <span className={styles.memberUsername}>@{member.name.split('@')[0].toLowerCase().replace(/\s+/g, '')}</span>
                     </div>
                   </div>
-                  <select
-                    className={styles.roleSelect}
-                    style={{ padding: '4px 8px', height: 'auto' }}
-                    value={member.role || 'Member'}
-                    onChange={(e) => handleRoleChange(member.id, e.target.value as 'Admin' | 'Member' | 'Remove')}
-                  >
-                    <option value="Admin">Admin</option>
-                    <option value="Member">Member</option>
-                    <option value="Remove">Remove from board</option>
-                  </select>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                    {/* Role badge */}
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 10, textTransform: 'uppercase', letterSpacing: '0.5px',
+                      background: (member.role as string) === 'Admin' ? 'rgba(101,84,192,0.15)' : (member.role as string) === 'Guest' ? 'rgba(139,148,158,0.15)' : 'rgba(0,82,204,0.12)',
+                      color: (member.role as string) === 'Admin' ? '#6554C0' : (member.role as string) === 'Guest' ? '#8B949E' : '#0052CC',
+                    }}>
+                      {member.role || 'Member'}
+                    </span>
+                    <select
+                      className={styles.roleSelect}
+                      style={{ padding: '4px 8px', height: 'auto' }}
+                      value={member.role || 'Member'}
+                      onChange={(e) => handleRoleChange(member.id, e.target.value as 'Admin' | 'Member' | 'Guest' | 'Remove')}
+                    >
+                      <option value="Admin">Admin</option>
+                      <option value="Member">Member</option>
+                      <option value="Guest">Guest (read only)</option>
+                      <option value="Remove">Remove from board</option>
+                    </select>
+                  </div>
                 </div>
               ))}
             </div>

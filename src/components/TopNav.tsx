@@ -2,14 +2,17 @@
 import { useState } from 'react';
 import { signOut } from 'next-auth/react';
 import { useBoardContext } from '@/context/BoardContext';
+import { useUndoRedo } from '@/hooks/useUndoRedo';
 import { useTheme } from '@/context/ThemeContext';
 import {
   Sun, Moon, Search, LayoutGrid, List, Calendar, X, Share2, User, LogOut,
-  Zap, Palette, Save, Copy
+  Zap, Palette, Save, Copy, Sparkles, Undo2, Redo2, Menu, Shield
 } from 'lucide-react';
 import VisibilityDropdown from './VisibilityDropdown';
 import ShareModal from './ShareModal';
 import AutomationPanel from './AutomationPanel';
+import WeeklyDigest from './WeeklyDigest';
+import AuditLogPanel from './AuditLogPanel';
 import { ViewMode } from '@/types';
 import styles from './TopNav.module.css';
 
@@ -18,6 +21,7 @@ interface Props {
   setView: (v: ViewMode) => void;
   search: string;
   setSearch: (s: string) => void;
+  onMenuClick?: () => void;
 }
 
 const GRADIENTS = [
@@ -29,13 +33,18 @@ const GRADIENTS = [
   'linear-gradient(135deg, #00B8D9, #36B37E)',
 ];
 
-export default function TopNav({ view, setView, search, setSearch }: Props) {
+export default function TopNav({ view, setView, search, setSearch, onMenuClick }: Props) {
   const { theme, toggleTheme } = useTheme();
-  const { activeBoard, updateBoard, saveBoardAsTemplate } = useBoardContext();
+  const { activeBoard, updateBoard, saveBoardAsTemplate, undo, redo, canUndo, canRedo } = useBoardContext();
   const [showShareModal, setShowShareModal] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showAutomations, setShowAutomations] = useState(false);
   const [showBgPicker, setShowBgPicker] = useState(false);
+  const [showDigest, setShowDigest] = useState(false);
+  const [showAuditLog, setShowAuditLog] = useState(false);
+
+  // Activate keyboard shortcuts
+  useUndoRedo();
 
   function setBoardBackground(background: string, backgroundType: 'color' | 'gradient' | 'image') {
     if (!activeBoard) return;
@@ -46,6 +55,16 @@ export default function TopNav({ view, setView, search, setSearch }: Props) {
   return (
     <header className={styles.nav}>
       <div className={styles.left}>
+        {/* Hamburger for mobile */}
+        <button
+          className={`btn btn-ghost btn-icon ${styles.hamburger}`}
+          onClick={onMenuClick}
+          aria-label="Toggle sidebar"
+          id="hamburger-btn"
+        >
+          <Menu size={18} />
+        </button>
+
         <div className={styles.logo}>
           <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
             <rect width="32" height="32" rx="8" fill="#0052CC"/>
@@ -60,7 +79,7 @@ export default function TopNav({ view, setView, search, setSearch }: Props) {
         )}
       </div>
 
-      <div className={styles.center}>
+      <div className={styles.center} id="view-switcher">
         {activeBoard && (
           <div className={styles.viewTabs}>
             <button
@@ -68,21 +87,21 @@ export default function TopNav({ view, setView, search, setSearch }: Props) {
               onClick={() => setView('board')}
               title="Board View"
             >
-              <LayoutGrid size={15} /> Board
+              <LayoutGrid size={15} /> <span className={styles.tabLabel}>Board</span>
             </button>
             <button
               className={`${styles.viewTab} ${view === 'list' ? styles.active : ''}`}
               onClick={() => setView('list')}
               title="List View"
             >
-              <List size={15} /> List
+              <List size={15} /> <span className={styles.tabLabel}>List</span>
             </button>
             <button
               className={`${styles.viewTab} ${view === 'calendar' ? styles.active : ''}`}
               onClick={() => setView('calendar')}
               title="Calendar View"
             >
-              <Calendar size={15} /> Calendar
+              <Calendar size={15} /> <span className={styles.tabLabel}>Calendar</span>
             </button>
           </div>
         )}
@@ -91,6 +110,26 @@ export default function TopNav({ view, setView, search, setSearch }: Props) {
       <div className={styles.right}>
         {activeBoard && (
           <>
+            {/* Undo / Redo */}
+            <button
+              className="btn btn-ghost btn-icon btn-sm"
+              onClick={undo}
+              disabled={!canUndo}
+              title="Undo (Ctrl+Z)"
+              style={{ opacity: canUndo ? 1 : 0.35 }}
+            >
+              <Undo2 size={15} />
+            </button>
+            <button
+              className="btn btn-ghost btn-icon btn-sm"
+              onClick={redo}
+              disabled={!canRedo}
+              title="Redo (Ctrl+Shift+Z)"
+              style={{ opacity: canRedo ? 1 : 0.35 }}
+            >
+              <Redo2 size={15} />
+            </button>
+
             <VisibilityDropdown />
 
             {/* Board Background */}
@@ -154,6 +193,28 @@ export default function TopNav({ view, setView, search, setSearch }: Props) {
               <Copy size={15} />
             </button>
 
+            {/* AI Weekly Digest */}
+            <button
+              className={`btn btn-ghost btn-sm ${styles.aiBtn}`}
+              onClick={() => setShowDigest(true)}
+              title="AI Weekly Digest"
+              style={{ marginLeft: 4 }}
+              id="ai-digest-btn"
+            >
+              <Sparkles size={14} />
+              <span className={styles.tabLabel}>AI Digest</span>
+            </button>
+
+            {/* Audit Log (admin) */}
+            <button
+              className="btn btn-ghost btn-icon btn-sm"
+              onClick={() => setShowAuditLog(true)}
+              title="Audit Log"
+              style={{ marginLeft: 4 }}
+            >
+              <Shield size={15} />
+            </button>
+
             <div className={styles.searchWrap} style={{ marginLeft: 8 }}>
               <Search size={14} className={styles.searchIcon} />
               <input
@@ -169,7 +230,7 @@ export default function TopNav({ view, setView, search, setSearch }: Props) {
               )}
             </div>
             <button className="btn btn-primary btn-sm" onClick={() => setShowShareModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 8 }}>
-              <Share2 size={14} /> Share
+              <Share2 size={14} /> <span className={styles.tabLabel}>Share</span>
             </button>
           </>
         )}
@@ -249,6 +310,8 @@ export default function TopNav({ view, setView, search, setSearch }: Props) {
       </div>
       {showShareModal && <ShareModal onClose={() => setShowShareModal(false)} />}
       {showAutomations && activeBoard && <AutomationPanel boardId={activeBoard.id} onClose={() => setShowAutomations(false)} />}
+      {showDigest && activeBoard && <WeeklyDigest boardId={activeBoard.id} boardTitle={activeBoard.title} onClose={() => setShowDigest(false)} />}
+      {showAuditLog && activeBoard && <AuditLogPanel boardId={activeBoard.id} onClose={() => setShowAuditLog(false)} />}
     </header>
   );
 }

@@ -5,6 +5,7 @@ import { Board, Column as ColumnType } from '@/types';
 import { useBoardContext } from '@/context/BoardContext';
 import CardItem from './Card';
 import CardModal from './CardModal';
+import EmptyState from './EmptyState';
 import { Plus, MoreHorizontal, Trash2, AlignLeft, Calendar as CalendarIcon, Edit2, Settings, AlertCircle } from 'lucide-react';
 import styles from './Column.module.css';
 
@@ -192,7 +193,10 @@ export default function Column({ column, board, search }: Props) {
             ))}
             {provided.placeholder}
             {cards.length === 0 && !addingCard && (
-              <div className={styles.emptyCol}>Drop cards here</div>
+              <EmptyState
+                variant="no-cards"
+                action={{ label: '+ Add a card', onClick: () => setAddingCard(true) }}
+              />
             )}
           </div>
         )}

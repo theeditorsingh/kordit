@@ -117,3 +117,22 @@
   background: rgba(255, 86, 48, 0.1);
   color: #FF5630;
 }
+
+/* ─── MOBILE DRAWER ─── */
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    top: 52px; /* height of TopNav */
+    left: 0;
+    bottom: 0;
+    z-index: 200;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: var(--shadow-xl);
+  }
+
+  .sidebar.mobileOpen {
+    transform: translateX(0);
+  }
+}
+

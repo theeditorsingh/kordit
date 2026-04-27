@@ -221,3 +221,28 @@ textarea.input { resize: vertical; min-height: 80px; }
 /* ─── OVERDUE INDICATOR ─── */
 .overdue { color: #FF5630 !important; }
 .due-soon { color: #FF991F !important; }
+
+/* ─── MOBILE RESPONSIVE ─── */
+@media (max-width: 768px) {
+  /* Full-screen modals on mobile */
+  .modal-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .modal-box {
+    max-width: 100% !important;
+    max-height: 92vh;
+    border-radius: 20px 20px 0 0;
+    width: 100%;
+  }
+
+  /* App layout: hide sidebar gap on mobile */
+  .app-body {
+    overflow: visible;
+  }
+
+  /* Touch-friendly buttons */
+  .btn { min-height: 36px; }
+  .btn-icon { min-height: 36px; min-width: 36px; }
+}
+
