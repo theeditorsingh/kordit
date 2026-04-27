@@ -4,11 +4,20 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+// Lazy client — instantiated at request time so build doesn't fail without GROQ_API_KEY
+let _groq: Groq | null = null;
+function getGroq(): Groq {
+  if (!_groq) {
+    if (!process.env.GROQ_API_KEY) throw new Error('GROQ_API_KEY is not configured');
+    _groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+  }
+  return _groq;
+}
+
 const MODEL = 'llama-3.1-8b-instant';
 
 async function chat(systemPrompt: string, userPrompt: string): Promise<string> {
-  const completion = await groq.chat.completions.create({
+  const completion = await getGroq().chat.completions.create({
     model: MODEL,
     messages: [
       { role: 'system', content: systemPrompt },
