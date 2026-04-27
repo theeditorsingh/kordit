@@ -48,6 +48,7 @@
   cursor: pointer;
   text-align: left;
   transition: all 0.15s;
+  position: relative;
 }
 .boardItem:hover { background: var(--bg-hover); color: var(--text-primary); }
 .boardItem.active { background: var(--accent-subtle); color: var(--accent); }
@@ -61,16 +62,26 @@
   line-height: 1.3;
   white-space: normal;
   word-break: break-word;
+  padding-right: 4px; /* Slight padding before edge */
 }
 
 .boardActions {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
   display: flex;
   opacity: 0;
   pointer-events: none;
   align-items: center;
   gap: 2px;
-  margin-left: auto;
+  background: var(--bg-hover);
+  padding: 4px 4px 4px 8px;
+  border-radius: 6px;
   transition: opacity 0.15s ease;
+}
+.boardItem.active .boardActions {
+  background: var(--accent-subtle);
 }
 .boardItem:hover .boardActions { 
   opacity: 1; 
