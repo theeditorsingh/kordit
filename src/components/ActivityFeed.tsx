@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Activity } from '@/types';
 import { getInitials } from '@/utils/storage';
+import { supabase } from '@/lib/supabase';
 import EmptyState from './EmptyState';
 import {
   ArrowRight, Plus, Trash2, UserPlus, Edit2, MessageSquare,
@@ -59,8 +60,16 @@ export default function ActivityFeed({ boardId }: Props) {
       }
     }
     fetchActivities();
-    const interval = setInterval(fetchActivities, 15000);
-    return () => clearInterval(interval);
+
+    if (supabase) {
+      const channel = supabase
+        .channel(`activity-${boardId}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'Activity', filter: `boardId=eq.${boardId}` }, () => {
+          fetchActivities();
+        })
+        .subscribe();
+      return () => { supabase.removeChannel(channel); };
+    }
   }, [boardId]);
 
   if (loading) {

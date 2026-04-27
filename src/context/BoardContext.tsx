@@ -551,16 +551,6 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
         document.removeEventListener('visibilitychange', fetchAndSync);
       };
     }
-
-    // Fallback: polling if Supabase env vars not configured
-    const POLL_INTERVAL_MS = 5000;
-    const pollInterval = setInterval(fetchAndSync, POLL_INTERVAL_MS);
-    document.addEventListener('visibilitychange', fetchAndSync);
-
-    return () => {
-      clearInterval(pollInterval);
-      document.removeEventListener('visibilitychange', fetchAndSync);
-    };
   }, [session?.user?.id, fetchAndSync]);
 
   // ── Board Actions ─────────────────────────────────────────────────────────
@@ -623,6 +613,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
       await createCardAction(boardId, columnId, title, description, dueDate);
     } catch (e) {
       console.error("Failed to create card on server", e);
+      fetchAndSync();
     } finally {
       setTimeout(() => { pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1); }, 2000);
     }
@@ -649,6 +640,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
       await moveCardAction(cardId, sourceColId, destColId, destIndex);
     } catch (e) {
       console.error('Failed to move card', e);
+      fetchAndSync();
     } finally {
       setTimeout(() => { pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1); }, 2000);
     }
@@ -661,6 +653,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
       await deleteCardAction(boardId, cardId);
     } catch (e) {
       console.error('Failed to delete card', e);
+      fetchAndSync();
     } finally {
       setTimeout(() => { pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1); }, 2000);
     }
@@ -688,6 +681,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
       });
     } catch (e) {
       console.error("Failed to update card", e);
+      fetchAndSync();
     } finally {
       setTimeout(() => { pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1); }, 2000);
     }
@@ -705,6 +699,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
       await moveColumnAction(boardId, cols.map((c, i) => ({ id: c.id, order: i })));
     } catch (e) {
       console.error('Failed to move column', e);
+      fetchAndSync();
     } finally {
       setTimeout(() => { pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1); }, 2000);
     }

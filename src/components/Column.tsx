@@ -4,7 +4,8 @@ import { Droppable } from '@hello-pangea/dnd';
 import { Board, Column as ColumnType } from '@/types';
 import { useBoardContext } from '@/context/BoardContext';
 import CardItem from './Card';
-import CardModal from './CardModal';
+import dynamic from 'next/dynamic';
+const CardModal = dynamic(() => import('./CardModal'), { ssr: false });
 import EmptyState from './EmptyState';
 import { Plus, MoreHorizontal, Trash2, AlignLeft, Calendar as CalendarIcon, Edit2, Settings, AlertCircle } from 'lucide-react';
 import styles from './Column.module.css';
@@ -23,11 +24,14 @@ export default function Column({ column, board, search, onModalOpenChange }: Pro
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleValue, setTitleValue] = useState(column.title);
   const [wipValue, setWipValue] = useState(column.wipLimit || 0);
+  const [displayLimit, setDisplayLimit] = useState(50);
 
-  const cards = column.cardIds
+  const allCards = column.cardIds
     .map((id) => board.cards[id])
     .filter(Boolean)
     .filter((c) => !search || c.title.toLowerCase().includes(search.toLowerCase()));
+  
+  const cards = allCards.slice(0, displayLimit);
 
   const isOverWip = (column.wipLimit || 0) > 0 && column.cardIds.length > (column.wipLimit || 0);
 
@@ -198,6 +202,14 @@ export default function Column({ column, board, search, onModalOpenChange }: Pro
                 variant="no-cards"
                 action={{ label: '+ Add a card', onClick: () => setAddingCard(true) }}
               />
+            )}
+            {allCards.length > displayLimit && (
+              <button 
+                className={styles.showMoreBtn} 
+                onClick={() => setDisplayLimit(l => l + 50)}
+              >
+                Show {Math.min(50, allCards.length - displayLimit)} more...
+              </button>
             )}
           </div>
         )}

@@ -2,7 +2,8 @@
 import { useState } from 'react';
 import { Board, Card } from '@/types';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import CardModal from './CardModal';
+import dynamic from 'next/dynamic';
+const CardModal = dynamic(() => import('./CardModal'), { ssr: false });
 import styles from './CalendarView.module.css';
 
 interface Props { board: Board; }
