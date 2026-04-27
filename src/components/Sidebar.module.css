@@ -54,28 +54,13 @@
 
 .boardDot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 
-/* Board name: clip with ellipsis by default, marquee on hover */
+/* Board name: display full name, wrap text, slightly smaller font */
 .boardTitle {
   flex: 1;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
-
-.boardItem:hover .boardTitle {
-  text-overflow: clip;
-  animation: marquee-slide 4s linear infinite;
-  /* Only animate when text is actually overflowing — animates regardless,
-     but the effect is invisible when text fits, so no jank */
-}
-
-@keyframes marquee-slide {
-  0%   { transform: translateX(0); }
-  15%  { transform: translateX(0); }   /* pause at start */
-  75%  { transform: translateX(-60%); } /* scroll left */
-  90%  { transform: translateX(-60%); } /* pause at end */
-  100% { transform: translateX(0); }   /* snap back */
+  font-size: 12.5px;
+  line-height: 1.3;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .boardActions {
