@@ -68,7 +68,7 @@ export default function ActivityFeed({ boardId }: Props) {
           fetchActivities();
         })
         .subscribe();
-      return () => { supabase.removeChannel(channel); };
+      return () => { supabase?.removeChannel(channel); };
     }
   }, [boardId]);
 
