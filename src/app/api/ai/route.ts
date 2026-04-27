@@ -8,8 +8,9 @@ import { prisma } from '@/lib/prisma';
 let _groq: Groq | null = null;
 function getGroq(): Groq {
   if (!_groq) {
-    if (!process.env.GROQ_API_KEY) throw new Error('GROQ_API_KEY is not configured');
-    _groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+    const key = process.env.GROQ_API_KEY;
+    if (!key) throw new Error('GROQ_API_KEY is not set in environment variables.');
+    _groq = new Groq({ apiKey: key });
   }
   return _groq;
 }
@@ -29,24 +30,37 @@ async function chat(systemPrompt: string, userPrompt: string): Promise<string> {
   return completion.choices[0]?.message?.content?.trim() ?? '';
 }
 
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'object' && error !== null && 'message' in error) return String((error as any).message);
+  return String(error);
+}
+
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Unauthorized — please sign in' }, { status: 401 });
   }
 
-  const { action, payload } = await req.json();
+  let body: { action?: string; payload?: any };
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+  }
+
+  const { action, payload } = body;
 
   try {
     switch (action) {
       case 'subtasks': {
-        const { cardTitle, cardDescription } = payload;
-        const system = `You are a task management assistant. When given a task title and optional description, you break it into clear, actionable subtasks. Respond ONLY with a JSON array of strings, no explanation, no markdown. Example: ["Subtask 1","Subtask 2","Subtask 3"]`;
+        const { cardTitle, cardDescription } = payload ?? {};
+        if (!cardTitle) return NextResponse.json({ error: 'cardTitle is required' }, { status: 400 });
+        const system = `You are a task management assistant. Break the given task into clear, actionable subtasks. Respond ONLY with a JSON array of strings, no explanation, no markdown. Example: ["Subtask 1","Subtask 2","Subtask 3"]`;
         const user = `Task: "${cardTitle}"${cardDescription ? `\nDescription: ${cardDescription}` : ''}`;
         const raw = await chat(system, user);
         let subtasks: string[] = [];
         try {
-          // Extract JSON array even if model adds text around it
           const match = raw.match(/\[[\s\S]*\]/);
           subtasks = match ? JSON.parse(match[0]) : [];
         } catch {
@@ -56,9 +70,10 @@ export async function POST(req: NextRequest) {
       }
 
       case 'smart_due_date': {
-        const { cardTitle, priority } = payload;
-        const system = `You are a project planning assistant. Suggest a realistic due date for a task based on its title and priority. Priority levels: urgent=today or tomorrow, high=2-5 days, medium=5-14 days, low=14-30 days. Respond ONLY with valid JSON: {"daysFromNow": number, "reasoning": "one short sentence"}`;
-        const user = `Task: "${cardTitle}"\nPriority: ${priority}`;
+        const { cardTitle, priority } = payload ?? {};
+        if (!cardTitle) return NextResponse.json({ error: 'cardTitle is required' }, { status: 400 });
+        const system = `You are a project planning assistant. Suggest a realistic due date. Priority: urgent=1 day, high=3 days, medium=7 days, low=21 days. Respond ONLY with valid JSON: {"daysFromNow": number, "reasoning": "one short sentence"}`;
+        const user = `Task: "${cardTitle}"\nPriority: ${priority ?? 'medium'}`;
         const raw = await chat(system, user);
         let result = { daysFromNow: 7, reasoning: 'Based on task complexity' };
         try {
@@ -74,8 +89,9 @@ export async function POST(req: NextRequest) {
       }
 
       case 'auto_categorize': {
-        const { cardTitle } = payload;
-        const system = `You are a task categorization assistant. Given a task title, suggest the best priority level and up to 3 relevant labels. Priority must be one of: urgent, high, medium, low. Labels should be short (1-2 words). Respond ONLY with valid JSON: {"priority": "medium", "labels": ["Design","Frontend"]}`;
+        const { cardTitle } = payload ?? {};
+        if (!cardTitle) return NextResponse.json({ error: 'cardTitle is required' }, { status: 400 });
+        const system = `You are a task categorization assistant. Given a task title, suggest a priority and up to 3 labels. Priority must be one of: urgent, high, medium, low. Labels should be 1-2 words. Respond ONLY with valid JSON: {"priority": "medium", "labels": ["Design","Frontend"]}`;
         const user = `Task: "${cardTitle}"`;
         const raw = await chat(system, user);
         let result = { priority: 'medium', labels: [] as string[] };
@@ -90,8 +106,8 @@ export async function POST(req: NextRequest) {
       }
 
       case 'weekly_digest': {
-        const { boardId } = payload;
-        // Fetch last 7 days of activity for this board
+        const { boardId } = payload ?? {};
+        if (!boardId) return NextResponse.json({ error: 'boardId is required' }, { status: 400 });
         const since = new Date();
         since.setDate(since.getDate() - 7);
         const activities = await prisma.activity.findMany({
@@ -123,17 +139,19 @@ export async function POST(req: NextRequest) {
           }
         }).join('\n');
 
-        const system = `You are a project management assistant generating a concise weekly board activity digest. Format the output in clean markdown with sections: ## Summary, ## Key Activities, ## Insights & Suggestions. Be encouraging but concise. Max 250 words.`;
+        const system = `You are a project management assistant generating a weekly board digest. Format in clean markdown: ## Summary, ## Key Activities, ## Insights & Suggestions. Be encouraging and concise. Max 250 words.`;
         const user = `Board: "${board?.title}"\nActivity this week:\n${activityText}`;
         const digest = await chat(system, user);
         return NextResponse.json({ digest });
       }
 
       default:
-        return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
+        return NextResponse.json({ error: `Unknown action: "${action}"` }, { status: 400 });
     }
   } catch (error) {
-    console.error('AI route error:', error);
-    return NextResponse.json({ error: 'AI request failed' }, { status: 500 });
+    // Surface the REAL error message — critical for debugging Groq issues
+    const msg = getErrorMessage(error);
+    console.error('[AI route error]', action, msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

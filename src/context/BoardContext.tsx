@@ -632,28 +632,37 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
   async function createColumn(boardId: string, title: string) {
     const tempId = crypto.randomUUID();
     dispatch({ type: 'ADD_COLUMN', boardId, column: { id: tempId, title, cardIds: [], color: '#0052CC', wipLimit: 0 } });
+    pendingOpsRef.current += 1;
     try {
       await createColumnAction(boardId, title);
     } catch (e) {
-      console.error("Failed to create column", e);
+      console.error('Failed to create column', e);
+    } finally {
+      setTimeout(() => { pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1); }, 2000);
     }
   }
 
   async function moveCard(boardId: string, cardId: string, sourceColId: string, destColId: string, sourceIndex: number, destIndex: number) {
     dispatch({ type: 'MOVE_CARD', boardId, sourceColId, destColId, sourceIndex, destIndex });
+    pendingOpsRef.current += 1;
     try {
       await moveCardAction(cardId, sourceColId, destColId, destIndex);
     } catch (e) {
-      console.error("Failed to move card", e);
+      console.error('Failed to move card', e);
+    } finally {
+      setTimeout(() => { pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1); }, 2000);
     }
   }
 
   async function deleteCard(boardId: string, columnId: string, cardId: string) {
     dispatch({ type: 'DELETE_CARD', boardId, columnId, cardId });
+    pendingOpsRef.current += 1;
     try {
       await deleteCardAction(boardId, cardId);
     } catch (e) {
-      console.error("Failed to delete card", e);
+      console.error('Failed to delete card', e);
+    } finally {
+      setTimeout(() => { pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1); }, 2000);
     }
   }
 
@@ -686,6 +695,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
 
   async function moveColumn(boardId: string, sourceIndex: number, destIndex: number) {
     dispatch({ type: 'MOVE_COLUMN', boardId, sourceIndex, destIndex });
+    pendingOpsRef.current += 1;
     try {
       const board = state.boards.find(b => b.id === boardId);
       if (!board) return;
@@ -694,7 +704,9 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
       cols.splice(destIndex, 0, removed);
       await moveColumnAction(boardId, cols.map((c, i) => ({ id: c.id, order: i })));
     } catch (e) {
-      console.error("Failed to move column", e);
+      console.error('Failed to move column', e);
+    } finally {
+      setTimeout(() => { pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1); }, 2000);
     }
   }
 

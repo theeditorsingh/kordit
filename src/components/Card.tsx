@@ -8,7 +8,7 @@ import CardModal from './CardModal';
 import { useBoardContext } from '@/context/BoardContext';
 import styles from './Card.module.css';
 
-interface Props { card: Card; index: number; board: Board; columnId: string; }
+interface Props { card: Card; index: number; board: Board; columnId: string; onModalOpenChange?: (open: boolean) => void; }
 
 const PRIORITY_LABELS = { urgent: 'Urgent', high: 'High', medium: 'Medium', low: 'Low' };
 
@@ -33,7 +33,7 @@ function formatTimeShort(seconds: number) {
   return `${m}m`;
 }
 
-export default function CardItem({ card, index, board, columnId }: Props) {
+export default function CardItem({ card, index, board, columnId, onModalOpenChange }: Props) {
   const [open, setOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number } | null>(null);
   const { deleteCard, toggleCardSelection, state } = useBoardContext();
@@ -64,6 +64,7 @@ export default function CardItem({ card, index, board, columnId }: Props) {
                 toggleCardSelection(card.id);
               } else {
                 setOpen(true);
+                onModalOpenChange?.(true);
               }
             }}
             onContextMenu={(e) => {
@@ -209,7 +210,10 @@ export default function CardItem({ card, index, board, columnId }: Props) {
       )}
 
       {open && (
-        <CardModal card={card} board={board} columnId={columnId} onClose={() => setOpen(false)} />
+        <CardModal card={card} board={board} columnId={columnId} onClose={() => {
+          setOpen(false);
+          onModalOpenChange?.(false);
+        }} />
       )}
     </>
   );

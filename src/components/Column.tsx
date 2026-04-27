@@ -9,9 +9,9 @@ import EmptyState from './EmptyState';
 import { Plus, MoreHorizontal, Trash2, AlignLeft, Calendar as CalendarIcon, Edit2, Settings, AlertCircle } from 'lucide-react';
 import styles from './Column.module.css';
 
-interface Props { column: ColumnType; board: Board; search: string; }
+interface Props { column: ColumnType; board: Board; search: string; onModalOpenChange?: (open: boolean) => void; }
 
-export default function Column({ column, board, search }: Props) {
+export default function Column({ column, board, search, onModalOpenChange }: Props) {
   const { dispatch, createCard, updateColumn } = useBoardContext();
   const [addingCard, setAddingCard] = useState(false);
   const [cardTitle, setCardTitle] = useState('');
@@ -42,6 +42,7 @@ export default function Column({ column, board, search }: Props) {
     const newId = await createCard(board.id, column.id, title, cardDesc.trim(), cardDue);
     resetForm();
     setOpeningCardId(newId);
+    onModalOpenChange?.(true);
   }
 
   function resetForm() {
@@ -189,7 +190,7 @@ export default function Column({ column, board, search }: Props) {
             className={`${styles.cardList} ${snapshot.isDraggingOver ? styles.draggingOver : ''}`}
           >
             {cards.map((card, index) => (
-              <CardItem key={card.id} card={card} index={index} board={board} columnId={column.id} />
+              <CardItem key={card.id} card={card} index={index} board={board} columnId={column.id} onModalOpenChange={onModalOpenChange} />
             ))}
             {provided.placeholder}
             {cards.length === 0 && !addingCard && (
@@ -265,7 +266,10 @@ export default function Column({ column, board, search }: Props) {
           card={board.cards[openingCardId]}
           board={board}
           columnId={column.id}
-          onClose={() => setOpeningCardId(null)}
+          onClose={() => {
+            setOpeningCardId(null);
+            onModalOpenChange?.(false);
+          }}
         />
       )}
     </div>

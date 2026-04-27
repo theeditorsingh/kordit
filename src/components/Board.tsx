@@ -15,6 +15,8 @@ export default function Board({ board, search }: Props) {
   const [addingCol, setAddingCol] = useState(false);
   const [colTitle, setColTitle] = useState('');
   const boardRef = useRef<HTMLDivElement>(null);
+  // Track whether any card modal is open — disables column drag while modal is visible
+  const [modalOpen, setModalOpen] = useState(false);
 
   useEffect(() => {
     const boardEl = boardRef.current;
@@ -46,6 +48,7 @@ export default function Board({ board, search }: Props) {
   }, []);
 
   function onDragEnd(result: DropResult) {
+    if (modalOpen) return; // Safety net — modal overlay prevents most drags but belt+suspenders
     const { source, destination, draggableId, type } = result;
     if (!destination) return;
     if (source.droppableId === destination.droppableId && source.index === destination.index) return;
@@ -96,15 +99,29 @@ export default function Board({ board, search }: Props) {
               style={boardStyle}
             >
               {board.columns.map((col, index) => (
-                <Draggable key={col.id} draggableId={`col-${col.id}`} index={index}>
+                <Draggable
+                  key={col.id}
+                  draggableId={`col-${col.id}`}
+                  index={index}
+                  isDragDisabled={modalOpen}
+                >
                   {(colProvided, colSnapshot) => (
                     <div
                       ref={colProvided.innerRef}
                       {...colProvided.draggableProps}
                       {...colProvided.dragHandleProps}
                       className={colSnapshot.isDragging ? styles.columnDragging : ''}
+                      style={{
+                        ...colProvided.draggableProps.style,
+                        cursor: modalOpen ? 'default' : undefined,
+                      }}
                     >
-                      <Column column={col} board={board} search={search} />
+                      <Column
+                        column={col}
+                        board={board}
+                        search={search}
+                        onModalOpenChange={setModalOpen}
+                      />
                     </div>
                   )}
                 </Draggable>
