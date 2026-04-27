@@ -69,6 +69,9 @@ export default function ActivityFeed({ boardId }: Props) {
         })
         .subscribe();
       return () => { supabase?.removeChannel(channel); };
+    } else {
+      const intervalId = setInterval(fetchActivities, 15000);
+      return () => clearInterval(intervalId);
     }
   }, [boardId]);
 

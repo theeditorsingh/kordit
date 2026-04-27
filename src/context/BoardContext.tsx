@@ -523,6 +523,8 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
   }, [session?.user?.id]);
 
   useEffect(() => {
+    document.addEventListener('visibilitychange', fetchAndSync);
+    
     // Try Supabase Realtime first
     if (supabase && session?.user?.id) {
       const channel = supabase
@@ -544,13 +546,21 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
         })
         .subscribe();
 
-      document.addEventListener('visibilitychange', fetchAndSync);
-
       return () => {
         supabase!.removeChannel(channel);
         document.removeEventListener('visibilitychange', fetchAndSync);
       };
+    } else if (session?.user?.id) {
+      // Fallback Polling if Supabase environment variables are missing
+      console.warn("Supabase Realtime not configured. Falling back to 5s polling.");
+      const intervalId = setInterval(fetchAndSync, 5000);
+      return () => {
+        clearInterval(intervalId);
+        document.removeEventListener('visibilitychange', fetchAndSync);
+      };
     }
+    
+    return () => document.removeEventListener('visibilitychange', fetchAndSync);
   }, [session?.user?.id, fetchAndSync]);
 
   // ── Board Actions ─────────────────────────────────────────────────────────
