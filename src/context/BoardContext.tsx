@@ -5,7 +5,7 @@ import {
   createBoardAction, createCardAction, createColumnAction, moveCardAction,
   deleteCardAction, bulkDeleteCardsAction, bulkMoveCardsAction, bulkCopyCardsAction,
   deleteBoardAction, inviteMemberAction, updateCardAction, moveColumnAction,
-  updateColumnAction, updateBoardAction, toggleBoardFavoriteAction,
+  updateColumnAction, deleteColumnAction, updateBoardAction, toggleBoardFavoriteAction,
   archiveBoardAction, saveBoardAsTemplateAction
 } from '@/actions/boardActions';
 import { useRouter } from 'next/navigation';
@@ -378,6 +378,7 @@ interface BoardContextType {
   deleteBoard: (boardId: string) => Promise<void>;
   createCard: (boardId: string, columnId: string, title: string, description?: string, dueDate?: string | null) => Promise<string>;
   createColumn: (boardId: string, title: string) => Promise<void>;
+  deleteColumn: (boardId: string, columnId: string) => Promise<void>;
   moveCard: (boardId: string, cardId: string, sourceColId: string, destColId: string, sourceIndex: number, destIndex: number) => Promise<void>;
   deleteCard: (boardId: string, columnId: string, cardId: string) => Promise<void>;
   updateCard: (boardId: string, card: Card) => Promise<void>;
@@ -715,30 +716,55 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
     }
   }
 
+  async function deleteColumn(boardId: string, columnId: string) {
+    dispatch({ type: 'DELETE_COLUMN', boardId, columnId });
+    pendingOpsRef.current += 1;
+    try {
+      await deleteColumnAction(boardId, columnId);
+    } catch (e) {
+      console.error('Failed to delete column', e);
+      fetchAndSync();
+    } finally {
+      setTimeout(() => { pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1); }, 2000);
+    }
+  }
+
   async function handleUpdateColumn(boardId: string, columnId: string, updates: Partial<Column>) {
     dispatch({ type: 'UPDATE_COLUMN', boardId, columnId, updates });
+    pendingOpsRef.current += 1;
     try {
       await updateColumnAction(boardId, columnId, updates);
     } catch (e) {
       console.error("Failed to update column", e);
+      fetchAndSync();
+    } finally {
+      setTimeout(() => { pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1); }, 2000);
     }
   }
 
   async function handleUpdateBoard(boardId: string, updates: Partial<Board>) {
     dispatch({ type: 'UPDATE_BOARD', boardId, updates });
+    pendingOpsRef.current += 1;
     try {
       await updateBoardAction(boardId, updates);
     } catch (e) {
       console.error("Failed to update board", e);
+      fetchAndSync();
+    } finally {
+      setTimeout(() => { pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1); }, 2000);
     }
   }
 
   async function toggleFavorite(boardId: string) {
     dispatch({ type: 'TOGGLE_FAVORITE', boardId });
+    pendingOpsRef.current += 1;
     try {
       await toggleBoardFavoriteAction(boardId);
     } catch (e) {
       console.error("Failed to toggle favorite", e);
+      fetchAndSync();
+    } finally {
+      setTimeout(() => { pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1); }, 2000);
     }
   }
 
@@ -746,6 +772,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
     const remainingBoards = state.boards.filter(b => b.id !== boardId);
     const nextBoard = remainingBoards.length > 0 ? remainingBoards[0] : null;
     dispatch({ type: 'ARCHIVE_BOARD', boardId });
+    pendingOpsRef.current += 1;
     try {
       await archiveBoardAction(boardId);
       if (state.activeBoardId === boardId) {
@@ -757,6 +784,9 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
       }
     } catch (e) {
       console.error("Failed to archive board", e);
+      fetchAndSync();
+    } finally {
+      setTimeout(() => { pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1); }, 2000);
     }
   }
 
@@ -778,19 +808,27 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
 
   async function bulkDelete(boardId: string, cardIds: string[]) {
     dispatch({ type: 'BULK_DELETE', boardId, cardIds });
+    pendingOpsRef.current += 1;
     try {
       await bulkDeleteCardsAction(boardId, cardIds);
     } catch (e) {
       console.error("Failed bulk delete", e);
+      fetchAndSync();
+    } finally {
+      setTimeout(() => { pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1); }, 2000);
     }
   }
 
   async function bulkMove(boardId: string, cardIds: string[], targetColId: string) {
     dispatch({ type: 'BULK_MOVE', boardId, cardIds, targetColId });
+    pendingOpsRef.current += 1;
     try {
       await bulkMoveCardsAction(boardId, cardIds, targetColId);
     } catch (e) {
       console.error("Failed bulk move", e);
+      fetchAndSync();
+    } finally {
+      setTimeout(() => { pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1); }, 2000);
     }
   }
 
@@ -802,20 +840,28 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
       return { ...original, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
     }).filter(Boolean);
     dispatch({ type: 'BULK_COPY', boardId, newCards, targetColId });
+    pendingOpsRef.current += 1;
     try {
       await bulkCopyCardsAction(boardId, cardIds, targetColId);
     } catch (e) {
       console.error("Failed bulk copy", e);
+      fetchAndSync();
+    } finally {
+      setTimeout(() => { pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1); }, 2000);
     }
   }
 
   async function addMember(boardId: string, name: string, role: 'Admin' | 'Member' = 'Member') {
     const member: Member = { id: crypto.randomUUID(), name, color: '#0052CC', role, status: 'pending' };
     dispatch({ type: 'ADD_MEMBER', boardId, member });
+    pendingOpsRef.current += 1;
     try {
       await inviteMemberAction(boardId, name, role);
     } catch (error) {
       console.error("Failed to invite member", error);
+      fetchAndSync();
+    } finally {
+      setTimeout(() => { pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1); }, 2000);
     }
   }
 
@@ -830,7 +876,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
   return (
     <BoardContext.Provider value={{
       state, activeBoard, dispatch,
-      createBoard, deleteBoard, createCard, createColumn, moveCard, deleteCard,
+      createBoard, deleteBoard, createCard, createColumn, deleteColumn, moveCard, deleteCard,
       updateCard: handleUpdateCard, moveColumn, updateColumn: handleUpdateColumn,
       updateBoard: handleUpdateBoard, toggleFavorite, archiveBoard,
       saveBoardAsTemplate: handleSaveBoardAsTemplate,

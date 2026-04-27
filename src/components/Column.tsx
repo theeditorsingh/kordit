@@ -13,7 +13,7 @@ import styles from './Column.module.css';
 interface Props { column: ColumnType; board: Board; search: string; onModalOpenChange?: (open: boolean) => void; }
 
 export default function Column({ column, board, search, onModalOpenChange }: Props) {
-  const { dispatch, createCard, updateColumn } = useBoardContext();
+  const { dispatch, createCard, updateColumn, deleteColumn } = useBoardContext();
   const [addingCard, setAddingCard] = useState(false);
   const [cardTitle, setCardTitle] = useState('');
   const [cardDesc, setCardDesc] = useState('');
@@ -69,9 +69,9 @@ export default function Column({ column, board, search, onModalOpenChange }: Pro
     return dateStr === d.toISOString().split('T')[0];
   }
 
-  function deleteColumn() {
+  function handleDeleteColumn() {
     if (confirm(`Delete "${column.title}" and all its cards?`)) {
-      dispatch({ type: 'DELETE_COLUMN', boardId: board.id, columnId: column.id });
+      deleteColumn(board.id, column.id);
     }
     setShowMenu(false);
   }
@@ -129,7 +129,7 @@ export default function Column({ column, board, search, onModalOpenChange }: Pro
                 <Edit2 size={13}/> Rename
               </button>
               <div className={styles.menuDivider} />
-              <button className={`${styles.menuItem} ${styles.menuDanger}`} onClick={deleteColumn}>
+              <button className={`${styles.menuItem} ${styles.menuDanger}`} onClick={handleDeleteColumn}>
                 <Trash2 size={13}/> Delete Column
               </button>
             </div>

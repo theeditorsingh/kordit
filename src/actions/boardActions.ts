@@ -212,6 +212,19 @@ export async function updateColumnAction(boardId: string, columnId: string, upda
   revalidatePath('/');
 }
 
+export async function deleteColumnAction(boardId: string, columnId: string) {
+  const user = await getAuthUser();
+  await verifyBoardAccess(boardId, user.id);
+
+  const column = await prisma.column.findUnique({ where: { id: columnId } });
+  await prisma.column.delete({ where: { id: columnId } });
+  if (column) {
+    await logActivity(boardId, user.id, 'column_deleted', { columnTitle: column.title });
+    await logAuditEvent(user.id, 'column_deleted', columnId, { columnTitle: column.title, boardId });
+  }
+  revalidatePath('/');
+}
+
 // ── Card Actions ────────────────────────────────────────────────────────────
 
 export async function createCardAction(boardId: string, columnId: string, title: string, description: string = '', dueDate: string | null = null) {
