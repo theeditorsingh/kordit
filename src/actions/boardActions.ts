@@ -55,7 +55,9 @@ async function logAuditEvent(actorId: string, action: string, target: string, de
 
 export async function createBoardAction(title: string, customColumns?: { title: string, color: string }[]) {
   const user = await getAuthUser();
-  const slug = generateSlug(title);
+  const trimmedTitle = title?.trim();
+  if (!trimmedTitle || trimmedTitle.length > 200) throw new Error("Board title must be 1-200 characters");
+  const slug = generateSlug(trimmedTitle);
 
   const columnsToCreate = customColumns
     ? customColumns.map((col, idx) => ({ title: col.title, color: col.color, order: idx }))
@@ -68,7 +70,7 @@ export async function createBoardAction(title: string, customColumns?: { title: 
 
   const board = await prisma.board.create({
     data: {
-      title,
+      title: trimmedTitle,
       slug,
       ownerId: user.id,
       columns: { create: columnsToCreate },
@@ -169,6 +171,8 @@ export async function saveBoardAsTemplateAction(boardId: string) {
 export async function createColumnAction(boardId: string, title: string) {
   const user = await getAuthUser();
   await verifyBoardAccess(boardId, user.id);
+  const trimmedTitle = title?.trim();
+  if (!trimmedTitle || trimmedTitle.length > 100) throw new Error("Column title must be 1-100 characters");
 
   const lastCol = await prisma.column.findFirst({
     where: { boardId },
@@ -176,10 +180,10 @@ export async function createColumnAction(boardId: string, title: string) {
   });
 
   const column = await prisma.column.create({
-    data: { title, boardId, order: lastCol ? lastCol.order + 1 : 0 }
+    data: { title: trimmedTitle, boardId, order: lastCol ? lastCol.order + 1 : 0 }
   });
 
-  await logActivity(boardId, user.id, 'column_created', { columnTitle: title });
+  await logActivity(boardId, user.id, 'column_created', { columnTitle: trimmedTitle });
   revalidatePath('/');
   return column;
 }
@@ -239,6 +243,8 @@ export async function deleteColumnAction(boardId: string, columnId: string) {
 export async function createCardAction(boardId: string, columnId: string, title: string, description: string = '', dueDate: string | null = null) {
   const user = await getAuthUser();
   await verifyBoardAccess(boardId, user.id);
+  const trimmedTitle = title?.trim();
+  if (!trimmedTitle || trimmedTitle.length > 500) throw new Error("Card title must be 1-500 characters");
 
   const lastCard = await prisma.card.findFirst({
     where: { columnId },
@@ -247,7 +253,7 @@ export async function createCardAction(boardId: string, columnId: string, title:
 
   const card = await prisma.card.create({
     data: {
-      title,
+      title: trimmedTitle,
       description,
       boardId,
       columnId,
@@ -256,7 +262,7 @@ export async function createCardAction(boardId: string, columnId: string, title:
     }
   });
 
-  await logActivity(boardId, user.id, 'card_created', { cardTitle: title, columnId }, card.id);
+  await logActivity(boardId, user.id, 'card_created', { cardTitle: trimmedTitle, columnId }, card.id);
   await runAutomations(boardId, 'card_created', { cardId: card.id, columnId });
   revalidatePath('/');
   return card;

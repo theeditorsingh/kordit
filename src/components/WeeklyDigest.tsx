@@ -34,7 +34,7 @@ export default function WeeklyDigest({ boardId, boardTitle, onClose }: Props) {
 
   // Simple markdown to HTML (bold, italics, headers, line breaks)
   function renderMarkdown(text: string) {
-    return text
+    let html = text
       .replace(/^## (.+)$/gm, '<h3 class="digestH3">$1</h3>')
       .replace(/^### (.+)$/gm, '<h4 class="digestH4">$1</h4>')
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
@@ -42,6 +42,15 @@ export default function WeeklyDigest({ boardId, boardTitle, onClose }: Props) {
       .replace(/^- (.+)$/gm, '<li>$1</li>')
       .replace(/(<li>[^<]*<\/li>\n?)+/g, '<ul>$&</ul>')
       .replace(/\n/g, '<br/>');
+    // Sanitize: strip dangerous tags and event handlers
+    html = html.replace(/<script[\s\S]*?<\/script>/gi, '');
+    html = html.replace(/<iframe[\s\S]*?<\/iframe>/gi, '');
+    html = html.replace(/<object[\s\S]*?<\/object>/gi, '');
+    html = html.replace(/<embed[^>]*>/gi, '');
+    html = html.replace(/<link[^>]*>/gi, '');
+    html = html.replace(/\bon\w+\s*=\s*["'][^"']*["']/gi, '');
+    html = html.replace(/javascript\s*:/gi, '');
+    return html;
   }
 
 

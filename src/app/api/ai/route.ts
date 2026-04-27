@@ -108,6 +108,13 @@ export async function POST(req: NextRequest) {
       case 'weekly_digest': {
         const { boardId } = payload ?? {};
         if (!boardId) return NextResponse.json({ error: 'boardId is required' }, { status: 400 });
+
+        // Verify the user is a member of this board
+        const digestMember = await prisma.member.findUnique({
+          where: { boardId_userId: { boardId, userId: session.user.id } }
+        });
+        if (!digestMember) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+
         const since = new Date();
         since.setDate(since.getDate() - 7);
         const activities = await prisma.activity.findMany({

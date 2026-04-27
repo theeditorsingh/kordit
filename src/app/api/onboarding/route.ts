@@ -18,16 +18,24 @@ export async function POST(req: Request) {
       return new NextResponse("Username is required", { status: 400 });
     }
 
+    const trimmedUsername = username.trim();
+    if (trimmedUsername.length < 3 || trimmedUsername.length > 30) {
+      return new NextResponse("Username must be between 3 and 30 characters", { status: 400 });
+    }
+    if (!/^[a-zA-Z0-9_]+$/.test(trimmedUsername)) {
+      return new NextResponse("Username can only contain letters, numbers, and underscores", { status: 400 });
+    }
+
     // Check if username is already taken
     const existingUser = await prisma.user.findUnique({
-      where: { username },
+      where: { username: trimmedUsername },
     });
 
     if (existingUser && existingUser.id !== session.user.id) {
       return new NextResponse("Username is already taken", { status: 400 });
     }
 
-    const updateData: { username: string; password?: string } = { username };
+    const updateData: { username: string; password?: string } = { username: trimmedUsername };
 
     if (password && typeof password === "string") {
       const hashedPassword = await bcrypt.hash(password, 10);
