@@ -27,40 +27,29 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
   }
 
-  const [logs, total] = await Promise.all([
-    prisma.auditLog.findMany({
-      where: {
-        OR: [
-          { target: boardId },
-          {
-            details: {
-              path: ['boardId'],
-              equals: boardId,
-            }
-          }
-        ]
-      },
-      include: {
-        actor: { select: { name: true, username: true, image: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-      skip,
-      take: limit,
-    }),
-    prisma.auditLog.count({
-      where: {
-        OR: [
-          { target: boardId },
-          {
-            details: {
-              path: ['boardId'],
-              equals: boardId,
-            }
-          }
-        ]
-      }
-    }),
+  const [logsRaw, totalRes] = await Promise.all([
+    prisma.$queryRaw<any[]>`
+      SELECT 
+        a.id, a.action, a.target, a.details, a."createdAt", a."ipAddress", a."actorId",
+        json_build_object('name', u.name, 'username', u.username, 'image', u.image) as actor
+      FROM "AuditLog" a
+      JOIN "User" u ON a."actorId" = u.id
+      WHERE a.target = ${boardId} OR a.details->>'boardId' = ${boardId}
+      ORDER BY a."createdAt" DESC
+      LIMIT ${limit} OFFSET ${skip}
+    `,
+    prisma.$queryRaw<any[]>`
+      SELECT COUNT(*)::int as count
+      FROM "AuditLog" a
+      WHERE a.target = ${boardId} OR a.details->>'boardId' = ${boardId}
+    `,
   ]);
+
+  const total = totalRes[0]?.count || 0;
+  const logs = logsRaw.map(log => ({
+    ...log,
+    createdAt: new Date(log.createdAt).toISOString()
+  }));
 
   return NextResponse.json({ logs, total, page, pages: Math.ceil(total / limit) });
 }

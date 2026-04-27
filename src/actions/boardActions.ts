@@ -458,21 +458,25 @@ export async function inviteMemberAction(boardId: string, email: string, role: '
   revalidatePath('/');
 }
 
-export async function removeMemberAction(boardId: string, memberId: string) {
+export async function removeMemberAction(boardId: string, userId: string) {
   const authUser = await getAuthUser();
   await verifyBoardAccess(boardId, authUser.id, 'Admin');
 
-  const memberToRemove = await prisma.member.findUnique({ where: { id: memberId } });
-  if (memberToRemove?.boardId !== boardId) throw new Error("Unauthorized");
+  const memberToRemove = await prisma.member.findUnique({ 
+    where: { boardId_userId: { boardId, userId } } 
+  });
+  if (!memberToRemove) throw new Error("Member not found");
 
   const board = await prisma.board.findUnique({ where: { id: boardId } });
-  if (board?.ownerId === memberToRemove.userId) {
+  if (board?.ownerId === userId) {
     throw new Error("Cannot remove the board owner");
   }
 
-  await prisma.member.delete({ where: { id: memberId } });
-  await logActivity(boardId, authUser.id, 'member_removed', { removedUserId: memberToRemove.userId });
-  await logAuditEvent(authUser.id, 'member_removed', boardId, { removedUserId: memberToRemove.userId });
+  await prisma.member.delete({ 
+    where: { boardId_userId: { boardId, userId } } 
+  });
+  await logActivity(boardId, authUser.id, 'member_removed', { removedUserId: userId });
+  await logAuditEvent(authUser.id, 'member_removed', boardId, { removedUserId: userId });
   revalidatePath('/');
 }
 
