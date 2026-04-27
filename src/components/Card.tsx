@@ -93,6 +93,11 @@ export default function CardItem({ card, index, board, columnId, onModalOpenChan
               </div>
             )}
 
+            {/* Board Name */}
+            <div className={styles.boardName}>
+              {board.title}
+            </div>
+
             {/* Title row */}
             <div className={styles.titleRow}>
               <span className={`priority-dot dot-${card.priority}`} />

@@ -35,6 +35,14 @@
 
 .labels { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
 
+.boardName {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  line-height: 1.2;
+  word-break: break-word;
+}
+
 .titleRow { display: flex; align-items: flex-start; gap: 7px; }
 .title {
   font-size: 13px; font-weight: 500; color: var(--text-primary);
