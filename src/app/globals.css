@@ -1,47 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
-/* ─── DARK THEME (default) ─── */
-:root, [data-theme="dark"] {
-  color-scheme: dark;
-  --bg-base:       #0D1117;
-  --bg-surface:    #161B22;
-  --bg-elevated:   #1C2128;
-  --bg-overlay:    #21262D;
-  --bg-hover:      #30363D;
-  --border:        #30363D;
-  --border-subtle: #21262D;
-
-  --text-primary:   #E6EDF3;
-  --text-secondary: #8B949E;
-  --text-muted:     #6E7681;
-  --text-inverse:   #FFFFFF;
-
-  --accent:        #0052CC;
-  --accent-hover:  #0065FF;
-  --accent-subtle: rgba(0, 82, 204, 0.15);
-
-  --col-todo:       #0052CC;
-  --col-inprogress: #FF991F;
-  --col-review:     #6554C0;
-  --col-done:       #36B37E;
-
-  --priority-urgent: #FF5630;
-  --priority-high:   #FF991F;
-  --priority-medium: #0052CC;
-  --priority-low:    #36B37E;
-
-  --shadow-sm:  0 1px 3px rgba(0,0,0,0.4);
-  --shadow-md:  0 4px 12px rgba(0,0,0,0.5);
-  --shadow-lg:  0 8px 32px rgba(0,0,0,0.6);
-  --shadow-xl:  0 16px 48px rgba(0,0,0,0.7);
-
-  --modal-bg: rgba(13,17,23,0.85);
-  --glass-bg: rgba(22,27,34,0.85);
-  --glass-border: rgba(48,54,61,0.8);
-}
-
-/* ─── LIGHT THEME ─── */
-[data-theme="light"] {
+/* ─── LIGHT THEME (default) ─── */
+:root, [data-theme="light"] {
   color-scheme: light;
   --bg-base:       #F4F5F7;
   --bg-surface:    #FFFFFF;
@@ -60,6 +20,16 @@
   --accent-hover:  #0065FF;
   --accent-subtle: rgba(0, 82, 204, 0.08);
 
+  --col-todo:       #0052CC;
+  --col-inprogress: #FF991F;
+  --col-review:     #6554C0;
+  --col-done:       #36B37E;
+
+  --priority-urgent: #FF5630;
+  --priority-high:   #FF991F;
+  --priority-medium: #0052CC;
+  --priority-low:    #36B37E;
+
   --shadow-sm:  0 1px 3px rgba(9,30,66,0.12);
   --shadow-md:  0 4px 12px rgba(9,30,66,0.15);
   --shadow-lg:  0 8px 32px rgba(9,30,66,0.18);
@@ -68,6 +38,36 @@
   --modal-bg: rgba(9,30,66,0.5);
   --glass-bg: rgba(255,255,255,0.9);
   --glass-border: rgba(223,225,230,0.9);
+}
+
+/* ─── DARK THEME ─── */
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg-base:       #0D1117;
+  --bg-surface:    #161B22;
+  --bg-elevated:   #1C2128;
+  --bg-overlay:    #21262D;
+  --bg-hover:      #30363D;
+  --border:        #30363D;
+  --border-subtle: #21262D;
+
+  --text-primary:   #E6EDF3;
+  --text-secondary: #8B949E;
+  --text-muted:     #6E7681;
+  --text-inverse:   #FFFFFF;
+
+  --accent:        #0052CC;
+  --accent-hover:  #0065FF;
+  --accent-subtle: rgba(0, 82, 204, 0.15);
+
+  --shadow-sm:  0 1px 3px rgba(0,0,0,0.4);
+  --shadow-md:  0 4px 12px rgba(0,0,0,0.5);
+  --shadow-lg:  0 8px 32px rgba(0,0,0,0.6);
+  --shadow-xl:  0 16px 48px rgba(0,0,0,0.7);
+
+  --modal-bg: rgba(13,17,23,0.85);
+  --glass-bg: rgba(22,27,34,0.85);
+  --glass-border: rgba(48,54,61,0.8);
 }
 
 /* ─── RESET & BASE ─── */

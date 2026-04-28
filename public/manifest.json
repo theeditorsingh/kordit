@@ -1,10 +1,10 @@
 {
-  "name": "Kordit — Task Management",
+  "name": "Kordit - Task Management, Simplified",
   "short_name": "Kordit",
   "description": "Modern Kanban board and task management tool",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0D1117",
+  "background_color": "#F4F5F7",
   "theme_color": "#0052CC",
   "orientation": "any",
   "icons": [

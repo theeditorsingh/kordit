@@ -7,7 +7,7 @@ import OfflineBanner from '@/components/OfflineBanner';
 import Script from 'next/script';
 
 export const metadata: Metadata = {
-  title: 'Kordit — Task Management',
+  title: 'Kordit - Task Management, Simplified',
   description: 'A modern Kanban board and task management tool inspired by Trello and Google Tasks.',
   manifest: '/manifest.json',
   appleWebApp: {
@@ -45,13 +45,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   }
 
   return (
-    <html lang="en" data-theme="dark" suppressHydrationWarning>
+    <html lang="en" data-theme="light" suppressHydrationWarning>
       <head>
         <meta name="theme-color" content="#0052CC" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <link rel="manifest" href="/manifest.json" />
-        <link rel="apple-touch-icon" href="/icon-192.png" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </head>
       <body suppressHydrationWarning>
         <AuthProvider>

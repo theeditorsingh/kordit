@@ -86,12 +86,7 @@ export default function OnboardingPage() {
       <div className={styles.card}>
         <div className={styles.header}>
           <div className={styles.logo}>
-            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-              <rect width="32" height="32" rx="8" fill="#0052CC"/>
-              <rect x="6" y="6" width="8" height="12" rx="2" fill="white" opacity="0.9"/>
-              <rect x="18" y="6" width="8" height="8" rx="2" fill="white" opacity="0.7"/>
-              <rect x="18" y="18" width="8" height="8" rx="2" fill="white" opacity="0.5"/>
-            </svg>
+            <img src="/kordit-logo.svg" alt="Kordit" width={32} height={32} />
           </div>
           <h1>Complete Your Profile</h1>
           <p>
