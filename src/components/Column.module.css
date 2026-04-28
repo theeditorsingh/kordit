@@ -81,7 +81,7 @@
 
 .cardList {
   flex: 1;
-  overflow-y: auto;
+  overflow-y: hidden;
   padding: 4px 8px;
   display: flex;
   flex-direction: column;
@@ -92,6 +92,11 @@
 }
 .cardList.draggingOver {
   background: var(--accent-subtle);
+}
+
+.column:hover .cardList,
+.cardList:focus-within {
+  overflow-y: auto;
 }
 
 .emptyCol {
