@@ -10,9 +10,9 @@
 }
 .card.dragging {
   box-shadow: var(--shadow-lg) !important;
-  transform: rotate(2deg) scale(1.03);
   border-color: var(--accent);
   z-index: 50;
+  opacity: 0.92;
 }
 .card.selected {
   border-color: #0052CC;
@@ -112,20 +112,18 @@
 
 .avatars { display: flex; align-items: center; }
 
-/* Staggered entrance animation */
+/* Staggered entrance animation — uses only opacity to avoid conflicting with DnD transforms */
 .cardAnimated {
-  animation: cardSlideIn 0.25s cubic-bezier(0.25, 0.1, 0.25, 1) both;
+  animation: cardFadeIn 0.25s cubic-bezier(0.25, 0.1, 0.25, 1) backwards;
   animation-delay: calc(var(--card-index, 0) * 0.03s);
 }
 
-@keyframes cardSlideIn {
+@keyframes cardFadeIn {
   from {
     opacity: 0;
-    transform: translateY(8px) scale(0.98);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
   }
 }
 
