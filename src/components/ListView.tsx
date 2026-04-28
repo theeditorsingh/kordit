@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Board, Card } from '@/types';
 import { useBoardContext } from '@/context/BoardContext';
+import { AnimatePresence } from 'framer-motion';
 import { Calendar, CheckSquare, ChevronDown, ChevronRight } from 'lucide-react';
 import { getInitials } from '@/utils/storage';
 import dynamic from 'next/dynamic';
@@ -106,14 +107,16 @@ export default function ListView({ board, search }: Props) {
         );
       })}
 
-      {selectedCard && (
-        <CardModal
-          card={selectedCard.card}
-          board={board}
-          columnId={selectedCard.colId}
-          onClose={() => setSelectedCard(null)}
-        />
-      )}
+      <AnimatePresence>
+        {selectedCard && (
+          <CardModal
+            card={selectedCard.card}
+            board={board}
+            columnId={selectedCard.colId}
+            onClose={() => setSelectedCard(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

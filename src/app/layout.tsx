@@ -4,6 +4,7 @@ import { BoardProvider } from '@/context/BoardContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 import AuthProvider from '@/components/AuthProvider';
 import OfflineBanner from '@/components/OfflineBanner';
+import TopProgressBar from '@/components/TopProgressBar';
 import Script from 'next/script';
 
 export const metadata: Metadata = {
@@ -57,6 +58,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <AuthProvider>
           <ThemeProvider>
             <BoardProvider initialBoards={initialBoards}>
+              <TopProgressBar />
               <OfflineBanner />
               {children}
             </BoardProvider>

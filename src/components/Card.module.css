@@ -4,19 +4,15 @@
   border-radius: 8px;
   padding: 10px;
   cursor: pointer;
-  transition: all 0.15s;
-  animation: slideUp 0.2s ease;
+  transition: border-color 0.15s, background 0.15s;
   position: relative;
   overflow: hidden;
 }
-.card:hover {
-  border-color: var(--accent);
-  box-shadow: var(--shadow-md);
-}
 .card.dragging {
-  box-shadow: var(--shadow-lg);
-  transform: rotate(2deg) scale(1.02);
+  box-shadow: var(--shadow-lg) !important;
+  transform: rotate(2deg) scale(1.03);
   border-color: var(--accent);
+  z-index: 50;
 }
 .card.selected {
   border-color: #0052CC;
@@ -115,3 +111,25 @@
 }
 
 .avatars { display: flex; align-items: center; }
+
+/* Staggered entrance animation */
+.cardAnimated {
+  animation: cardSlideIn 0.25s cubic-bezier(0.25, 0.1, 0.25, 1) both;
+  animation-delay: calc(var(--card-index, 0) * 0.03s);
+}
+
+@keyframes cardSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Progress bar fill animation */
+.progressAnimated {
+  transition: width 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
+}

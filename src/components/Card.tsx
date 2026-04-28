@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 import { Board, Card } from '@/types';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Calendar, CheckSquare, AlertTriangle, Clock, Repeat } from 'lucide-react';
 import { getInitials } from '@/utils/storage';
 import CardModal from './CardModal';
@@ -33,6 +34,12 @@ function formatTimeShort(seconds: number) {
   return `${m}m`;
 }
 
+const contextMenuVariants = {
+  hidden: { opacity: 0, scale: 0.92, y: -4 },
+  visible: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.15, ease: [0.25, 0.1, 0.25, 1] as [number, number, number, number] } },
+  exit: { opacity: 0, scale: 0.92, y: -4, transition: { duration: 0.1 } },
+};
+
 export default function CardItem({ card, index, board, columnId, onModalOpenChange }: Props) {
   const [open, setOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number } | null>(null);
@@ -44,6 +51,7 @@ export default function CardItem({ card, index, board, columnId, onModalOpenChan
   const assignees = card.assigneeIds.map((id) => board.members.find((m) => m.id === id)).filter(Boolean);
   const hasBlockers = (card.blockedBy || []).length > 0;
   const isTimerRunning = !!card.timerStarted;
+  const progressPercent = totalItems > 0 ? (doneItems / totalItems) * 100 : 0;
 
   return (
     <>
@@ -53,10 +61,11 @@ export default function CardItem({ card, index, board, columnId, onModalOpenChan
             ref={provided.innerRef}
             {...provided.draggableProps}
             {...provided.dragHandleProps}
-            className={`${styles.card} ${snapshot.isDragging ? styles.dragging : ''} ${isSelected ? styles.selected : ''} ${hasBlockers ? styles.blocked : ''}`}
+            className={`${styles.card} ${styles.cardAnimated} ${snapshot.isDragging ? styles.dragging : ''} ${isSelected ? styles.selected : ''} ${hasBlockers ? styles.blocked : ''}`}
             style={{
               ...provided.draggableProps.style,
-              ...(isSelected ? { border: '2px solid #0052CC', backgroundColor: 'rgba(0, 82, 204, 0.05)' } : {})
+              ...(isSelected ? { border: '2px solid #0052CC', backgroundColor: 'rgba(0, 82, 204, 0.05)' } : {}),
+              ...({ '--card-index': index } as Record<string, number>),
             }}
             onClick={(e) => {
               if (e.ctrlKey || e.metaKey) {
@@ -155,71 +164,82 @@ export default function CardItem({ card, index, board, columnId, onModalOpenChan
               )}
             </div>
 
-            {/* Checklist progress */}
+            {/* Animated checklist progress */}
             {totalItems > 0 && (
               <div className="progress-bar" style={{ marginTop: 8 }}>
-                <div className="progress-fill" style={{ width: `${(doneItems / totalItems) * 100}%` }} />
+                <div
+                  className={`progress-fill ${styles.progressAnimated}`}
+                  style={{ width: `${progressPercent}%` }}
+                />
               </div>
             )}
           </div>
         )}
       </Draggable>
 
-      {contextMenu && (
-        <>
-          <div
-            style={{ position: 'fixed', inset: 0, zIndex: 999 }}
-            onClick={(e) => { e.stopPropagation(); setContextMenu(null); }}
-            onContextMenu={(e) => { e.preventDefault(); setContextMenu(null); }}
-          />
-          <div
-            style={{
-              position: 'fixed',
-              top: contextMenu.y,
-              left: contextMenu.x,
-              zIndex: 1000,
-              background: 'var(--bg-surface)',
-              border: '1px solid var(--border-subtle)',
-              borderRadius: '6px',
-              padding: '4px',
-              boxShadow: 'var(--shadow-md)',
-              display: 'flex',
-              flexDirection: 'column',
-              minWidth: '120px'
-            }}
-          >
-            <button
-              style={{ padding: '8px 12px', textAlign: 'left', fontSize: '13px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-primary)', borderRadius: '4px' }}
-              onClick={(e) => { e.stopPropagation(); setContextMenu(null); setOpen(true); }}
-              onMouseOver={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
-              onMouseOut={(e) => e.currentTarget.style.background = 'none'}
-            >
-              Edit Card
-            </button>
-            <button
-              style={{ padding: '8px 12px', textAlign: 'left', fontSize: '13px', background: 'none', border: 'none', cursor: 'pointer', color: '#ff5630', borderRadius: '4px' }}
-              onClick={(e) => {
-                e.stopPropagation();
-                setContextMenu(null);
-                if (confirm('Delete this card?')) {
-                   deleteCard(board.id, columnId, card.id);
-                }
+      <AnimatePresence>
+        {contextMenu && (
+          <>
+            <div
+              style={{ position: 'fixed', inset: 0, zIndex: 999 }}
+              onClick={(e) => { e.stopPropagation(); setContextMenu(null); }}
+              onContextMenu={(e) => { e.preventDefault(); setContextMenu(null); }}
+            />
+            <motion.div
+              variants={contextMenuVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              style={{
+                position: 'fixed',
+                top: contextMenu.y,
+                left: contextMenu.x,
+                zIndex: 1000,
+                background: 'var(--bg-surface)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: '6px',
+                padding: '4px',
+                boxShadow: 'var(--shadow-md)',
+                display: 'flex',
+                flexDirection: 'column',
+                minWidth: '120px'
               }}
-              onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255, 86, 48, 0.1)'}
-              onMouseOut={(e) => e.currentTarget.style.background = 'none'}
             >
-              Delete
-            </button>
-          </div>
-        </>
-      )}
+              <button
+                style={{ padding: '8px 12px', textAlign: 'left', fontSize: '13px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-primary)', borderRadius: '4px' }}
+                onClick={(e) => { e.stopPropagation(); setContextMenu(null); setOpen(true); }}
+                onMouseOver={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
+                onMouseOut={(e) => e.currentTarget.style.background = 'none'}
+              >
+                Edit Card
+              </button>
+              <button
+                style={{ padding: '8px 12px', textAlign: 'left', fontSize: '13px', background: 'none', border: 'none', cursor: 'pointer', color: '#ff5630', borderRadius: '4px' }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setContextMenu(null);
+                  if (confirm('Delete this card?')) {
+                     deleteCard(board.id, columnId, card.id);
+                  }
+                }}
+                onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255, 86, 48, 0.1)'}
+                onMouseOut={(e) => e.currentTarget.style.background = 'none'}
+              >
+                Delete
+              </button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
-      {open && (
-        <CardModal card={card} board={board} columnId={columnId} onClose={() => {
-          setOpen(false);
-          onModalOpenChange?.(false);
-        }} />
-      )}
+      <AnimatePresence>
+        {open && (
+          <CardModal card={card} board={board} columnId={columnId} onClose={() => {
+            setOpen(false);
+            onModalOpenChange?.(false);
+          }} />
+        )}
+      </AnimatePresence>
     </>
   );
 }

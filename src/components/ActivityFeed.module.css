@@ -58,6 +58,11 @@
   margin-top: 2px;
 }
 
+.itemNew {
+  background: var(--accent-subtle);
+  border-radius: 6px;
+}
+
 .loading, .empty {
   display: flex;
   align-items: center;

@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Board, Card, ChecklistItem, Label, Priority } from '@/types';
 import { useBoardContext } from '@/context/BoardContext';
+import { motion, AnimatePresence } from 'framer-motion';
 import CommentSection from './CommentSection';
 import {
   X, Plus, Trash2, Check, Calendar, Tag, Users, AlignLeft, List,
@@ -214,8 +215,22 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
   }
 
   return (
-    <div className="modal-overlay animate-fade-in" onClick={(e) => e.target === e.currentTarget && save()}>
-      <div className="modal-box animate-scale-in" style={{ maxWidth: 620 }}>
+    <motion.div
+      className="modal-overlay"
+      onClick={(e) => e.target === e.currentTarget && save()}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+    >
+      <motion.div
+        className="modal-box"
+        style={{ maxWidth: 620 }}
+        initial={{ opacity: 0, scale: 0.95, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 16 }}
+        transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] as [number, number, number, number] }}
+      >
         {/* Cover */}
         {(data.coverColor || data.coverImage) && (
           <div
@@ -613,7 +628,7 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
           </button>
           <button className="btn btn-primary" onClick={save}>Save Changes</button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
