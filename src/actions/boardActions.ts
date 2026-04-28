@@ -129,6 +129,26 @@ export async function archiveBoardAction(boardId: string) {
   revalidatePath('/');
 }
 
+export async function unarchiveBoardAction(boardId: string) {
+  const user = await getAuthUser();
+  await verifyBoardAccess(boardId, user.id, 'Admin');
+  await prisma.board.update({ where: { id: boardId }, data: { isArchived: false } });
+  await logActivity(boardId, user.id, 'board_unarchived', {});
+  revalidatePath('/');
+}
+
+export async function getArchivedBoardsAction() {
+  const user = await getAuthUser();
+  const boards = await prisma.board.findMany({
+    where: {
+      members: { some: { userId: user.id } },
+      isArchived: true,
+    },
+    orderBy: { createdAt: 'desc' }
+  });
+  return boards;
+}
+
 export async function saveBoardAsTemplateAction(boardId: string) {
   const user = await getAuthUser();
   await verifyBoardAccess(boardId, user.id);

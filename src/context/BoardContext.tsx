@@ -49,6 +49,7 @@ type Action =
   | { type: 'TOGGLE_FAVORITE'; boardId: string }
   | { type: 'ARCHIVE_BOARD'; boardId: string }
   | { type: 'SYNC_BOARDS'; boards: Board[] }
+  | { type: 'REPLACE_CARD_ID'; boardId: string; columnId: string; oldId: string; newCard: Card }
   | { type: 'UNDO' }
   | { type: 'REDO' };
 
@@ -156,6 +157,26 @@ function boardReducer(state: AppState, action: Action): AppState {
               c.id === action.columnId ? { ...c, cardIds: [...c.cardIds, action.card.id] } : c
             ),
             cards: { ...b.cards, [action.card.id]: action.card },
+          };
+        }),
+      };
+
+    case 'REPLACE_CARD_ID':
+      return {
+        ...state,
+        boards: state.boards.map((b) => {
+          if (b.id !== action.boardId) return b;
+          const newCards = { ...b.cards };
+          delete newCards[action.oldId];
+          newCards[action.newCard.id] = action.newCard;
+          return {
+            ...b,
+            columns: b.columns.map((c) =>
+              c.id === action.columnId 
+                ? { ...c, cardIds: c.cardIds.map((id) => id === action.oldId ? action.newCard.id : id) }
+                : c
+            ),
+            cards: newCards,
           };
         }),
       };
@@ -517,6 +538,10 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
       if (!res.ok) return;
       const freshData = await res.json();
       const freshBoards = formatPrismaBoards(freshData);
+      
+      // Prevent overwriting if operations started during the fetch
+      if (pendingOpsRef.current > 0) return;
+      
       dispatch({ type: 'SYNC_BOARDS', boards: freshBoards });
     } catch {
       // Silently ignore network errors
@@ -621,7 +646,29 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
 
     pendingOpsRef.current += 1;
     try {
-      await createCardAction(boardId, columnId, title, description, dueDate);
+      const realCard = await createCardAction(boardId, columnId, title, description, dueDate);
+      
+      // Convert Prisma card to client Card
+      const formattedCard: Card = {
+        id: realCard.id,
+        title: realCard.title,
+        description: realCard.description || '',
+        priority: realCard.priority as any,
+        labels: Array.isArray(realCard.labels) ? realCard.labels : [],
+        checklist: Array.isArray(realCard.checklist) ? realCard.checklist : [],
+        dueDate: realCard.dueDate ? new Date(realCard.dueDate).toISOString() : null,
+        assigneeIds: Array.isArray(realCard.assigneeIds) ? realCard.assigneeIds : [],
+        createdAt: new Date(realCard.createdAt).toISOString(),
+        coverImage: realCard.coverImage || '',
+        coverColor: realCard.coverColor || '',
+        timeSpent: realCard.timeSpent || 0,
+        timerStarted: realCard.timerStarted ? new Date(realCard.timerStarted).toISOString() : null,
+        isRecurring: realCard.isRecurring || false,
+        recurringRule: realCard.recurringRule || '',
+        blockedBy: Array.isArray(realCard.blockedBy) ? realCard.blockedBy : [],
+      };
+
+      dispatch({ type: 'REPLACE_CARD_ID', boardId, columnId, oldId: tempId, newCard: formattedCard });
     } catch (e) {
       console.error("Failed to create card on server", e);
       fetchAndSync();

@@ -11,6 +11,7 @@ import MembersPanel from './MembersPanel';
 import TemplateModal from './TemplateModal';
 import ActivityFeed from './ActivityFeed';
 import AutomationPanel from './AutomationPanel';
+import ArchivedBoardsModal from './ArchivedBoardsModal';
 import styles from './Sidebar.module.css';
 
 export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: boolean; onClose?: () => void }) {
@@ -25,6 +26,7 @@ export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: bool
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [showTemplates, setShowTemplates] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
 
   function handleAdd() {
     if (!newBoardTitle.trim()) return;
@@ -165,6 +167,9 @@ export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: bool
               <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowTemplates(true)} title="Create from template" style={{ alignSelf: 'center', marginTop: 0 }}>
                 <LayoutTemplate size={14} />
               </button>
+              <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowArchived(true)} title="Archived Boards" style={{ alignSelf: 'center', marginTop: 0 }}>
+                <Archive size={14} />
+              </button>
             </div>
           )}
         </div>
@@ -223,6 +228,7 @@ export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: bool
       )}
 
       {showTemplates && <TemplateModal onClose={() => setShowTemplates(false)} />}
+      {showArchived && <ArchivedBoardsModal onClose={() => setShowArchived(false)} />}
       {showAutomations && activeBoard && <AutomationPanel boardId={activeBoard.id} onClose={() => setShowAutomations(false)} />}
     </aside>
     </>
