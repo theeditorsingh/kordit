@@ -654,10 +654,10 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
         title: realCard.title,
         description: realCard.description || '',
         priority: realCard.priority as any,
-        labels: Array.isArray(realCard.labels) ? realCard.labels : [],
-        checklist: Array.isArray(realCard.checklist) ? realCard.checklist : [],
+        labels: (Array.isArray(realCard.labels) ? realCard.labels : []) as any,
+        checklist: (Array.isArray(realCard.checklist) ? realCard.checklist : []) as any,
         dueDate: realCard.dueDate ? new Date(realCard.dueDate).toISOString() : null,
-        assigneeIds: Array.isArray(realCard.assigneeIds) ? realCard.assigneeIds : [],
+        assigneeIds: (Array.isArray(realCard.assigneeIds) ? realCard.assigneeIds : []) as any,
         createdAt: new Date(realCard.createdAt).toISOString(),
         coverImage: realCard.coverImage || '',
         coverColor: realCard.coverColor || '',
@@ -665,7 +665,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
         timerStarted: realCard.timerStarted ? new Date(realCard.timerStarted).toISOString() : null,
         isRecurring: realCard.isRecurring || false,
         recurringRule: realCard.recurringRule || '',
-        blockedBy: Array.isArray(realCard.blockedBy) ? realCard.blockedBy : [],
+        blockedBy: (Array.isArray(realCard.blockedBy) ? realCard.blockedBy : []) as any,
       };
 
       dispatch({ type: 'REPLACE_CARD_ID', boardId, columnId, oldId: tempId, newCard: formattedCard });
