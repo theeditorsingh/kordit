@@ -11,6 +11,13 @@ export const metadata: Metadata = {
   title: 'Kordit - Task Management, Simplified',
   description: 'A modern Kanban board and task management tool inspired by Trello and Google Tasks.',
   manifest: '/manifest.json',
+  icons: {
+    icon: [
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: '/apple-touch-icon.png',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
