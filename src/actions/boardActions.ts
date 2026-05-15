@@ -109,7 +109,6 @@ export async function updateBoardAction(boardId: string, updates: Record<string,
     await prisma.board.update({ where: { id: boardId }, data });
     await logActivity(boardId, user.id, 'board_updated', { fields: Object.keys(data) });
   }
-  revalidatePath('/');
 }
 
 export async function toggleBoardFavoriteAction(boardId: string) {
@@ -118,7 +117,6 @@ export async function toggleBoardFavoriteAction(boardId: string) {
   const board = await prisma.board.findUnique({ where: { id: boardId } });
   if (!board) throw new Error("Board not found");
   await prisma.board.update({ where: { id: boardId }, data: { isFavorite: !board.isFavorite } });
-  revalidatePath('/');
 }
 
 export async function archiveBoardAction(boardId: string) {
@@ -126,7 +124,6 @@ export async function archiveBoardAction(boardId: string) {
   await verifyBoardAccess(boardId, user.id, 'Admin');
   await prisma.board.update({ where: { id: boardId }, data: { isArchived: true } });
   await logActivity(boardId, user.id, 'board_archived', {});
-  revalidatePath('/');
 }
 
 export async function unarchiveBoardAction(boardId: string) {
@@ -204,7 +201,6 @@ export async function createColumnAction(boardId: string, title: string) {
   });
 
   await logActivity(boardId, user.id, 'column_created', { columnTitle: trimmedTitle });
-  revalidatePath('/');
   return column;
 }
 
@@ -221,7 +217,6 @@ export async function moveColumnAction(boardId: string, columnOrders: { id: stri
       prisma.column.update({ where: { id }, data: { order } })
     )
   );
-  revalidatePath('/');
 }
 
 export async function updateColumnAction(boardId: string, columnId: string, updates: Record<string, any>) {
@@ -240,7 +235,6 @@ export async function updateColumnAction(boardId: string, columnId: string, upda
   if (Object.keys(data).length > 0) {
     await prisma.column.update({ where: { id: columnId }, data });
   }
-  revalidatePath('/');
 }
 
 export async function deleteColumnAction(boardId: string, columnId: string) {
@@ -255,7 +249,6 @@ export async function deleteColumnAction(boardId: string, columnId: string) {
     await logActivity(boardId, user.id, 'column_deleted', { columnTitle: column.title });
     await logAuditEvent(user.id, 'column_deleted', columnId, { columnTitle: column.title, boardId });
   }
-  revalidatePath('/');
 }
 
 // ── Card Actions ────────────────────────────────────────────────────────────
@@ -284,7 +277,6 @@ export async function createCardAction(boardId: string, columnId: string, title:
 
   await logActivity(boardId, user.id, 'card_created', { cardTitle: trimmedTitle, columnId }, card.id);
   await runAutomations(boardId, 'card_created', { cardId: card.id, columnId });
-  revalidatePath('/');
   return card;
 }
 
@@ -316,8 +308,6 @@ export async function moveCardAction(cardId: string, sourceColId: string, destCo
 
     await runAutomations(card.boardId, 'card_moved_to', { cardId, columnId: destColId });
   }
-
-  revalidatePath('/');
 }
 
 export async function updateCardAction(boardId: string, cardId: string, updates: Record<string, any>) {
@@ -358,7 +348,6 @@ export async function updateCardAction(boardId: string, cardId: string, updates:
       }
     }
   }
-  revalidatePath('/');
 }
 
 export async function deleteCardAction(boardId: string, cardId: string) {
@@ -373,7 +362,6 @@ export async function deleteCardAction(boardId: string, cardId: string) {
     await logActivity(boardId, user.id, 'card_deleted', { cardTitle: card.title });
     await logAuditEvent(user.id, 'card_deleted', cardId, { cardTitle: card.title, boardId });
   }
-  revalidatePath('/');
 }
 
 export async function bulkDeleteCardsAction(boardId: string, cardIds: string[]) {
@@ -382,7 +370,6 @@ export async function bulkDeleteCardsAction(boardId: string, cardIds: string[]) 
   await prisma.card.deleteMany({ where: { id: { in: cardIds }, boardId } });
   await logActivity(boardId, user.id, 'cards_bulk_deleted', { count: cardIds.length });
   await logAuditEvent(user.id, 'cards_bulk_deleted', boardId, { count: cardIds.length, boardId });
-  revalidatePath('/');
 }
 
 export async function bulkMoveCardsAction(boardId: string, cardIds: string[], targetColId: string) {
@@ -396,7 +383,6 @@ export async function bulkMoveCardsAction(boardId: string, cardIds: string[], ta
     where: { id: { in: cardIds }, boardId },
     data: { columnId: targetColId }
   });
-  revalidatePath('/');
 }
 
 export async function bulkCopyCardsAction(boardId: string, cardIds: string[], targetColId: string) {
@@ -428,7 +414,6 @@ export async function bulkCopyCardsAction(boardId: string, cardIds: string[], ta
   if (newCardsData.length > 0) {
     await prisma.card.createMany({ data: newCardsData });
   }
-  revalidatePath('/');
 }
 
 // ── Member Actions ──────────────────────────────────────────────────────────
