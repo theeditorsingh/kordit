@@ -102,13 +102,22 @@ export default function CardItem({ card, index, board, columnId, onModalOpenChan
               </div>
             )}
 
-            {/* Title row */}
-            <div className={styles.titleRow}>
+            {/* Top metadata row: priority pill + due date */}
+            <div className={styles.metaRow}>
               <span className={`badge badge-${card.priority}`} style={{ fontSize: 10, padding: '2px 7px', lineHeight: 1.2 }}>
                 {PRIORITY_LABELS[card.priority] || card.priority}
               </span>
-              <span className={styles.title}>{card.title}</span>
+              <div className={styles.metaRight}>
+                {card.dueDate && (
+                  <span className={`${styles.due} ${getDueDateClass(card.dueDate)}`}>
+                    <Calendar size={11}/> {formatDate(card.dueDate)}
+                  </span>
+                )}
+              </div>
             </div>
+
+            {/* Title — full width */}
+            <div className={styles.title}>{card.title}</div>
 
             {/* Indicators row */}
             {(hasBlockers || card.isRecurring || isTimerRunning) && (
@@ -131,35 +140,32 @@ export default function CardItem({ card, index, board, columnId, onModalOpenChan
               </div>
             )}
 
-            {/* Footer */}
-            <div className={styles.footer}>
-              <div className={styles.footerLeft}>
-                {card.dueDate && (
-                  <span className={`${styles.due} ${getDueDateClass(card.dueDate)}`}>
-                    <Calendar size={11}/> {formatDate(card.dueDate)}
-                  </span>
-                )}
-                {totalItems > 0 && (
-                  <span className={`${styles.checklist} ${doneItems === totalItems ? styles.allDone : ''}`}>
-                    <CheckSquare size={11}/> {doneItems}/{totalItems}
-                  </span>
-                )}
-                {(card.timeSpent || 0) > 0 && (
-                  <span className={styles.timeBadge}>
-                    <Clock size={10} /> {formatTimeShort(card.timeSpent || 0)}
-                  </span>
+            {/* Footer: checklist + time on left, avatars on right */}
+            {(totalItems > 0 || (card.timeSpent || 0) > 0 || assignees.length > 0) && (
+              <div className={styles.footer}>
+                <div className={styles.footerLeft}>
+                  {totalItems > 0 && (
+                    <span className={`${styles.checklist} ${doneItems === totalItems ? styles.allDone : ''}`}>
+                      <CheckSquare size={11}/> {doneItems}/{totalItems}
+                    </span>
+                  )}
+                  {(card.timeSpent || 0) > 0 && (
+                    <span className={styles.timeBadge}>
+                      <Clock size={10} /> {formatTimeShort(card.timeSpent || 0)}
+                    </span>
+                  )}
+                </div>
+                {assignees.length > 0 && (
+                  <div className={styles.avatars}>
+                    {assignees.slice(0, 3).map((m) => (
+                      <span key={m!.id} className="avatar avatar-sm" style={{ background: m!.color, marginLeft: -6 }}>
+                        {getInitials(m!.name)}
+                      </span>
+                    ))}
+                  </div>
                 )}
               </div>
-              {assignees.length > 0 && (
-                <div className={styles.avatars}>
-                  {assignees.slice(0, 3).map((m) => (
-                    <span key={m!.id} className="avatar avatar-sm" style={{ background: m!.color, marginLeft: -6 }}>
-                      {getInitials(m!.name)}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
+            )}
 
             {/* Animated checklist progress */}
             {totalItems > 0 && (

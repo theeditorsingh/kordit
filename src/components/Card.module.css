@@ -40,10 +40,21 @@
   word-break: break-word;
 }
 
-.titleRow { display: flex; align-items: flex-start; gap: 7px; }
+.metaRow { 
+  display: flex; 
+  align-items: center; 
+  justify-content: space-between; 
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.metaRight {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
 .title {
   font-size: 13px; font-weight: 500; color: var(--text-primary);
-  line-height: 1.4; flex: 1;
+  line-height: 1.4; word-break: break-word;
 }
 
 /* Indicators */
