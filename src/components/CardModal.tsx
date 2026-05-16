@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Board, Card, ChecklistItem, Label, Priority } from '@/types';
 import { useBoardContext } from '@/context/BoardContext';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import CommentSection from './CommentSection';
 import {
   X, Plus, Trash2, Check, Calendar, Tag, Users, AlignLeft, List,
@@ -36,7 +36,6 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
   const [showCoverPicker, setShowCoverPicker] = useState(false);
   const [showDependencies, setShowDependencies] = useState(false);
   const [showRecurring, setShowRecurring] = useState(false);
-  const [activeTab, setActiveTab] = useState<'details' | 'comments' | 'ai'>('details');
   const [timerDisplay, setTimerDisplay] = useState(data.timeSpent || 0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -58,7 +57,163 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
         setTimerDisplay(baseTime + elapsed);
       }, 1000);
 
-      return (
+      return () => { if (timerRef.current) clearInterval(timerRef.current); };
+    } else {
+      setTimerDisplay(data.timeSpent || 0);
+    }
+  }, [isTimerRunning, data.timerStarted, data.timeSpent]);
+
+  function save() {
+    updateCard(board.id, data);
+    onClose();
+  }
+
+  function deleteCard() {
+    if (confirm('Delete this card?')) {
+      deleteCardFn(board.id, columnId, card.id);
+      onClose();
+    }
+  }
+
+  function toggleTimer() {
+    if (isTimerRunning) {
+      const elapsed = Math.floor((Date.now() - new Date(data.timerStarted!).getTime()) / 1000);
+      setData(d => ({
+        ...d,
+        timeSpent: (d.timeSpent || 0) + elapsed,
+        timerStarted: null
+      }));
+    } else {
+      setData(d => ({ ...d, timerStarted: new Date().toISOString() }));
+    }
+  }
+
+  function toggleAssignee(memberId: string) {
+    setData((d) => ({
+      ...d,
+      assigneeIds: d.assigneeIds.includes(memberId)
+        ? d.assigneeIds.filter((id) => id !== memberId)
+        : [...d.assigneeIds, memberId],
+    }));
+  }
+
+  function addCheckItem() {
+    if (!newCheckItem.trim()) return;
+    const item: ChecklistItem = { id: crypto.randomUUID(), text: newCheckItem.trim(), done: false };
+    setData((d) => ({ ...d, checklist: [...d.checklist, item] }));
+    setNewCheckItem('');
+  }
+
+  function toggleCheckItem(id: string) {
+    setData((d) => ({
+      ...d,
+      checklist: d.checklist.map((c) => c.id === id ? { ...c, done: !c.done } : c),
+    }));
+  }
+
+  function removeCheckItem(id: string) {
+    setData((d) => ({ ...d, checklist: d.checklist.filter((c) => c.id !== id) }));
+  }
+
+  function addLabel() {
+    if (!newLabelName.trim()) return;
+    const label: Label = { id: crypto.randomUUID(), name: newLabelName.trim(), color: newLabelColor };
+    setData((d) => ({ ...d, labels: [...d.labels, label] }));
+    setNewLabelName(''); setShowLabelForm(false);
+  }
+
+  function removeLabel(id: string) {
+    setData((d) => ({ ...d, labels: d.labels.filter((l) => l.id !== id) }));
+  }
+
+  function toggleDependency(cardId: string) {
+    setData(d => ({
+      ...d,
+      blockedBy: (d.blockedBy || []).includes(cardId)
+        ? (d.blockedBy || []).filter(id => id !== cardId)
+        : [...(d.blockedBy || []), cardId]
+    }));
+  }
+
+  const allCards = Object.values(board.cards).filter(c => c.id !== card.id);
+  const blockedByCards = (data.blockedBy || []).map(id => board.cards[id]).filter(Boolean);
+  const doneCount = data.checklist.filter((c) => c.done).length;
+  const totalCount = data.checklist.length;
+
+  // ── AI Functions ────────────────────────────────────────────────────────
+  async function aiGenerateSubtasks() {
+    setAiLoading('subtasks');
+    setAiError(null);
+    setSuggestedSubtasks([]);
+    try {
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'subtasks', payload: { cardTitle: data.title, cardDescription: data.description } }),
+      });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error);
+      setSuggestedSubtasks(json.subtasks || []);
+    } catch (e: any) {
+      setAiError(e.message || 'AI request failed');
+    } finally {
+      setAiLoading(null);
+    }
+  }
+
+  function addSuggestedSubtask(text: string) {
+    const item: ChecklistItem = { id: crypto.randomUUID(), text, done: false };
+    setData(d => ({ ...d, checklist: [...d.checklist, item] }));
+    setSuggestedSubtasks(prev => prev.filter(s => s !== text));
+  }
+
+  function addAllSubtasks() {
+    const items: ChecklistItem[] = suggestedSubtasks.map(text => ({ id: crypto.randomUUID(), text, done: false }));
+    setData(d => ({ ...d, checklist: [...d.checklist, ...items] }));
+    setSuggestedSubtasks([]);
+  }
+
+  async function aiSuggestDueDate() {
+    setAiLoading('date');
+    setAiError(null);
+    try {
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'smart_due_date', payload: { cardTitle: data.title, priority: data.priority } }),
+      });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error);
+      setData(d => ({ ...d, dueDate: json.suggestedDate }));
+      setAiDateReasoning(json.reasoning);
+    } catch (e: any) {
+      setAiError(e.message || 'AI request failed');
+    } finally {
+      setAiLoading(null);
+    }
+  }
+
+  async function aiCategorize() {
+    setAiLoading('categorize');
+    setAiError(null);
+    try {
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'auto_categorize', payload: { cardTitle: data.title } }),
+      });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error);
+      const newLabels: Label[] = json.labels.map((name: string) => ({ id: crypto.randomUUID(), name, color: LABEL_COLORS[Math.floor(Math.random() * LABEL_COLORS.length)] }));
+      setData(d => ({ ...d, priority: json.priority as Priority, labels: [...d.labels, ...newLabels] }));
+    } catch (e: any) {
+      setAiError(e.message || 'AI request failed');
+    } finally {
+      setAiLoading(null);
+    }
+  }
+
+  return (
     <motion.div
       className="modal-overlay"
       onClick={(e) => e.target === e.currentTarget && save()}
@@ -73,7 +228,7 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
         initial={{ opacity: 0, scale: 0.95, y: 16 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 16 }}
-        transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
+        transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] as [number, number, number, number] }}
       >
         {/* Cover */}
         {(data.coverColor || data.coverImage) && (
@@ -102,6 +257,7 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
         </div>
 
         <div className={styles.body}>
+          {/* ── LEFT: Main Content ── */}
           <div className={styles.mainColumn}>
             {/* Title */}
             <input
@@ -164,17 +320,17 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
                 <button className="btn btn-ghost btn-sm" onClick={addCheckItem}><Plus size={14}/></button>
               </div>
 
-              {/* Inline AI Subtasks */}
+              {/* Inline AI: Generate Subtasks */}
               <div style={{ marginTop: 8 }}>
                 <button
-                  className={`btn btn-ghost btn-sm`}
+                  className="btn btn-ghost btn-sm"
                   onClick={aiGenerateSubtasks}
                   disabled={!!aiLoading}
                   style={{ color: 'var(--accent)' }}
                 >
                   {aiLoading === 'subtasks' ? <><Loader2 size={13} className={styles.spin} /> Generating...</> : <><Sparkles size={13} /> Break into Subtasks</>}
                 </button>
-                {aiError && aiLoading === 'subtasks' && <div className={styles.aiError} style={{ marginTop: 4 }}>{aiError}</div>}
+                {aiError && aiLoading === null && <div className={styles.aiError} style={{ marginTop: 4 }}>{aiError}</div>}
                 {suggestedSubtasks.length > 0 && (
                   <div className={styles.aiSuggestions} style={{ marginTop: 8 }}>
                     <div className={styles.aiSuggestHeader}>
@@ -199,6 +355,7 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
             </div>
           </div>
 
+          {/* ── RIGHT: Sidebar ── */}
           <div className={styles.sidebarColumn}>
             {/* Quick Actions Row */}
             <div className={styles.quickActions}>
@@ -247,7 +404,7 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
               </div>
             )}
 
-            {/* Members */}
+            {/* Members / Assignees */}
             {board.members.length > 0 && (
               <div className={styles.section}>
                 <div className={styles.sectionLabel}><Users size={14}/> Assignees</div>
@@ -270,7 +427,7 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
               </div>
             )}
 
-            {/* Labels */}
+            {/* Labels + Inline AI Auto-Categorize */}
             <div className={styles.section}>
               <div className={styles.sectionLabel} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Tag size={14}/> Labels</span>
@@ -320,7 +477,7 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
               )}
             </div>
 
-            {/* Due Date */}
+            {/* Due Date + Inline AI Suggest */}
             <div className={styles.section}>
               <div className={styles.sectionLabel} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Calendar size={14}/> Due Date</span>
