@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Board, Card, ChecklistItem, Label, Priority } from '@/types';
 import { useBoardContext } from '@/context/BoardContext';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import CommentSection from './CommentSection';
 import {
   X, Plus, Trash2, Check, Calendar, Tag, Users, AlignLeft, List,
