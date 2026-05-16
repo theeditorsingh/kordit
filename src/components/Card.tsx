@@ -104,7 +104,9 @@ export default function CardItem({ card, index, board, columnId, onModalOpenChan
 
             {/* Title row */}
             <div className={styles.titleRow}>
-              <span className={`priority-dot dot-${card.priority}`} />
+              <span className={`badge badge-${card.priority}`} style={{ fontSize: 10, padding: '2px 7px', lineHeight: 1.2 }}>
+                {PRIORITY_LABELS[card.priority] || card.priority}
+              </span>
               <span className={styles.title}>{card.title}</span>
             </div>
 

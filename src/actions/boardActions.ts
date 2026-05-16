@@ -6,7 +6,9 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY);
+}
 
 async function getAuthUser() {
   const session = await getServerSession(authOptions);
@@ -452,7 +454,7 @@ export async function inviteMemberAction(boardId: string, email: string, role: '
     const appUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
     const inviteLink = `${appUrl}/login`;
 
-    await resend.emails.send({
+    await getResend().emails.send({
       from: "magiclink@theeditorsingh.com",
       to: email,
       subject: `You have been invited to join the board "${board.title}"`,

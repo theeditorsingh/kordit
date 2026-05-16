@@ -7,7 +7,9 @@ import bcrypt from "bcryptjs";
 
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY);
+}
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
@@ -16,7 +18,7 @@ export const authOptions: NextAuthOptions = {
       from: "magiclink@theeditorsingh.com",
       async sendVerificationRequest({ identifier, url, provider }) {
         try {
-          await resend.emails.send({
+          await getResend().emails.send({
             from: provider.from as string,
             to: identifier,
             subject: "Sign in to Kordit",
