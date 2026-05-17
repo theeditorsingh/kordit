@@ -217,7 +217,17 @@
   .left { min-width: unset; gap: 6px; }
   .right { min-width: unset; gap: 4px; }
   .center { flex: none; }
+  .desktopOnly { display: none !important; }
 }
+
+/* Mobile-only: hidden on desktop */
+.mobileOnly { display: none; }
+@media (max-width: 768px) {
+  .mobileOnly { display: flex !important; }
+}
+
+/* Desktop-only wrapper */
+.desktopOnly { display: flex; align-items: center; gap: 0; }
 
 @media (max-width: 480px) {
   .nav { padding: 0 8px; gap: 4px; }

@@ -9,6 +9,13 @@
   max-height: calc(100vh - 100px);
   transition: box-shadow 0.15s, border-color 0.15s;
 }
+
+@media (max-width: 768px) {
+  .column {
+    width: calc(100vw - 32px);
+    scroll-snap-align: center;
+  }
+}
 .overWip {
   border-color: rgba(255, 86, 48, 0.4);
 }

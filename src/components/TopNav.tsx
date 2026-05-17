@@ -6,7 +6,7 @@ import { useUndoRedo } from '@/hooks/useUndoRedo';
 import { useTheme } from '@/context/ThemeContext';
 import {
   Sun, Moon, Search, LayoutGrid, List, Calendar, X, Share2, User, LogOut,
-  Zap, Palette, Save, Copy, Sparkles, Undo2, Redo2, Menu, Shield
+  Zap, Palette, Save, Copy, Sparkles, Undo2, Redo2, Menu, Shield, MoreHorizontal
 } from 'lucide-react';
 import VisibilityDropdown from './VisibilityDropdown';
 import ShareModal from './ShareModal';
@@ -42,6 +42,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
   const [showBgPicker, setShowBgPicker] = useState(false);
   const [showDigest, setShowDigest] = useState(false);
   const [showAuditLog, setShowAuditLog] = useState(false);
+  const [showMore, setShowMore] = useState(false);
 
   // Activate keyboard shortcuts
   useUndoRedo();
@@ -105,7 +106,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
       <div className={styles.right}>
         {activeBoard && (
           <>
-            {/* Undo / Redo */}
+            {/* Undo / Redo — always visible */}
             <button
               className="btn btn-ghost btn-icon btn-sm"
               onClick={undo}
@@ -125,89 +126,97 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
               <Redo2 size={15} />
             </button>
 
-            <VisibilityDropdown />
+            {/* Desktop-only actions (hidden on mobile) */}
+            <div className={styles.desktopOnly}>
+              <VisibilityDropdown />
 
-            {/* Board Background */}
-            <div style={{ position: 'relative', marginLeft: 4 }}>
+              {/* Board Background */}
+              <div style={{ position: 'relative', marginLeft: 4 }}>
+                <button
+                  className="btn btn-ghost btn-icon btn-sm"
+                  onClick={() => setShowBgPicker(!showBgPicker)}
+                  title="Board background"
+                >
+                  <Palette size={15} />
+                </button>
+                {showBgPicker && (
+                  <>
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 90 }} onClick={() => setShowBgPicker(false)} />
+                    <div className={styles.bgPicker}>
+                      <div className={styles.bgPickerTitle}>Board Background</div>
+                      <div className={styles.bgGrid}>
+                        {GRADIENTS.map((g, i) => (
+                          <button
+                            key={i}
+                            className={styles.bgSwatch}
+                            style={{ background: g }}
+                            onClick={() => setBoardBackground(g, 'gradient')}
+                          />
+                        ))}
+                        <button
+                          className={styles.bgSwatch}
+                          style={{ background: 'var(--bg-base)', border: '2px dashed var(--border)' }}
+                          onClick={() => setBoardBackground('', 'color')}
+                          title="Remove background"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
               <button
                 className="btn btn-ghost btn-icon btn-sm"
-                onClick={() => setShowBgPicker(!showBgPicker)}
-                title="Board background"
+                onClick={() => setShowAutomations(true)}
+                title="Automations"
+                style={{ marginLeft: 4 }}
               >
-                <Palette size={15} />
+                <Zap size={15} />
               </button>
-              {showBgPicker && (
-                <>
-                  <div style={{ position: 'fixed', inset: 0, zIndex: 90 }} onClick={() => setShowBgPicker(false)} />
-                  <div className={styles.bgPicker}>
-                    <div className={styles.bgPickerTitle}>Board Background</div>
-                    <div className={styles.bgGrid}>
-                      {GRADIENTS.map((g, i) => (
-                        <button
-                          key={i}
-                          className={styles.bgSwatch}
-                          style={{ background: g }}
-                          onClick={() => setBoardBackground(g, 'gradient')}
-                        />
-                      ))}
-                      <button
-                        className={styles.bgSwatch}
-                        style={{ background: 'var(--bg-base)', border: '2px dashed var(--border)' }}
-                        onClick={() => setBoardBackground('', 'color')}
-                        title="Remove background"
-                      >
-                        <X size={14} />
-                      </button>
-                    </div>
-                  </div>
-                </>
-              )}
+
+              <button
+                className="btn btn-ghost btn-icon btn-sm"
+                onClick={() => {
+                  if (confirm('Save this board as a template? A copy will be created with the same columns.')) {
+                    saveBoardAsTemplate(activeBoard.id);
+                  }
+                }}
+                title="Save as template"
+                style={{ marginLeft: 4 }}
+              >
+                <Copy size={15} />
+              </button>
+
+              <button
+                className={`btn btn-ghost btn-sm ${styles.aiBtn}`}
+                onClick={() => setShowDigest(true)}
+                title="AI Weekly Digest"
+                style={{ marginLeft: 4 }}
+                id="ai-digest-btn"
+              >
+                <Sparkles size={14} />
+                <span className={styles.tabLabel}>AI Digest</span>
+              </button>
+
+              <button
+                className="btn btn-ghost btn-icon btn-sm"
+                onClick={() => setShowAuditLog(true)}
+                title="Audit Log"
+                style={{ marginLeft: 4 }}
+              >
+                <Shield size={15} />
+              </button>
             </div>
 
-            {/* Automations */}
+            {/* Mobile: More button */}
             <button
-              className="btn btn-ghost btn-icon btn-sm"
-              onClick={() => setShowAutomations(true)}
-              title="Automations"
-              style={{ marginLeft: 4 }}
+              className={`btn btn-ghost btn-icon btn-sm ${styles.mobileOnly}`}
+              onClick={() => setShowMore(true)}
+              title="More actions"
             >
-              <Zap size={15} />
-            </button>
-
-            {/* Save as Template */}
-            <button
-              className="btn btn-ghost btn-icon btn-sm"
-              onClick={() => {
-                if (confirm('Save this board as a template? A copy will be created with the same columns.')) {
-                  saveBoardAsTemplate(activeBoard.id);
-                }
-              }}
-              title="Save as template"
-              style={{ marginLeft: 4 }}
-            >
-              <Copy size={15} />
-            </button>
-
-            {/* AI Weekly Digest */}
-            <button
-              className={`btn btn-ghost btn-sm ${styles.aiBtn}`}
-              onClick={() => setShowDigest(true)}
-              title="AI Weekly Digest"
-              style={{ marginLeft: 4 }}
-              id="ai-digest-btn"
-            >
-              <Sparkles size={14} />
-              <span className={styles.tabLabel}>AI Digest</span>
-            </button>
-
-            {/* Audit Log (admin) */}
-            <button
-              className="btn btn-ghost btn-icon btn-sm"
-              onClick={() => setShowAuditLog(true)}
-              title="Audit Log"
-              style={{ marginLeft: 4 }}
-            >
-              <Shield size={15} />
+              <MoreHorizontal size={18} />
             </button>
 
             <div className={styles.searchWrap} style={{ marginLeft: 8 }}>
@@ -307,6 +316,41 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
       {showAutomations && activeBoard && <AutomationPanel boardId={activeBoard.id} onClose={() => setShowAutomations(false)} />}
       {showDigest && activeBoard && <WeeklyDigest boardId={activeBoard.id} boardTitle={activeBoard.title} onClose={() => setShowDigest(false)} />}
       {showAuditLog && activeBoard && <AuditLogPanel boardId={activeBoard.id} onClose={() => setShowAuditLog(false)} />}
+
+      {/* Mobile More Actions Bottom Sheet */}
+      {showMore && (
+        <>
+          <div className="modal-overlay" onClick={() => setShowMore(false)} style={{ zIndex: 400 }}>
+            <div className="modal-box" style={{ maxWidth: '100%', position: 'fixed', bottom: 0, borderRadius: '20px 20px 0 0', padding: '8px 0 24px' }} onClick={e => e.stopPropagation()}>
+              <div style={{ width: 40, height: 4, background: 'var(--border-subtle)', borderRadius: 2, margin: '8px auto 12px' }} />
+              <div style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {[
+                  { icon: <Palette size={18} />, label: 'Board Background', action: () => { setShowMore(false); setShowBgPicker(true); } },
+                  { icon: <Zap size={18} />, label: 'Automations', action: () => { setShowMore(false); setShowAutomations(true); } },
+                  { icon: <Copy size={18} />, label: 'Save as Template', action: () => { setShowMore(false); if (activeBoard && confirm('Save as template?')) saveBoardAsTemplate(activeBoard.id); } },
+                  { icon: <Sparkles size={18} />, label: 'AI Weekly Digest', action: () => { setShowMore(false); setShowDigest(true); } },
+                  { icon: <Shield size={18} />, label: 'Audit Log', action: () => { setShowMore(false); setShowAuditLog(true); } },
+                  { icon: <Share2 size={18} />, label: 'Share Board', action: () => { setShowMore(false); setShowShareModal(true); } },
+                ].map((item, i) => (
+                  <button
+                    key={i}
+                    onClick={item.action}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 14, width: '100%',
+                      padding: '14px 20px', background: 'none', border: 'none', borderRadius: 10,
+                      fontSize: 15, fontWeight: 500, color: 'var(--text-primary)', cursor: 'pointer',
+                      fontFamily: 'inherit', transition: 'background 0.15s',
+                    }}
+                  >
+                    <span style={{ color: 'var(--text-muted)' }}>{item.icon}</span>
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </header>
   );
 }
