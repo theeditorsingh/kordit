@@ -5,9 +5,9 @@ import { useSession } from 'next-auth/react';
 import { signOut } from 'next-auth/react';
 import {
   X, User, Lock, Trash2, Camera, Check, AlertCircle, Loader2,
-  ShieldCheck, Calendar, LayoutGrid, MessageSquare, LogOut, ChevronRight, Eye, EyeOff
+  ShieldCheck, Calendar, LayoutGrid, MessageSquare, LogOut, ChevronRight, Eye, EyeOff, Mail, KeyRound
 } from 'lucide-react';
-import { updateProfileAction, changePasswordAction, deleteAccountAction, getCurrentUserAction } from '@/actions/userActions';
+import { updateProfileAction, changePasswordAction, deleteAccountAction, getCurrentUserAction, sendPasswordResetEmailAction } from '@/actions/userActions';
 import styles from './ProfileModal.module.css';
 
 type Tab = 'profile' | 'security' | 'danger';
@@ -19,6 +19,7 @@ interface UserData {
   email: string | null;
   image: string | null;
   workspaceRole: string;
+  hasPassword: boolean;
   _count: { ownedBoards: number; comments: number };
 }
 
@@ -65,6 +66,11 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
   const [confirmText, setConfirmText] = useState('');
   const [dangerMsg, setDangerMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isPendingDanger, startDanger] = useTransition();
+
+  // Password reset link
+  const [resetLinkSent, setResetLinkSent] = useState(false);
+  const [isPendingReset, startReset] = useTransition();
+  const [resetMsg, setResetMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const overlayRef = useRef<HTMLDivElement>(null);
 
@@ -115,8 +121,32 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
         await changePasswordAction(currentPw, newPw);
         setPwMsg({ type: 'success', text: 'Password changed successfully!' });
         setCurrentPw(''); setNewPw(''); setConfirmPw('');
+        // Refresh user data so hasPassword updates
+        const u = await getCurrentUserAction();
+        if (u) setUserData(u as UserData);
       } catch (e: any) {
         setPwMsg({ type: 'error', text: e.message ?? 'Failed to change password' });
+      }
+    });
+  }
+
+  function handleSendResetLink() {
+    setResetMsg(null);
+    startReset(async () => {
+      try {
+        await sendPasswordResetEmailAction();
+        // Trigger NextAuth's email flow to send the actual magic link
+        if (userData?.email) {
+          const res = await signIn('email', { email: userData.email, redirect: false });
+          if (res?.error) throw new Error(res.error);
+        }
+        setResetLinkSent(true);
+        setResetMsg({ type: 'success', text: 'Password reset email sent! Check your inbox, then sign in and set a new password.' });
+        // Refresh user data — password is now null
+        const u = await getCurrentUserAction();
+        if (u) setUserData(u as UserData);
+      } catch (e: any) {
+        setResetMsg({ type: 'error', text: e.message ?? 'Failed to send reset email' });
       }
     });
   }
@@ -344,29 +374,53 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
                 {tab === 'security' && (
                   <div className={styles.section}>
                     <h2 className={styles.sectionTitle}>Security</h2>
-                    <p className={styles.sectionDesc}>Keep your account secure by using a strong, unique password.</p>
+                    <p className={styles.sectionDesc}>
+                      {userData?.hasPassword
+                        ? 'Keep your account secure by using a strong, unique password.'
+                        : 'You signed in with a magic link. Set a password below to enable password-based login.'}
+                    </p>
 
-                    <div className={styles.fieldGroup}>
-                      <div className={styles.field}>
-                        <label htmlFor="current-password" className={styles.label}>Current Password</label>
-                        <div className={styles.passwordWrap}>
-                          <input
-                            id="current-password"
-                            className={`input ${styles.passwordInput}`}
-                            type={showCurrent ? 'text' : 'password'}
-                            placeholder="Enter current password"
-                            value={currentPw}
-                            onChange={(e) => setCurrentPw(e.target.value)}
-                            autoComplete="current-password"
-                          />
-                          <button type="button" className={styles.eyeBtn} onClick={() => setShowCurrent((v) => !v)}>
-                            {showCurrent ? <EyeOff size={14} /> : <Eye size={14} />}
-                          </button>
+                    {/* Info banner for first-time password setup */}
+                    {!userData?.hasPassword && (
+                      <div className={styles.infoCard}>
+                        <div className={styles.infoIconWrap}>
+                          <KeyRound size={18} />
+                        </div>
+                        <div>
+                          <p className={styles.infoCardTitle}>No password set</p>
+                          <p className={styles.infoCardDesc}>
+                            Your account was created via magic link. Set a password below to also sign in with email + password.
+                          </p>
                         </div>
                       </div>
+                    )}
+
+                    <div className={styles.fieldGroup}>
+                      {/* Only show current password field when user already has one */}
+                      {userData?.hasPassword && (
+                        <div className={styles.field}>
+                          <label htmlFor="current-password" className={styles.label}>Current Password</label>
+                          <div className={styles.passwordWrap}>
+                            <input
+                              id="current-password"
+                              className={`input ${styles.passwordInput}`}
+                              type={showCurrent ? 'text' : 'password'}
+                              placeholder="Enter current password"
+                              value={currentPw}
+                              onChange={(e) => setCurrentPw(e.target.value)}
+                              autoComplete="current-password"
+                            />
+                            <button type="button" className={styles.eyeBtn} onClick={() => setShowCurrent((v) => !v)}>
+                              {showCurrent ? <EyeOff size={14} /> : <Eye size={14} />}
+                            </button>
+                          </div>
+                        </div>
+                      )}
 
                       <div className={styles.field}>
-                        <label htmlFor="new-password" className={styles.label}>New Password</label>
+                        <label htmlFor="new-password" className={styles.label}>
+                          {userData?.hasPassword ? 'New Password' : 'Create Password'}
+                        </label>
                         <div className={styles.passwordWrap}>
                           <input
                             id="new-password"
@@ -397,13 +451,13 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
                       </div>
 
                       <div className={styles.field}>
-                        <label htmlFor="confirm-password" className={styles.label}>Confirm New Password</label>
+                        <label htmlFor="confirm-password" className={styles.label}>Confirm Password</label>
                         <div className={styles.passwordWrap}>
                           <input
                             id="confirm-password"
                             className={`input ${styles.passwordInput} ${confirmPw && confirmPw !== newPw ? styles.inputError : ''}`}
                             type={showConfirm ? 'text' : 'password'}
-                            placeholder="Repeat new password"
+                            placeholder="Repeat password"
                             value={confirmPw}
                             onChange={(e) => setConfirmPw(e.target.value)}
                             autoComplete="new-password"
@@ -428,12 +482,50 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
                     <button
                       className={`btn btn-primary ${styles.saveBtn}`}
                       onClick={handlePasswordChange}
-                      disabled={isPendingPw || !newPw || newPw !== confirmPw}
+                      disabled={isPendingPw || !newPw || newPw !== confirmPw || (userData?.hasPassword ? !currentPw : false)}
                       id="change-password-btn"
                     >
                       {isPendingPw ? <Loader2 size={14} className={styles.spinner} /> : <Lock size={14} />}
-                      Update Password
+                      {userData?.hasPassword ? 'Update Password' : 'Set Password'}
                     </button>
+
+                    {/* Forgot password / reset via magic link */}
+                    {userData?.hasPassword && (
+                      <>
+                        <div className={styles.divider} />
+
+                        <div className={styles.resetCard}>
+                          <div className={styles.resetInfo}>
+                            <div className={styles.resetIconWrap}>
+                              <Mail size={18} />
+                            </div>
+                            <div>
+                              <p className={styles.resetCardTitle}>Forgot your password?</p>
+                              <p className={styles.resetCardDesc}>
+                                We'll send a magic link to <strong>{userData.email}</strong>. Your current password will be cleared so you can sign in and set a new one.
+                              </p>
+                            </div>
+                          </div>
+
+                          {resetMsg && (
+                            <div className={`${styles.msg} ${resetMsg.type === 'success' ? styles.msgSuccess : styles.msgError}`}>
+                              {resetMsg.type === 'success' ? <Check size={14} /> : <AlertCircle size={14} />}
+                              {resetMsg.text}
+                            </div>
+                          )}
+
+                          <button
+                            className={`btn btn-ghost ${styles.resetBtn}`}
+                            onClick={handleSendResetLink}
+                            disabled={isPendingReset || resetLinkSent}
+                            id="send-reset-link-btn"
+                          >
+                            {isPendingReset ? <Loader2 size={14} className={styles.spinner} /> : <Mail size={14} />}
+                            {resetLinkSent ? 'Reset Link Sent — Check Email' : 'Send Password Reset Link'}
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
 

@@ -494,6 +494,97 @@
   min-width: 140px;
 }
 
+/* ─── Divider ─── */
+.divider {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 24px 0;
+}
+
+/* ─── Info Card (no password set) ─── */
+.infoCard {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px;
+  background: rgba(0, 82, 204, 0.06);
+  border: 1px solid rgba(0, 82, 204, 0.15);
+  border-radius: 10px;
+  margin-bottom: 24px;
+}
+
+.infoIconWrap {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(0, 82, 204, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.infoCardTitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.infoCardDesc {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ─── Reset Card (forgot password) ─── */
+.resetCard {
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 20px;
+  background: var(--bg-elevated);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.resetInfo {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.resetIconWrap {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(0, 82, 204, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.resetCardTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.resetCardDesc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.resetBtn {
+  align-self: flex-start;
+  border: 1px solid var(--border);
+}
+
 /* ─── Danger Zone ─── */
 .dangerCard {
   border: 1px solid rgba(255, 86, 48, 0.3);

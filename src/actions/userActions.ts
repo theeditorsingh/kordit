@@ -5,6 +5,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
+import { getPasswordResetEmailHtml } from "@/lib/emailTemplates";
 
 async function getAuthUser() {
   const session = await getServerSession(authOptions);
@@ -87,6 +88,7 @@ export async function getCurrentUserAction() {
       username: true,
       email: true,
       image: true,
+      password: true,
       workspaceRole: true,
       _count: {
         select: {
@@ -96,5 +98,18 @@ export async function getCurrentUserAction() {
       }
     }
   });
-  return dbUser;
+  if (!dbUser) return null;
+  // Return hasPassword flag (never expose actual hash to client)
+  const { password, ...rest } = dbUser;
+  return { ...rest, hasPassword: !!password };
+}
+
+export async function sendPasswordResetEmailAction() {
+  const user = await getAuthUser();
+  const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
+  if (!dbUser || !dbUser.email) throw new Error("No email associated with this account");
+
+  // Use NextAuth's built-in email sign-in flow which sends a magic link
+  // The client will call signIn('email') right after this action finishes
+  await prisma.user.update({ where: { id: user.id }, data: { password: null } });
 }

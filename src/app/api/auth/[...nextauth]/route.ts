@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import EmailProvider from "next-auth/providers/email";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
+import { getPasswordResetEmailHtml } from "@/lib/emailTemplates";
 
 import { Resend } from "resend";
 
@@ -16,15 +17,17 @@ export const authOptions: NextAuthOptions = {
   providers: [
     EmailProvider({
       from: "magiclink@theeditorsingh.com",
+      maxAge: 30 * 60, // 30 minutes to match PRD
       async sendVerificationRequest({ identifier, url, provider }) {
         try {
+          const dbUser = await prisma.user.findUnique({ where: { email: identifier } });
+          const userName = dbUser?.name || 'there';
+
           await getResend().emails.send({
             from: provider.from as string,
             to: identifier,
-            subject: "Sign in to Kordit",
-            html: `<p>Click the link below to sign in to your Kordit account:</p>
-                   <p><a href="${url}"><strong>Sign in to Kordit</strong></a></p>
-                   <p>If you didn't request this email, you can safely ignore it.</p>`,
+            subject: "Reset your password",
+            html: getPasswordResetEmailHtml({ url, userName }),
           });
         } catch (error) {
           console.error("Failed to send verification email", error);
