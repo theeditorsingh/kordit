@@ -3,7 +3,7 @@ import { useState, useRef, useCallback } from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 import { Board, Card } from '@/types';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Calendar, CheckSquare, AlertTriangle, Clock, Repeat, Edit2, Trash2 } from 'lucide-react';
+import { Calendar, CheckSquare, AlertTriangle, Clock, Repeat, Edit2, Trash2, CheckCircle2 } from 'lucide-react';
 import { getInitials } from '@/utils/storage';
 import CardModal from './CardModal';
 import { useBoardContext } from '@/context/BoardContext';
@@ -55,6 +55,7 @@ export default function CardItem({ card, index, board, columnId, onModalOpenChan
   }, []);
 
   const isSelected = state.selectedCardIds.includes(card.id);
+  const isSelectionMode = state.selectedCardIds.length > 0;
   const doneItems = card.checklist.filter((c) => c.done).length;
   const totalItems = card.checklist.length;
   const assignees = card.assigneeIds.map((id) => board.members.find((m) => m.id === id)).filter(Boolean);
@@ -77,7 +78,7 @@ export default function CardItem({ card, index, board, columnId, onModalOpenChan
               ...({ '--card-index': index } as Record<string, number>),
             }}
             onClick={(e) => {
-              if (e.ctrlKey || e.metaKey) {
+              if (e.ctrlKey || e.metaKey || isSelectionMode) {
                 e.preventDefault();
                 toggleCardSelection(card.id);
               } else {
@@ -283,6 +284,18 @@ export default function CardItem({ card, index, board, columnId, onModalOpenChan
               >
                 <Edit2 size={18} style={{ color: 'var(--text-muted)' }} />
                 Edit Card
+              </button>
+              <button
+                onClick={() => { setShowBottomSheet(false); toggleCardSelection(card.id); }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 14, width: '100%',
+                  padding: '14px 20px', background: 'none', border: 'none', borderRadius: 10,
+                  fontSize: 15, fontWeight: 500, color: 'var(--text-primary)', cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}
+              >
+                <CheckCircle2 size={18} style={{ color: isSelected ? '#0052CC' : 'var(--text-muted)' }} />
+                {isSelected ? 'Deselect' : 'Select'}
               </button>
               <button
                 onClick={() => {
