@@ -18,6 +18,15 @@ export default function Board({ board, search }: Props) {
   // Track whether any card modal is open — disables column drag while modal is visible
   const [modalOpen, setModalOpen] = useState(false);
   const [activeColIndex, setActiveColIndex] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect mobile on mount
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   // Mobile column page dots — IntersectionObserver
   useEffect(() => {
@@ -129,7 +138,7 @@ export default function Board({ board, search }: Props) {
                   key={col.id}
                   draggableId={`col-${col.id}`}
                   index={index}
-                  isDragDisabled={modalOpen}
+                  isDragDisabled={modalOpen || isMobile}
                 >
                   {(colProvided, colSnapshot) => (
                     <div

@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Board, Card, ChecklistItem, Label, Priority } from '@/types';
 import { useBoardContext } from '@/context/BoardContext';
 import { motion } from 'framer-motion';
@@ -44,6 +44,39 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
   const [aiDateReasoning, setAiDateReasoning] = useState<string | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
   const [suggestedSubtasks, setSuggestedSubtasks] = useState<string[]>([]);
+
+  // Pull-to-close state
+  const [dragY, setDragY] = useState(0);
+  const dragStartY = useRef<number | null>(null);
+  const modalBoxRef = useRef<HTMLDivElement>(null);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    // Only activate if touching the top handle area (first 40px)
+    const box = modalBoxRef.current;
+    if (!box) return;
+    const rect = box.getBoundingClientRect();
+    const touchY = e.touches[0].clientY;
+    // Allow drag from top 50px of modal (the handle area)
+    if (touchY - rect.top < 50) {
+      dragStartY.current = touchY;
+    }
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (dragStartY.current === null) return;
+    const dy = e.touches[0].clientY - dragStartY.current;
+    if (dy > 0) { // only drag downward
+      setDragY(dy);
+    }
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    if (dragY > 100) {
+      save();
+    }
+    setDragY(0);
+    dragStartY.current = null;
+  }, [dragY]);
 
   const isTimerRunning = !!data.timerStarted;
 
@@ -223,12 +256,16 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
       transition={{ duration: 0.2 }}
     >
       <motion.div
+        ref={modalBoxRef}
         className="modal-box"
-        style={{ maxWidth: 860 }}
+        style={{ maxWidth: 860, transform: dragY > 0 ? `translateY(${dragY}px)` : undefined, opacity: dragY > 0 ? Math.max(0.5, 1 - dragY / 300) : undefined, transition: dragY === 0 ? 'transform 0.3s ease, opacity 0.3s ease' : 'none' }}
         initial={{ opacity: 0, scale: 0.95, y: 16 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 16 }}
         transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] as [number, number, number, number] }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
         {/* Cover */}
         {(data.coverColor || data.coverImage) && (
