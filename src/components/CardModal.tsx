@@ -558,7 +558,23 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
                 className="input"
                 style={{ width: '100%' }}
                 value={data.dueDate ? toDatetimeLocal(data.dueDate) : ''}
-                onChange={(e) => setData((d) => ({ ...d, dueDate: e.target.value ? new Date(e.target.value).toISOString() : null }))}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val) {
+                    const iso = new Date(val).toISOString();
+                    setData((d) => ({
+                      ...d,
+                      dueDate: iso,
+                      // Auto-set reminder to "at due time" when a datetime is picked
+                      reminderAt: d.reminderAt ? d.reminderAt : iso,
+                    }));
+                    if (typeof window !== 'undefined') {
+                      localStorage.setItem('kordit-has-reminder', 'true');
+                    }
+                  } else {
+                    setData((d) => ({ ...d, dueDate: null, reminderAt: null }));
+                  }
+                }}
               />
             </div>
 
