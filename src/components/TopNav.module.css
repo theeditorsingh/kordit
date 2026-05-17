@@ -234,3 +234,44 @@
   .logoText { display: none; }
 }
 
+/* ─── Full-screen Mobile Search ─── */
+.mobileSearchOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  background: var(--bg-base);
+  display: flex;
+  flex-direction: column;
+  animation: searchFadeIn 0.2s ease;
+}
+.mobileSearchHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-surface);
+}
+.mobileSearchInput {
+  flex: 1;
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: none;
+  border: none;
+  outline: none;
+  font-family: inherit;
+  padding: 8px 0;
+}
+.mobileSearchInput::placeholder {
+  color: var(--text-muted);
+}
+.mobileSearchHint {
+  padding: 16px 20px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+@keyframes searchFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

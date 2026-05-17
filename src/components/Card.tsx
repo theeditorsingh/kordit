@@ -1,9 +1,9 @@
 'use client';
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 import { Board, Card } from '@/types';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Calendar, CheckSquare, AlertTriangle, Clock, Repeat } from 'lucide-react';
+import { Calendar, CheckSquare, AlertTriangle, Clock, Repeat, Edit2, Trash2 } from 'lucide-react';
 import { getInitials } from '@/utils/storage';
 import CardModal from './CardModal';
 import { useBoardContext } from '@/context/BoardContext';
@@ -43,7 +43,16 @@ const contextMenuVariants = {
 export default function CardItem({ card, index, board, columnId, onModalOpenChange }: Props) {
   const [open, setOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number } | null>(null);
+  const [showBottomSheet, setShowBottomSheet] = useState(false);
   const { deleteCard, toggleCardSelection, state } = useBoardContext();
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearLongPress = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }, []);
 
   const isSelected = state.selectedCardIds.includes(card.id);
   const doneItems = card.checklist.filter((c) => c.done).length;
@@ -80,6 +89,13 @@ export default function CardItem({ card, index, board, columnId, onModalOpenChan
               e.preventDefault();
               setContextMenu({ x: e.clientX, y: e.clientY });
             }}
+            onTouchStart={() => {
+              longPressTimer.current = setTimeout(() => {
+                setShowBottomSheet(true);
+              }, 500);
+            }}
+            onTouchEnd={clearLongPress}
+            onTouchMove={clearLongPress}
           >
             {/* Cover */}
             {(card.coverColor || card.coverImage) && (
@@ -238,6 +254,57 @@ export default function CardItem({ card, index, board, columnId, onModalOpenChan
           </>
         )}
       </AnimatePresence>
+
+      {/* Mobile bottom sheet context menu (long-press) */}
+      {showBottomSheet && (
+        <div
+          className="modal-overlay"
+          onClick={() => setShowBottomSheet(false)}
+          style={{ zIndex: 1000 }}
+        >
+          <div
+            className="modal-box"
+            style={{ maxWidth: '100%', position: 'fixed', bottom: 0, borderRadius: '20px 20px 0 0', padding: '8px 0 24px' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ width: 40, height: 4, background: 'var(--border-subtle)', borderRadius: 2, margin: '8px auto 12px' }} />
+            <div style={{ padding: '0 8px', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', paddingLeft: 20, marginBottom: 4 }}>
+              {card.title.length > 40 ? card.title.slice(0, 40) + '…' : card.title}
+            </div>
+            <div style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <button
+                onClick={() => { setShowBottomSheet(false); setOpen(true); onModalOpenChange?.(true); }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 14, width: '100%',
+                  padding: '14px 20px', background: 'none', border: 'none', borderRadius: 10,
+                  fontSize: 15, fontWeight: 500, color: 'var(--text-primary)', cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}
+              >
+                <Edit2 size={18} style={{ color: 'var(--text-muted)' }} />
+                Edit Card
+              </button>
+              <button
+                onClick={() => {
+                  setShowBottomSheet(false);
+                  if (confirm('Delete this card?')) {
+                    deleteCard(board.id, columnId, card.id);
+                  }
+                }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 14, width: '100%',
+                  padding: '14px 20px', background: 'none', border: 'none', borderRadius: 10,
+                  fontSize: 15, fontWeight: 500, color: '#FF5630', cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}
+              >
+                <Trash2 size={18} />
+                Delete Card
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <AnimatePresence>
         {open && (

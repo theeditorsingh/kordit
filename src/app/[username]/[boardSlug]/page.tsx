@@ -8,7 +8,6 @@ import EmptyState from '@/components/EmptyState';
 import { doneProgress } from '@/components/TopProgressBar';
 import { useState, useEffect, use, Suspense, lazy } from 'react';
 import { ViewMode } from '@/types';
-import { Plus } from 'lucide-react';
 
 const Board = lazy(() => import('@/components/Board'));
 const ListView = lazy(() => import('@/components/ListView'));
@@ -22,7 +21,6 @@ export default function BoardPage({ params }: { params: Promise<{ username: stri
   const [search, setSearch] = useState('');
   const [mounted, setMounted] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [showFabPicker, setShowFabPicker] = useState(false);
 
   // Body scroll lock when sidebar is open
   useEffect(() => {
@@ -113,45 +111,6 @@ export default function BoardPage({ params }: { params: Promise<{ username: stri
           )}
         </main>
       </div>
-
-      {/* Mobile FAB */}
-      {activeBoard && (
-        <div className="mobile-fab-wrap">
-          {showFabPicker && (
-            <>
-              <div style={{ position: 'fixed', inset: 0, zIndex: 299 }} onClick={() => setShowFabPicker(false)} />
-              <div className="fab-picker">
-                {activeBoard.columns.map(col => (
-                  <button
-                    key={col.id}
-                    className="fab-picker-item"
-                    onClick={() => {
-                      setShowFabPicker(false);
-                      // Dispatch inline add card to the selected column
-                      const title = prompt(`New card in "${col.title}"`);
-                      if (title?.trim()) {
-                        import('@/actions/boardActions').then(mod => {
-                          mod.createCardAction(activeBoard.id, col.id, title.trim());
-                        });
-                      }
-                    }}
-                  >
-                    <span className="fab-picker-dot" style={{ background: col.color }} />
-                    {col.title}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-          <button
-            className="fab-btn"
-            onClick={() => setShowFabPicker(prev => !prev)}
-            aria-label="Add card"
-          >
-            <Plus size={24} />
-          </button>
-        </div>
-      )}
 
       <Suspense fallback={null}>
         <OnboardingTour />

@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { signOut } from 'next-auth/react';
 import { useBoardContext } from '@/context/BoardContext';
 import { useUndoRedo } from '@/hooks/useUndoRedo';
@@ -43,6 +43,8 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
   const [showDigest, setShowDigest] = useState(false);
   const [showAuditLog, setShowAuditLog] = useState(false);
   const [showMore, setShowMore] = useState(false);
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Activate keyboard shortcuts
   useUndoRedo();
@@ -219,7 +221,8 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
               <MoreHorizontal size={18} />
             </button>
 
-            <div className={styles.searchWrap} style={{ marginLeft: 8 }}>
+            {/* Desktop search (hidden on mobile) */}
+            <div className={`${styles.searchWrap} ${styles.desktopOnly}`} style={{ marginLeft: 8 }}>
               <Search size={14} className={styles.searchIcon} />
               <input
                 className={styles.searchInput}
@@ -233,6 +236,15 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
                 </button>
               )}
             </div>
+
+            {/* Mobile search icon */}
+            <button
+              className={`btn btn-ghost btn-icon btn-sm ${styles.mobileOnly}`}
+              onClick={() => { setShowMobileSearch(true); setTimeout(() => searchInputRef.current?.focus(), 100); }}
+              title="Search"
+            >
+              <Search size={18} />
+            </button>
             <button className="btn btn-primary btn-sm" onClick={() => setShowShareModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 8 }}>
               <Share2 size={14} /> <span className={styles.tabLabel}>Share</span>
             </button>
@@ -350,6 +362,35 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
             </div>
           </div>
         </>
+      )}
+
+      {/* Full-screen mobile search */}
+      {showMobileSearch && (
+        <div className={styles.mobileSearchOverlay}>
+          <div className={styles.mobileSearchHeader}>
+            <Search size={20} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+            <input
+              ref={searchInputRef}
+              className={styles.mobileSearchInput}
+              placeholder="Search cards..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              autoFocus
+            />
+            <button
+              className="btn btn-ghost btn-icon"
+              onClick={() => { setShowMobileSearch(false); setSearch(''); }}
+              style={{ flexShrink: 0 }}
+            >
+              <X size={20} />
+            </button>
+          </div>
+          {search && (
+            <div className={styles.mobileSearchHint}>
+              Showing results for &ldquo;{search}&rdquo;
+            </div>
+          )}
+        </div>
       )}
     </header>
   );
