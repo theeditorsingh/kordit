@@ -4,6 +4,7 @@ import { signOut } from 'next-auth/react';
 import { useBoardContext } from '@/context/BoardContext';
 import { useUndoRedo } from '@/hooks/useUndoRedo';
 import { useTheme } from '@/context/ThemeContext';
+import { useSearchParams, useRouter } from 'next/navigation';
 import {
   Sun, Moon, Search, LayoutGrid, List, Calendar, X, Share2, User, LogOut,
   Zap, Palette, Save, Copy, Sparkles, Undo2, Redo2, Menu, MoreHorizontal, Settings
@@ -46,7 +47,22 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
   const [showMore, setShowMore] = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [profileTab, setProfileTab] = useState<'profile'|'security'|'danger'>('profile');
   const searchInputRef = useRef<HTMLInputElement>(null);
+  
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  // Auto-open profile on password reset return
+  useEffect(() => {
+    if (searchParams?.get('reset') === 'true') {
+      setProfileTab('security');
+      setShowProfile(true);
+      // Clean up URL without triggering a full reload
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [searchParams]);
 
   // Activate keyboard shortcuts
   useUndoRedo();
@@ -353,7 +369,15 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
       {showShareModal && <ShareModal onClose={() => setShowShareModal(false)} />}
       {showAutomations && activeBoard && <AutomationPanel boardId={activeBoard.id} onClose={() => setShowAutomations(false)} />}
       {showDigest && activeBoard && <WeeklyDigest boardId={activeBoard.id} boardTitle={activeBoard.title} onClose={() => setShowDigest(false)} />}
-      {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
+      {showProfile && (
+        <ProfileModal 
+          onClose={() => {
+            setShowProfile(false);
+            setProfileTab('profile'); // reset tab for next time
+          }} 
+          initialTab={profileTab}
+        />
+      )}
 
       {/* Mobile More Actions Bottom Sheet */}
       {showMore && (

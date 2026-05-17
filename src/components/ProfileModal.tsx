@@ -39,9 +39,9 @@ function avatarColor(id: string) {
   return palette[Math.abs(hash) % palette.length];
 }
 
-export default function ProfileModal({ onClose }: { onClose: () => void }) {
+export default function ProfileModal({ onClose, initialTab = 'profile' }: { onClose: () => void, initialTab?: Tab }) {
   const { data: session, update: updateSession } = useSession();
-  const [tab, setTab] = useState<Tab>('profile');
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -137,7 +137,11 @@ export default function ProfileModal({ onClose }: { onClose: () => void }) {
         await sendPasswordResetEmailAction();
         // Trigger NextAuth's email flow to send the actual magic link
         if (userData?.email) {
-          const res = await signIn('email', { email: userData.email, redirect: false });
+          const res = await signIn('email', { 
+            email: userData.email, 
+            redirect: false,
+            callbackUrl: `${window.location.origin}/?reset=true`
+          });
           if (res?.error) throw new Error(res.error);
         }
         setResetLinkSent(true);

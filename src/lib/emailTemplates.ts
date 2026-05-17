@@ -136,7 +136,7 @@ export function getPasswordResetEmailHtml({
         <p>Click the button below to create a new password. This link will expire in <strong>30 minutes</strong> for your security.</p>
         
         <div class="btn-container">
-          <a href="${url}" class="btn">Reset Password</a>
+          <a href="${url}" class="btn" style="color: #ffffff;">Reset Password</a>
         </div>
         
         <div class="security-note">
