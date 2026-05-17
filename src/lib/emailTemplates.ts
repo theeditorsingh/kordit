@@ -285,7 +285,7 @@ export function getSignInEmailHtml({
       <div class="email-header">
         <div class="logo">Kordit</div>
         
-        <img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Waving%20hand/3D/waving_hand_3d.png" alt="Welcome" class="illustration" />
+        <img src="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Sparkles/3D/sparkles_3d.png" alt="Magic Link" class="illustration" />
         
         <h1 class="heading">Sign in to Kordit</h1>
       </div>
