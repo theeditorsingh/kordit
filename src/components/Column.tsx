@@ -73,11 +73,6 @@ export default function Column({ column, board, search, onModalOpenChange }: Pro
     setShowTimePicker(true);
   }
 
-  function toLocalISO(d: Date): string {
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-  }
-
   function confirmDueWithTime() {
     const d = new Date();
     d.setDate(d.getDate() + pendingDays);
@@ -85,7 +80,7 @@ export default function Column({ column, board, search, onModalOpenChange }: Pro
     if (selectedPeriod === 'PM' && h !== 12) h += 12;
     if (selectedPeriod === 'AM' && h === 12) h = 0;
     d.setHours(h, selectedMinute, 0, 0);
-    setCardDue(toLocalISO(d));
+    setCardDue(d.toISOString());
     setShowTimePicker(false);
   }
 
@@ -93,17 +88,20 @@ export default function Column({ column, board, search, onModalOpenChange }: Pro
     const d = new Date();
     d.setDate(d.getDate() + pendingDays);
     d.setHours(0, 0, 0, 0);
-    setCardDue(toLocalISO(d));
+    // Use full ISO string instead of date-only to avoid UTC midnight parsing issues
+    setCardDue(d.toISOString());
     setShowTimePicker(false);
   }
 
   function isDateMatch(dateStr: string | null, daysFromNow: number) {
     if (!dateStr) return false;
-    const d = new Date();
-    d.setDate(d.getDate() + daysFromNow);
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    const target = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-    return dateStr.startsWith(target);
+    const stored = new Date(dateStr);
+    const target = new Date();
+    target.setDate(target.getDate() + daysFromNow);
+    // Compare local date parts (not UTC) to avoid timezone date mismatches
+    return stored.getFullYear() === target.getFullYear() &&
+           stored.getMonth() === target.getMonth() &&
+           stored.getDate() === target.getDate();
   }
 
   function handleDeleteColumn() {
