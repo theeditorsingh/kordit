@@ -37,6 +37,15 @@ function getReminderOption(dueDate: string, reminderAt: string): string {
   return 'at-time';
 }
 
+/** Convert any date string to the YYYY-MM-DDTHH:mm format needed by datetime-local inputs */
+function toDatetimeLocal(dateStr: string): string {
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  // Use local time components
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export default function CardModal({ card, board, columnId, onClose }: Props) {
   const { dispatch, deleteCard: deleteCardFn, updateCard } = useBoardContext();
   const [data, setData] = useState<Card>({ ...card });
@@ -545,11 +554,11 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
                 </div>
               )}
               <input
-                type="date"
+                type="datetime-local"
                 className="input"
                 style={{ width: '100%' }}
-                value={data.dueDate ?? ''}
-                onChange={(e) => setData((d) => ({ ...d, dueDate: e.target.value || null }))}
+                value={data.dueDate ? toDatetimeLocal(data.dueDate) : ''}
+                onChange={(e) => setData((d) => ({ ...d, dueDate: e.target.value ? new Date(e.target.value).toISOString() : null }))}
               />
             </div>
 
