@@ -34,9 +34,14 @@ function getReminderOption(dueDate: string, reminderAt: string): string {
 function toDatetimeLocal(dateStr: string): string {
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return '';
-  // Use local time components
   const pad = (n: number) => n.toString().padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/** Convert a Date object to a local ISO string (no Z suffix) so it preserves the user's local timezone */
+function toLocalISO(d: Date): string {
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
 export default function CardModal({ card, board, columnId, onClose }: Props) {
@@ -521,12 +526,14 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
                 onChange={(e) => {
                   const val = e.target.value;
                   if (val) {
-                    const iso = new Date(val).toISOString();
+                    // Store as local ISO string (no Z) to preserve the user's intended local time
+                    const localDate = new Date(val);
+                    const localISO = toLocalISO(localDate);
                     setData((d) => ({
                       ...d,
-                      dueDate: iso,
+                      dueDate: localISO,
                       // Auto-set reminder to "at due time" when a datetime is picked
-                      reminderAt: d.reminderAt ? d.reminderAt : iso,
+                      reminderAt: d.reminderAt ? d.reminderAt : localISO,
                     }));
                     if (typeof window !== 'undefined') {
                       localStorage.setItem('kordit-has-reminder', 'true');
@@ -552,10 +559,10 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
                     if (val !== 'none' && data.dueDate) {
                       const due = new Date(data.dueDate);
                       switch (val) {
-                        case 'at-time': reminderAt = due.toISOString(); break;
-                        case '15-min': reminderAt = new Date(due.getTime() - 15 * 60_000).toISOString(); break;
-                        case '1-hour': reminderAt = new Date(due.getTime() - 60 * 60_000).toISOString(); break;
-                        case '1-day': reminderAt = new Date(due.getTime() - 24 * 60 * 60_000).toISOString(); break;
+                        case 'at-time': reminderAt = toLocalISO(due); break;
+                        case '15-min': reminderAt = toLocalISO(new Date(due.getTime() - 15 * 60_000)); break;
+                        case '1-hour': reminderAt = toLocalISO(new Date(due.getTime() - 60 * 60_000)); break;
+                        case '1-day': reminderAt = toLocalISO(new Date(due.getTime() - 24 * 60 * 60_000)); break;
                       }
                       // Flag for permission banner
                       if (typeof window !== 'undefined') {

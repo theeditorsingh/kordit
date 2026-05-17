@@ -15,6 +15,15 @@ import UndoRedoToast from '@/components/UndoRedoToast';
 
 const UNDO_STACK_MAX = 30;
 
+/** Convert a Date (or date string) to a local ISO string without Z suffix.
+ *  This preserves the user's intended local date/time and avoids UTC shifts. */
+function toLocalISO(input: Date | string): string {
+  const d = input instanceof Date ? input : new Date(input);
+  if (isNaN(d.getTime())) return '';
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
 // Actions that should be tracked for undo/redo
 const UNDOABLE_ACTIONS = new Set([
   'ADD_CARD', 'DELETE_CARD', 'MOVE_CARD', 'UPDATE_CARD',
@@ -440,7 +449,7 @@ function formatPrismaBoards(prismaBoards: any[]): Board[] {
         title: card.title,
         description: card.description || '',
         priority: card.priority as any,
-        dueDate: card.dueDate ? new Date(card.dueDate).toISOString() : null,
+        dueDate: card.dueDate ? toLocalISO(card.dueDate) : null,
         labels: Array.isArray(card.labels) ? card.labels : [],
         checklist: Array.isArray(card.checklist) ? card.checklist : [],
         assigneeIds: Array.isArray(card.assigneeIds) ? card.assigneeIds : [],
@@ -452,7 +461,7 @@ function formatPrismaBoards(prismaBoards: any[]): Board[] {
         isRecurring: card.isRecurring || false,
         recurringRule: card.recurringRule || '',
         blockedBy: Array.isArray(card.blockedBy) ? card.blockedBy : [],
-        reminderAt: card.reminderAt ? new Date(card.reminderAt).toISOString() : null,
+        reminderAt: card.reminderAt ? toLocalISO(card.reminderAt) : null,
       };
 
       if (columnCardIds[card.columnId]) {
@@ -658,7 +667,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
         priority: realCard.priority as any,
         labels: (Array.isArray(realCard.labels) ? realCard.labels : []) as any,
         checklist: (Array.isArray(realCard.checklist) ? realCard.checklist : []) as any,
-        dueDate: realCard.dueDate ? new Date(realCard.dueDate).toISOString() : null,
+        dueDate: realCard.dueDate ? toLocalISO(realCard.dueDate) : null,
         assigneeIds: (Array.isArray(realCard.assigneeIds) ? realCard.assigneeIds : []) as any,
         createdAt: new Date(realCard.createdAt).toISOString(),
         coverImage: realCard.coverImage || '',
@@ -668,7 +677,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
         isRecurring: realCard.isRecurring || false,
         recurringRule: realCard.recurringRule || '',
         blockedBy: (Array.isArray(realCard.blockedBy) ? realCard.blockedBy : []) as any,
-        reminderAt: realCard.reminderAt ? new Date(realCard.reminderAt).toISOString() : null,
+        reminderAt: realCard.reminderAt ? toLocalISO(realCard.reminderAt) : null,
       };
 
       dispatch({ type: 'REPLACE_CARD_ID', boardId, columnId, oldId: tempId, newCard: formattedCard });
