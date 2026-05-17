@@ -3,7 +3,7 @@ import { useState, useRef, useCallback } from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 import { Board, Card } from '@/types';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Calendar, CheckSquare, AlertTriangle, Clock, Repeat, Edit2, Trash2, CheckCircle2 } from 'lucide-react';
+import { Calendar, CheckSquare, AlertTriangle, Clock, Repeat, Edit2, Trash2, CheckCircle2, AlignLeft } from 'lucide-react';
 import { getInitials } from '@/utils/storage';
 import CardModal from './CardModal';
 import { useBoardContext } from '@/context/BoardContext';
@@ -171,9 +171,14 @@ export default function CardItem({ card, index, board, columnId, onModalOpenChan
             )}
 
             {/* Footer: checklist + time on left, avatars on right */}
-            {(totalItems > 0 || (card.timeSpent || 0) > 0 || assignees.length > 0) && (
+            {(totalItems > 0 || (card.timeSpent || 0) > 0 || assignees.length > 0 || card.description) && (
               <div className={styles.footer}>
                 <div className={styles.footerLeft}>
+                  {card.description && (
+                    <span className={styles.descBadge} title="This card has a description">
+                      <AlignLeft size={11} />
+                    </span>
+                  )}
                   {totalItems > 0 && (
                     <span className={`${styles.checklist} ${doneItems === totalItems ? styles.allDone : ''}`}>
                       <CheckSquare size={11}/> {doneItems}/{totalItems}

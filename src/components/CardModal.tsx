@@ -328,7 +328,7 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
             <div className={styles.section}>
               <div className={styles.sectionLabel}><AlignLeft size={14}/> Description</div>
               <textarea
-                className="input"
+                className={`input ${styles.descInput}`}
                 value={data.description}
                 onChange={(e) => setData((d) => ({ ...d, description: e.target.value }))}
                 placeholder="Add a description..."

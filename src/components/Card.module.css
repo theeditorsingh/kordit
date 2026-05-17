@@ -113,6 +113,11 @@
 }
 .allDone { color: #36B37E; }
 
+.descBadge {
+  display: flex; align-items: center;
+  color: var(--text-muted);
+}
+
 .timeBadge {
   display: flex;
   align-items: center;

@@ -101,6 +101,20 @@
   box-shadow: 0 0 0 2px var(--bg-surface);
 }
 
+.descInput {
+  background: var(--bg-surface);
+  transition: all 0.2s;
+  min-height: 80px;
+}
+.descInput:not(:focus):empty, 
+.descInput:not(:focus)[value=""] {
+  background: var(--bg-overlay);
+  border-color: transparent;
+}
+.descInput:focus {
+  background: var(--bg-surface);
+}
+
 /* Dependencies */
 .depList {
   display: flex;

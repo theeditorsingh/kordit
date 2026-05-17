@@ -110,7 +110,7 @@ export default function Column({ column, board, search, onModalOpenChange }: Pro
               autoFocus
             />
           ) : (
-            <span className={styles.title} onDoubleClick={() => setEditingTitle(true)}>{column.title}</span>
+            <span className={styles.title} onClick={() => setEditingTitle(true)} title="Click to rename">{column.title}</span>
           )}
           <span className={`${styles.count} ${isOverWip ? styles.countOver : ''}`}>
             {column.cardIds.length}
@@ -268,11 +268,11 @@ export default function Column({ column, board, search, onModalOpenChange }: Pro
             </button>
           </div>
         </div>
-      ) : (
+      ) : cards.length > 0 ? (
         <button className={styles.addBtn} onClick={() => setAddingCard(true)}>
           <Plus size={14}/> Add a card
         </button>
-      )}
+      ) : null}
 
       <AnimatePresence>
         {openingCardId && board.cards[openingCardId] && (
