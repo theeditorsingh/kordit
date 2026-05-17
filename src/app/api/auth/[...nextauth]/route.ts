@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import EmailProvider from "next-auth/providers/email";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
-import { getPasswordResetEmailHtml } from "@/lib/emailTemplates";
+import { getPasswordResetEmailHtml, getSignInEmailHtml } from "@/lib/emailTemplates";
 
 import { Resend } from "resend";
 
@@ -17,17 +17,28 @@ export const authOptions: NextAuthOptions = {
   providers: [
     EmailProvider({
       from: "magiclink@theeditorsingh.com",
-      maxAge: 30 * 60, // 30 minutes to match PRD
+      maxAge: 30 * 60, // 30 minutes
       async sendVerificationRequest({ identifier, url, provider }) {
         try {
           const dbUser = await prisma.user.findUnique({ where: { email: identifier } });
           const userName = dbUser?.name || 'there';
 
+          // Check if this is a password reset or a regular sign-in
+          // The callbackUrl is embedded in the NextAuth verification URL
+          const parsedUrl = new URL(url);
+          const callbackUrl = parsedUrl.searchParams.get('callbackUrl') || '';
+          const isPasswordReset = callbackUrl.includes('reset=true');
+
+          const subject = isPasswordReset ? 'Reset your password' : 'Sign in to Kordit';
+          const html = isPasswordReset
+            ? getPasswordResetEmailHtml({ url, userName })
+            : getSignInEmailHtml({ url, userName });
+
           await getResend().emails.send({
             from: provider.from as string,
             to: identifier,
-            subject: "Reset your password",
-            html: getPasswordResetEmailHtml({ url, userName }),
+            subject,
+            html,
           });
         } catch (error) {
           console.error("Failed to send verification email", error);
