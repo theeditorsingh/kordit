@@ -15,7 +15,6 @@ import WeeklyDigest from './WeeklyDigest';
 import AuditLogPanel from './AuditLogPanel';
 import { ViewMode } from '@/types';
 import styles from './TopNav.module.css';
-import NotificationBell from './NotificationBell';
 import NotificationPermissionBanner from './NotificationPermissionBanner';
 import { useReminders } from '@/hooks/useReminders';
 
@@ -257,8 +256,6 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
             </button>
           </>
         )}
-
-        <NotificationBell />
 
         <button className="btn btn-ghost btn-icon" onClick={toggleTheme} title="Toggle theme" style={{ marginLeft: 4 }}>
           {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}

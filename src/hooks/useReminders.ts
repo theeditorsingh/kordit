@@ -78,6 +78,7 @@ export function useReminders() {
 
   const checkAndFire = useCallback(() => {
     if (typeof window === 'undefined') return;
+    if (!('Notification' in window)) return;
     if (Notification.permission !== 'granted') return;
 
     const now = new Date();

@@ -452,6 +452,7 @@ function formatPrismaBoards(prismaBoards: any[]): Board[] {
         isRecurring: card.isRecurring || false,
         recurringRule: card.recurringRule || '',
         blockedBy: Array.isArray(card.blockedBy) ? card.blockedBy : [],
+        reminderAt: card.reminderAt ? new Date(card.reminderAt).toISOString() : null,
       };
 
       if (columnCardIds[card.columnId]) {
@@ -641,6 +642,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
       isRecurring: false,
       recurringRule: '',
       blockedBy: [],
+      reminderAt: null,
     };
     dispatch({ type: 'ADD_CARD', boardId, columnId, card: tempCard });
 
@@ -666,6 +668,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
         isRecurring: realCard.isRecurring || false,
         recurringRule: realCard.recurringRule || '',
         blockedBy: (Array.isArray(realCard.blockedBy) ? realCard.blockedBy : []) as any,
+        reminderAt: realCard.reminderAt ? new Date(realCard.reminderAt).toISOString() : null,
       };
 
       dispatch({ type: 'REPLACE_CARD_ID', boardId, columnId, oldId: tempId, newCard: formattedCard });
@@ -736,6 +739,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
         isRecurring: card.isRecurring,
         recurringRule: card.recurringRule,
         blockedBy: card.blockedBy,
+        reminderAt: card.reminderAt,
       });
     } catch (e) {
       console.error("Failed to update card", e);

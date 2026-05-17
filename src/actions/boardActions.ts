@@ -331,6 +331,9 @@ export async function updateCardAction(boardId: string, cardId: string, updates:
   if (updates.timerStarted !== undefined) {
     data.timerStarted = updates.timerStarted ? new Date(updates.timerStarted) : null;
   }
+  if (updates.reminderAt !== undefined) {
+    data.reminderAt = updates.reminderAt ? new Date(updates.reminderAt) : null;
+  }
 
   const jsonFields = ['labels', 'checklist', 'assigneeIds', 'blockedBy'];
   for (const key of jsonFields) {
