@@ -15,6 +15,9 @@ import WeeklyDigest from './WeeklyDigest';
 import AuditLogPanel from './AuditLogPanel';
 import { ViewMode } from '@/types';
 import styles from './TopNav.module.css';
+import NotificationBell from './NotificationBell';
+import NotificationPermissionBanner from './NotificationPermissionBanner';
+import { useReminders } from '@/hooks/useReminders';
 
 interface Props {
   view: ViewMode;
@@ -49,6 +52,9 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
   // Activate keyboard shortcuts
   useUndoRedo();
 
+  // Start reminder checker
+  useReminders();
+
   function setBoardBackground(background: string, backgroundType: 'color' | 'gradient' | 'image') {
     if (!activeBoard) return;
     updateBoard(activeBoard.id, { background, backgroundType });
@@ -56,6 +62,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
   }
 
   return (
+    <>
     <header className={styles.nav}>
       <div className={styles.left}>
         {/* Hamburger for mobile */}
@@ -250,7 +257,10 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
             </button>
           </>
         )}
-        <button className="btn btn-ghost btn-icon" onClick={toggleTheme} title="Toggle theme" style={{ marginLeft: 8 }}>
+
+        <NotificationBell />
+
+        <button className="btn btn-ghost btn-icon" onClick={toggleTheme} title="Toggle theme" style={{ marginLeft: 4 }}>
           {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
         </button>
 
@@ -393,5 +403,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
         </div>
       )}
     </header>
+    <NotificationPermissionBanner />
+    </>
   );
 }

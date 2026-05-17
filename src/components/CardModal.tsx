@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import CommentSection from './CommentSection';
 import {
   X, Plus, Trash2, Check, Calendar, Tag, Users, AlignLeft, List,
-  Image, Clock, Play, Pause, Link2, Repeat, AlertTriangle, Sparkles, Loader2
+  Image, Clock, Play, Pause, Link2, Repeat, AlertTriangle, Sparkles, Loader2, Bell
 } from 'lucide-react';
 import { getInitials } from '@/utils/storage';
 import styles from './CardModal.module.css';
@@ -24,6 +24,17 @@ function formatTime(seconds: number) {
   if (h > 0) return `${h}h ${m}m`;
   if (m > 0) return `${m}m ${s}s`;
   return `${s}s`;
+}
+
+function getReminderOption(dueDate: string, reminderAt: string): string {
+  const due = new Date(dueDate).getTime();
+  const rem = new Date(reminderAt).getTime();
+  const diff = due - rem;
+  if (diff <= 0) return 'at-time';
+  if (Math.abs(diff - 15 * 60_000) < 60_000) return '15-min';
+  if (Math.abs(diff - 60 * 60_000) < 60_000) return '1-hour';
+  if (Math.abs(diff - 24 * 60 * 60_000) < 60_000) return '1-day';
+  return 'at-time';
 }
 
 export default function CardModal({ card, board, columnId, onClose }: Props) {
@@ -541,6 +552,42 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
                 onChange={(e) => setData((d) => ({ ...d, dueDate: e.target.value || null }))}
               />
             </div>
+
+            {/* Reminder Picker */}
+            {data.dueDate && (
+              <div className={styles.section}>
+                <div className={styles.sectionLabel}><Bell size={14} /> Remind Me</div>
+                <select
+                  className="input"
+                  style={{ width: '100%', fontSize: 13 }}
+                  value={data.reminderAt ? getReminderOption(data.dueDate, data.reminderAt) : 'none'}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    let reminderAt: string | null = null;
+                    if (val !== 'none' && data.dueDate) {
+                      const due = new Date(data.dueDate);
+                      switch (val) {
+                        case 'at-time': reminderAt = due.toISOString(); break;
+                        case '15-min': reminderAt = new Date(due.getTime() - 15 * 60_000).toISOString(); break;
+                        case '1-hour': reminderAt = new Date(due.getTime() - 60 * 60_000).toISOString(); break;
+                        case '1-day': reminderAt = new Date(due.getTime() - 24 * 60 * 60_000).toISOString(); break;
+                      }
+                      // Flag for permission banner
+                      if (typeof window !== 'undefined') {
+                        localStorage.setItem('kordit-has-reminder', 'true');
+                      }
+                    }
+                    setData(d => ({ ...d, reminderAt }));
+                  }}
+                >
+                  <option value="none">None</option>
+                  <option value="at-time">At due time</option>
+                  <option value="15-min">15 minutes before</option>
+                  <option value="1-hour">1 hour before</option>
+                  <option value="1-day">1 day before</option>
+                </select>
+              </div>
+            )}
 
             {/* Time Tracking */}
             <div className={styles.section}>

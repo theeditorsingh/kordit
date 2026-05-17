@@ -126,6 +126,7 @@ model Card {
   description String    @default("")
   priority    String    @default("none") // none, urgent, high, medium, low
   dueDate     DateTime?
+  reminderAt  DateTime?                   // When to fire the reminder notification
   order       Int       @default(0)
   coverImage  String    @default("")       // URL of cover image
   coverColor  String    @default("")       // Solid color cover

@@ -40,6 +40,7 @@ export interface Card {
   isRecurring?: boolean;
   recurringRule?: string;
   blockedBy?: string[];
+  reminderAt?: string | null;
 }
 
 export interface Column {

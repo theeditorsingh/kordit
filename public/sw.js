@@ -146,3 +146,20 @@ self.addEventListener('message', (event) => {
     flushMutationQueue();
   }
 });
+
+// Notification click: focus the app window
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // Focus existing tab if any
+      for (const client of clientList) {
+        if ('focus' in client) {
+          return client.focus();
+        }
+      }
+      // Otherwise open new tab
+      return clients.openWindow('/');
+    })
+  );
+});
