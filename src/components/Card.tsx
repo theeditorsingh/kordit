@@ -11,7 +11,7 @@ import styles from './Card.module.css';
 
 interface Props { card: Card; index: number; board: Board; columnId: string; onModalOpenChange?: (open: boolean) => void; }
 
-const PRIORITY_LABELS = { urgent: 'Urgent', high: 'High', medium: 'Medium', low: 'Low' };
+const PRIORITY_LABELS: Record<string, string> = { none: 'None', urgent: 'Urgent', high: 'High', medium: 'Medium', low: 'Low' };
 
 function getDueDateClass(date: string | null) {
   if (!date) return '';
@@ -103,18 +103,22 @@ export default function CardItem({ card, index, board, columnId, onModalOpenChan
             )}
 
             {/* Top metadata row: priority pill + due date */}
-            <div className={styles.metaRow}>
-              <span className={`badge badge-${card.priority}`} style={{ fontSize: 10, padding: '2px 7px', lineHeight: 1.2 }}>
-                {PRIORITY_LABELS[card.priority] || card.priority}
-              </span>
-              <div className={styles.metaRight}>
-                {card.dueDate && (
-                  <span className={`${styles.due} ${getDueDateClass(card.dueDate)}`}>
-                    <Calendar size={11}/> {formatDate(card.dueDate)}
+            {(card.priority !== 'none' || card.dueDate) && (
+              <div className={styles.metaRow}>
+                {card.priority !== 'none' && (
+                  <span className={`badge badge-${card.priority}`} style={{ fontSize: 10, padding: '2px 7px', lineHeight: 1.2 }}>
+                    {PRIORITY_LABELS[card.priority] || card.priority}
                   </span>
                 )}
+                <div className={styles.metaRight}>
+                  {card.dueDate && (
+                    <span className={`${styles.due} ${getDueDateClass(card.dueDate)}`}>
+                      <Calendar size={11}/> {formatDate(card.dueDate)}
+                    </span>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Title — full width */}
             <div className={styles.title}>{card.title}</div>

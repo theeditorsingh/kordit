@@ -1,4 +1,4 @@
-export type Priority = 'urgent' | 'high' | 'medium' | 'low';
+export type Priority = 'none' | 'urgent' | 'high' | 'medium' | 'low';
 export type Theme = 'dark' | 'light';
 export type ViewMode = 'board' | 'list' | 'calendar';
 export type Visibility = 'Private' | 'Workspace' | 'Public';

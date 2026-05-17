@@ -122,6 +122,7 @@ ul, ol { list-style: none; }
 .badge-high   { background: rgba(255,153,31,0.15); color: #FF991F; }
 .badge-medium { background: rgba(0,82,204,0.15);   color: #0052CC; }
 .badge-low    { background: rgba(54,179,126,0.15);  color: #36B37E; }
+.badge-none   { background: var(--bg-overlay);  color: var(--text-muted); }
 
 .avatar {
   width: 28px; height: 28px; border-radius: 50%;

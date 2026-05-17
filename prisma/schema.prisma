@@ -124,7 +124,7 @@ model Card {
   id          String    @id @default(cuid())
   title       String
   description String    @default("")
-  priority    String    @default("medium") // urgent, high, medium, low
+  priority    String    @default("none") // none, urgent, high, medium, low
   dueDate     DateTime?
   order       Int       @default(0)
   coverImage  String    @default("")       // URL of cover image

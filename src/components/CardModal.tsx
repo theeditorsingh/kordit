@@ -13,7 +13,7 @@ import styles from './CardModal.module.css';
 
 interface Props { card: Card; board: Board; columnId: string; onClose: () => void; }
 
-const PRIORITIES: Priority[] = ['urgent', 'high', 'medium', 'low'];
+const PRIORITIES: Priority[] = ['none', 'urgent', 'high', 'medium', 'low'];
 const LABEL_COLORS = ['#0052CC','#36B37E','#FF5630','#FF991F','#6554C0','#00B8D9','#FF7452','#FFC400'];
 const COVER_COLORS = ['#0052CC','#36B37E','#FF5630','#FF991F','#6554C0','#00B8D9','#FF7452','#FFC400','#172B4D','#091E42'];
 
