@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useTransition } from 'react';
 import { useSession } from 'next-auth/react';
-import { signOut } from 'next-auth/react';
+import { signIn, signOut } from 'next-auth/react';
 import {
   X, User, Lock, Trash2, Camera, Check, AlertCircle, Loader2,
   ShieldCheck, Calendar, LayoutGrid, MessageSquare, LogOut, ChevronRight, Eye, EyeOff, Mail, KeyRound
