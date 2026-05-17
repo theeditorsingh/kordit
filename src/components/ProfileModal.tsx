@@ -7,7 +7,7 @@ import {
   X, User, Lock, Trash2, Camera, Check, AlertCircle, Loader2,
   ShieldCheck, Calendar, LayoutGrid, MessageSquare, LogOut, ChevronRight, Eye, EyeOff, Mail, KeyRound
 } from 'lucide-react';
-import { updateProfileAction, changePasswordAction, deleteAccountAction, getCurrentUserAction, sendPasswordResetEmailAction } from '@/actions/userActions';
+import { updateProfileAction, changePasswordAction, deleteAccountAction, getCurrentUserAction } from '@/actions/userActions';
 import styles from './ProfileModal.module.css';
 
 type Tab = 'profile' | 'security' | 'danger';
@@ -134,8 +134,8 @@ export default function ProfileModal({ onClose, initialTab = 'profile' }: { onCl
     setResetMsg(null);
     startReset(async () => {
       try {
-        await sendPasswordResetEmailAction();
-        // Trigger NextAuth's email flow to send the actual magic link
+        // Just send the magic link email — do NOT clear password yet
+        // Password is only cleared when user clicks the link and lands on /?reset=true
         if (userData?.email) {
           const res = await signIn('email', { 
             email: userData.email, 
@@ -145,10 +145,7 @@ export default function ProfileModal({ onClose, initialTab = 'profile' }: { onCl
           if (res?.error) throw new Error(res.error);
         }
         setResetLinkSent(true);
-        setResetMsg({ type: 'success', text: 'Password reset email sent! Check your inbox, then sign in and set a new password.' });
-        // Refresh user data — password is now null
-        const u = await getCurrentUserAction();
-        if (u) setUserData(u as UserData);
+        setResetMsg({ type: 'success', text: 'Password reset email sent! Check your inbox and click the link to set a new password.' });
       } catch (e: any) {
         setResetMsg({ type: 'error', text: e.message ?? 'Failed to send reset email' });
       }

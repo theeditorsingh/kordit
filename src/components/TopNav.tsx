@@ -56,8 +56,14 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
   // Auto-open profile on password reset return
   useEffect(() => {
     if (searchParams?.get('reset') === 'true') {
-      setProfileTab('security');
-      setShowProfile(true);
+      // User proved identity via magic link — now clear their old password
+      // so the Security tab shows "Set Password" form
+      import('@/actions/userActions').then(({ clearPasswordForResetAction }) => {
+        clearPasswordForResetAction().then(() => {
+          setProfileTab('security');
+          setShowProfile(true);
+        }).catch(console.error);
+      });
       // Clean up URL without triggering a full reload
       const newUrl = window.location.pathname;
       window.history.replaceState({}, '', newUrl);
