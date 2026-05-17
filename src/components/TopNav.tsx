@@ -53,9 +53,15 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
   // Auto-open profile on password reset return (user clicked magic link in email)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('reset') === 'true') {
-      // Clean up URL immediately so it doesn't re-trigger
-      window.history.replaceState({}, '', window.location.pathname);
+    const fromUrl = params.get('reset') === 'true';
+    const fromStorage = localStorage.getItem('kordit_password_reset') === 'true';
+    
+    if (fromUrl || fromStorage) {
+      // Clean up both signals so they don't re-trigger
+      if (fromUrl) {
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+      localStorage.removeItem('kordit_password_reset');
       
       // Open the Security tab right away
       setProfileTab('security');

@@ -26,7 +26,14 @@ export default function Home() {
     if (mounted && state.boards.length > 0 && session?.user?.username) {
       // Redirect to the first board
       const firstBoard = state.boards[0];
-      router.replace(`/${session.user.username}/${firstBoard.slug}`);
+      // Preserve ?reset=true so the board page can open the Security modal
+      const resetParam = new URLSearchParams(window.location.search).get('reset');
+      if (resetParam === 'true') {
+        // Store in localStorage as a reliable bridge across navigation
+        localStorage.setItem('kordit_password_reset', 'true');
+      }
+      const query = resetParam === 'true' ? '?reset=true' : '';
+      router.replace(`/${session.user.username}/${firstBoard.slug}${query}`);
     }
   }, [mounted, state.boards, session, router]);
 
