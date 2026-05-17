@@ -6,12 +6,13 @@ import { useUndoRedo } from '@/hooks/useUndoRedo';
 import { useTheme } from '@/context/ThemeContext';
 import {
   Sun, Moon, Search, LayoutGrid, List, Calendar, X, Share2, User, LogOut,
-  Zap, Palette, Save, Copy, Sparkles, Undo2, Redo2, Menu, MoreHorizontal
+  Zap, Palette, Save, Copy, Sparkles, Undo2, Redo2, Menu, MoreHorizontal, Settings
 } from 'lucide-react';
 
 import AutomationPanel from './AutomationPanel';
 import WeeklyDigest from './WeeklyDigest';
 import ShareModal from './ShareModal';
+import ProfileModal from './ProfileModal';
 import { ViewMode } from '@/types';
 import styles from './TopNav.module.css';
 import NotificationPermissionBanner from './NotificationPermissionBanner';
@@ -44,6 +45,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
   const [showDigest, setShowDigest] = useState(false);
   const [showMore, setShowMore] = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Activate keyboard shortcuts
@@ -284,8 +286,37 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
                 }}
               >
                 <div style={{ padding: '4px 8px', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)' }}>
-                  User Settings
+                  Account
                 </div>
+                <button
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    width: '100%',
+                    padding: '8px',
+                    background: 'none',
+                    border: 'none',
+                    borderRadius: '4px',
+                    color: 'var(--text-secondary)',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    textAlign: 'left'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.background = 'var(--bg-hover)';
+                    e.currentTarget.style.color = 'var(--text-primary)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.background = 'none';
+                    e.currentTarget.style.color = 'var(--text-secondary)';
+                  }}
+                  onClick={() => { setShowUserMenu(false); setShowProfile(true); }}
+                  id="open-profile-settings-btn"
+                >
+                  <Settings size={14} />
+                  Profile {'&'} Settings
+                </button>
                 <button
                   style={{
                     display: 'flex',
@@ -322,6 +353,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
       {showShareModal && <ShareModal onClose={() => setShowShareModal(false)} />}
       {showAutomations && activeBoard && <AutomationPanel boardId={activeBoard.id} onClose={() => setShowAutomations(false)} />}
       {showDigest && activeBoard && <WeeklyDigest boardId={activeBoard.id} boardTitle={activeBoard.title} onClose={() => setShowDigest(false)} />}
+      {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
 
       {/* Mobile More Actions Bottom Sheet */}
       {showMore && (
