@@ -3,7 +3,7 @@ import { useState, useRef, useCallback } from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 import { Board, Card } from '@/types';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Calendar, CheckSquare, AlertTriangle, Clock, Repeat, Edit2, Trash2, CheckCircle2, AlignLeft } from 'lucide-react';
+import { Calendar, CheckSquare, AlertTriangle, Repeat, Edit2, Trash2, CheckCircle2, AlignLeft } from 'lucide-react';
 import { getInitials } from '@/utils/storage';
 import CardModal from './CardModal';
 import { useBoardContext } from '@/context/BoardContext';
@@ -33,12 +33,7 @@ function formatDate(date: string) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-function formatTimeShort(seconds: number) {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  if (h > 0) return `${h}h ${m}m`;
-  return `${m}m`;
-}
+
 
 const contextMenuVariants = {
   hidden: { opacity: 0, scale: 0.92, y: -4 },
@@ -66,7 +61,6 @@ export default function CardItem({ card, index, board, columnId, onModalOpenChan
   const totalItems = card.checklist.length;
   const assignees = card.assigneeIds.map((id) => board.members.find((m) => m.id === id)).filter(Boolean);
   const hasBlockers = (card.blockedBy || []).length > 0;
-  const isTimerRunning = !!card.timerStarted;
   const progressPercent = totalItems > 0 ? (doneItems / totalItems) * 100 : 0;
 
   return (
@@ -150,7 +144,7 @@ export default function CardItem({ card, index, board, columnId, onModalOpenChan
             <div className={styles.title}>{card.title}</div>
 
             {/* Indicators row */}
-            {(hasBlockers || card.isRecurring || isTimerRunning) && (
+            {(hasBlockers || card.isRecurring) && (
               <div className={styles.indicators}>
                 {hasBlockers && (
                   <span className={styles.blockerBadge}>
@@ -162,16 +156,11 @@ export default function CardItem({ card, index, board, columnId, onModalOpenChan
                     <Repeat size={10} />
                   </span>
                 )}
-                {isTimerRunning && (
-                  <span className={styles.timerBadge}>
-                    <Clock size={10} />
-                  </span>
-                )}
               </div>
             )}
 
             {/* Footer: checklist + time on left, avatars on right */}
-            {(totalItems > 0 || (card.timeSpent || 0) > 0 || assignees.length > 0 || card.description) && (
+            {(totalItems > 0 || assignees.length > 0 || card.description) && (
               <div className={styles.footer}>
                 <div className={styles.footerLeft}>
                   {card.description && (
@@ -182,11 +171,6 @@ export default function CardItem({ card, index, board, columnId, onModalOpenChan
                   {totalItems > 0 && (
                     <span className={`${styles.checklist} ${doneItems === totalItems ? styles.allDone : ''}`}>
                       <CheckSquare size={11}/> {doneItems}/{totalItems}
-                    </span>
-                  )}
-                  {(card.timeSpent || 0) > 0 && (
-                    <span className={styles.timeBadge}>
-                      <Clock size={10} /> {formatTimeShort(card.timeSpent || 0)}
                     </span>
                   )}
                 </div>

@@ -7,7 +7,37 @@
   flex-direction: column;
   overflow-y: auto;
   overflow-x: hidden;
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+.collapsed {
+  width: 48px;
+}
+
+.collapsed .boardItem {
+  justify-content: center;
+  padding: 10px 0;
+}
+
+.collapseBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 32px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border-subtle);
+  cursor: pointer;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+}
+.collapseBtn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
 
 .section {
   padding: 12px 8px;
@@ -148,10 +178,16 @@
     transform: translateX(-100%);
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: var(--shadow-xl);
+    width: 240px !important; /* Always full width on mobile */
   }
 
   .sidebar.mobileOpen {
     transform: translateX(0);
+  }
+
+  /* Hide collapse button on mobile */
+  .collapseBtn {
+    display: none;
   }
 }
 

@@ -4,7 +4,7 @@ import { signOut, useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useBoardContext } from '@/context/BoardContext';
 import {
-  Plus, Trash2, ChevronDown, LayoutGrid, Users, Edit2, Check, X,
+  Plus, Trash2, ChevronDown, ChevronLeft, ChevronRight, LayoutGrid, Users, Edit2, Check, X,
   LayoutTemplate, LogOut, Star, Archive, Activity, Zap
 } from 'lucide-react';
 import MembersPanel from './MembersPanel';
@@ -27,6 +27,20 @@ export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: bool
   const [editTitle, setEditTitle] = useState('');
   const [showTemplates, setShowTemplates] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('kordit-sidebar-collapsed') === 'true';
+    }
+    return false;
+  });
+
+  function toggleCollapsed() {
+    setCollapsed(prev => {
+      const next = !prev;
+      localStorage.setItem('kordit-sidebar-collapsed', String(next));
+      return next;
+    });
+  }
 
   function handleAdd() {
     if (!newBoardTitle.trim()) return;
@@ -78,17 +92,27 @@ export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: bool
         />
       )}
       <aside
-        className={`${styles.sidebar} ${isMobileOpen ? styles.mobileOpen : ''}`}
+        className={`${styles.sidebar} ${isMobileOpen ? styles.mobileOpen : ''} ${collapsed ? styles.collapsed : ''}`}
         style={{ overflowY: 'hidden' }}
         id="sidebar-boards-section"
       >
+
+      {/* Collapse toggle — desktop only */}
+      <button
+        className={styles.collapseBtn}
+        onClick={toggleCollapsed}
+        title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+      >
+        {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+      </button>
 
       {/* Scrollable Boards Area */}
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto' }}>
         <div style={{ padding: '12px 8px 0 8px' }}>
           <div className={styles.sectionHeader}>
             <LayoutGrid size={13} />
-            <span>Boards</span>
+            {!collapsed && <span>Boards</span>}
           </div>
 
           <ul className={styles.boardList}>
@@ -119,22 +143,24 @@ export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: bool
                     }}
                   >
                     <span className={styles.boardDot} style={{ background: BOARD_COLORS[i % BOARD_COLORS.length] }} />
-                    <span className={styles.boardTitle}>{board.title}</span>
-                    {board.isFavorite && <Star size={11} style={{ color: '#FFC400', fill: '#FFC400', flexShrink: 0 }} />}
-                    <span className={styles.boardActions}>
-                      <span className={styles.actionBtn} onClick={(e) => { e.stopPropagation(); toggleFavorite(board.id); }} title={board.isFavorite ? 'Unfavorite' : 'Favorite'}>
-                        <Star size={12} style={board.isFavorite ? { color: '#FFC400', fill: '#FFC400' } : {}} />
+                    {!collapsed && <span className={styles.boardTitle}>{board.title}</span>}
+                    {!collapsed && board.isFavorite && <Star size={11} style={{ color: '#FFC400', fill: '#FFC400', flexShrink: 0 }} />}
+                    {!collapsed && (
+                      <span className={styles.boardActions}>
+                        <span className={styles.actionBtn} onClick={(e) => { e.stopPropagation(); toggleFavorite(board.id); }} title={board.isFavorite ? 'Unfavorite' : 'Favorite'}>
+                          <Star size={12} style={board.isFavorite ? { color: '#FFC400', fill: '#FFC400' } : {}} />
+                        </span>
+                        <span className={styles.actionBtn} onClick={(e) => { e.stopPropagation(); startEdit(board.id, board.title); }}>
+                          <Edit2 size={12}/>
+                        </span>
+                        <span className={styles.actionBtn} onClick={(e) => { e.stopPropagation(); handleArchive(board.id); }} title="Archive">
+                          <Archive size={12}/>
+                        </span>
+                        <span className={styles.actionBtn} onClick={(e) => { e.stopPropagation(); deleteBoard(board.id); }}>
+                          <Trash2 size={12}/>
+                        </span>
                       </span>
-                      <span className={styles.actionBtn} onClick={(e) => { e.stopPropagation(); startEdit(board.id, board.title); }}>
-                        <Edit2 size={12}/>
-                      </span>
-                      <span className={styles.actionBtn} onClick={(e) => { e.stopPropagation(); handleArchive(board.id); }} title="Archive">
-                        <Archive size={12}/>
-                      </span>
-                      <span className={styles.actionBtn} onClick={(e) => { e.stopPropagation(); deleteBoard(board.id); }}>
-                        <Trash2 size={12}/>
-                      </span>
-                    </span>
+                    )}
                   </button>
                 )}
               </li>
@@ -159,6 +185,13 @@ export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: bool
                 <button className="btn btn-ghost btn-sm" onClick={() => setAdding(false)}>Cancel</button>
               </div>
             </div>
+          ) : collapsed ? (
+            /* Collapsed: just a + icon that expands on click */
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <button className="btn btn-ghost btn-icon btn-sm" onClick={toggleCollapsed} title="Expand sidebar to add board">
+                <Plus size={14} />
+              </button>
+            </div>
           ) : (
             <div style={{ display: 'flex', gap: 4 }}>
               <button className={styles.addBoardBtn} onClick={() => setAdding(true)} style={{ flex: 1, marginTop: 0 }} id="btn-new-board">
@@ -175,8 +208,8 @@ export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: bool
         </div>
       </div>
 
-      {/* Fixed Bottom Sections */}
-      {activeBoard && (
+      {/* Fixed Bottom Sections — hidden when collapsed */}
+      {activeBoard && !collapsed && (
         <>
           {/* Activity Feed Toggle */}
           <div

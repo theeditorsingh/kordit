@@ -6,13 +6,12 @@ import { useUndoRedo } from '@/hooks/useUndoRedo';
 import { useTheme } from '@/context/ThemeContext';
 import {
   Sun, Moon, Search, LayoutGrid, List, Calendar, X, Share2, User, LogOut,
-  Zap, Palette, Save, Copy, Sparkles, Undo2, Redo2, Menu, Shield, MoreHorizontal
+  Zap, Palette, Save, Copy, Sparkles, Undo2, Redo2, Menu, MoreHorizontal
 } from 'lucide-react';
-import VisibilityDropdown from './VisibilityDropdown';
-import ShareModal from './ShareModal';
+
 import AutomationPanel from './AutomationPanel';
 import WeeklyDigest from './WeeklyDigest';
-import AuditLogPanel from './AuditLogPanel';
+import ShareModal from './ShareModal';
 import { ViewMode } from '@/types';
 import styles from './TopNav.module.css';
 import NotificationPermissionBanner from './NotificationPermissionBanner';
@@ -43,7 +42,6 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
   const [showAutomations, setShowAutomations] = useState(false);
   const [showBgPicker, setShowBgPicker] = useState(false);
   const [showDigest, setShowDigest] = useState(false);
-  const [showAuditLog, setShowAuditLog] = useState(false);
   const [showMore, setShowMore] = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -136,7 +134,6 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
 
             {/* Desktop-only actions (hidden on mobile) */}
             <div className={styles.desktopOnly}>
-              <VisibilityDropdown />
 
               {/* Board Background */}
               <div style={{ position: 'relative', marginLeft: 4 }}>
@@ -206,15 +203,6 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
               >
                 <Sparkles size={14} />
                 <span className={styles.tabLabel}>AI Digest</span>
-              </button>
-
-              <button
-                className="btn btn-ghost btn-icon btn-sm"
-                onClick={() => setShowAuditLog(true)}
-                title="Audit Log"
-                style={{ marginLeft: 4 }}
-              >
-                <Shield size={15} />
               </button>
             </div>
 
@@ -334,7 +322,6 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
       {showShareModal && <ShareModal onClose={() => setShowShareModal(false)} />}
       {showAutomations && activeBoard && <AutomationPanel boardId={activeBoard.id} onClose={() => setShowAutomations(false)} />}
       {showDigest && activeBoard && <WeeklyDigest boardId={activeBoard.id} boardTitle={activeBoard.title} onClose={() => setShowDigest(false)} />}
-      {showAuditLog && activeBoard && <AuditLogPanel boardId={activeBoard.id} onClose={() => setShowAuditLog(false)} />}
 
       {/* Mobile More Actions Bottom Sheet */}
       {showMore && (
@@ -348,7 +335,6 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
                   { icon: <Zap size={18} />, label: 'Automations', action: () => { setShowMore(false); setShowAutomations(true); } },
                   { icon: <Copy size={18} />, label: 'Save as Template', action: () => { setShowMore(false); if (activeBoard && confirm('Save as template?')) saveBoardAsTemplate(activeBoard.id); } },
                   { icon: <Sparkles size={18} />, label: 'AI Weekly Digest', action: () => { setShowMore(false); setShowDigest(true); } },
-                  { icon: <Shield size={18} />, label: 'Audit Log', action: () => { setShowMore(false); setShowAuditLog(true); } },
                   { icon: <Share2 size={18} />, label: 'Share Board', action: () => { setShowMore(false); setShowShareModal(true); } },
                 ].map((item, i) => (
                   <button

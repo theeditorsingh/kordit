@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import CommentSection from './CommentSection';
 import {
   X, Plus, Trash2, Check, Calendar, Tag, Users, AlignLeft, List,
-  Image, Clock, Play, Pause, Link2, Repeat, AlertTriangle, Sparkles, Loader2, Bell
+  Image, Link2, Repeat, AlertTriangle, Sparkles, Loader2, Bell
 } from 'lucide-react';
 import { getInitials } from '@/utils/storage';
 import styles from './CardModal.module.css';
@@ -17,14 +17,7 @@ const PRIORITIES: Priority[] = ['none', 'urgent', 'high', 'medium', 'low'];
 const LABEL_COLORS = ['#0052CC','#36B37E','#FF5630','#FF991F','#6554C0','#00B8D9','#FF7452','#FFC400'];
 const COVER_COLORS = ['#0052CC','#36B37E','#FF5630','#FF991F','#6554C0','#00B8D9','#FF7452','#FFC400','#172B4D','#091E42'];
 
-function formatTime(seconds: number) {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-  if (h > 0) return `${h}h ${m}m`;
-  if (m > 0) return `${m}m ${s}s`;
-  return `${s}s`;
-}
+
 
 function getReminderOption(dueDate: string, reminderAt: string): string {
   const due = new Date(dueDate).getTime();
@@ -56,8 +49,6 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
   const [showCoverPicker, setShowCoverPicker] = useState(false);
   const [showDependencies, setShowDependencies] = useState(false);
   const [showRecurring, setShowRecurring] = useState(false);
-  const [timerDisplay, setTimerDisplay] = useState(data.timeSpent || 0);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // AI state
   const [aiLoading, setAiLoading] = useState<'subtasks' | 'date' | 'categorize' | null>(null);
@@ -98,24 +89,6 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
     dragStartY.current = null;
   }, [dragY]);
 
-  const isTimerRunning = !!data.timerStarted;
-
-  useEffect(() => {
-    if (isTimerRunning && data.timerStarted) {
-      const startTime = new Date(data.timerStarted).getTime();
-      const baseTime = data.timeSpent || 0;
-
-      timerRef.current = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - startTime) / 1000);
-        setTimerDisplay(baseTime + elapsed);
-      }, 1000);
-
-      return () => { if (timerRef.current) clearInterval(timerRef.current); };
-    } else {
-      setTimerDisplay(data.timeSpent || 0);
-    }
-  }, [isTimerRunning, data.timerStarted, data.timeSpent]);
-
   function save() {
     updateCard(board.id, data);
     onClose();
@@ -125,19 +98,6 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
     if (confirm('Delete this card?')) {
       deleteCardFn(board.id, columnId, card.id);
       onClose();
-    }
-  }
-
-  function toggleTimer() {
-    if (isTimerRunning) {
-      const elapsed = Math.floor((Date.now() - new Date(data.timerStarted!).getTime()) / 1000);
-      setData(d => ({
-        ...d,
-        timeSpent: (d.timeSpent || 0) + elapsed,
-        timerStarted: null
-      }));
-    } else {
-      setData(d => ({ ...d, timerStarted: new Date().toISOString() }));
     }
   }
 
@@ -613,20 +573,6 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
                 </select>
               </div>
             )}
-
-            {/* Time Tracking */}
-            <div className={styles.section}>
-              <div className={styles.sectionLabel}><Clock size={14} /> Time Tracking</div>
-              <div className={styles.timerRow}>
-                <span className={styles.timerDisplay} style={{ fontSize: 16 }}>{formatTime(timerDisplay)}</span>
-                <button
-                  className={`btn btn-sm ${isTimerRunning ? 'btn-danger' : 'btn-primary'}`}
-                  onClick={toggleTimer}
-                >
-                  {isTimerRunning ? <><Pause size={12} /> Stop</> : <><Play size={12} /> Start</>}
-                </button>
-              </div>
-            </div>
 
             {/* Dependencies */}
             {showDependencies && (
