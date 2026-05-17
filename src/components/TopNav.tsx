@@ -4,7 +4,7 @@ import { signOut } from 'next-auth/react';
 import { useBoardContext } from '@/context/BoardContext';
 import { useUndoRedo } from '@/hooks/useUndoRedo';
 import { useTheme } from '@/context/ThemeContext';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { clearPasswordForResetAction } from '@/actions/userActions';
 import {
   Sun, Moon, Search, LayoutGrid, List, Calendar, X, Share2, User, LogOut,
   Zap, Palette, Save, Copy, Sparkles, Undo2, Redo2, Menu, MoreHorizontal, Settings
@@ -49,26 +49,22 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
   const [showProfile, setShowProfile] = useState(false);
   const [profileTab, setProfileTab] = useState<'profile'|'security'|'danger'>('profile');
   const searchInputRef = useRef<HTMLInputElement>(null);
-  
-  const searchParams = useSearchParams();
-  const router = useRouter();
 
-  // Auto-open profile on password reset return
+  // Auto-open profile on password reset return (user clicked magic link in email)
   useEffect(() => {
-    if (searchParams?.get('reset') === 'true') {
-      // User proved identity via magic link — now clear their old password
-      // so the Security tab shows "Set Password" form
-      import('@/actions/userActions').then(({ clearPasswordForResetAction }) => {
-        clearPasswordForResetAction().then(() => {
-          setProfileTab('security');
-          setShowProfile(true);
-        }).catch(console.error);
-      });
-      // Clean up URL without triggering a full reload
-      const newUrl = window.location.pathname;
-      window.history.replaceState({}, '', newUrl);
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('reset') === 'true') {
+      // Clean up URL immediately so it doesn't re-trigger
+      window.history.replaceState({}, '', window.location.pathname);
+      
+      // Open the Security tab right away
+      setProfileTab('security');
+      setShowProfile(true);
+      
+      // Clear old password in the background (user proved identity via magic link)
+      clearPasswordForResetAction().catch(console.error);
     }
-  }, [searchParams]);
+  }, []);
 
   // Activate keyboard shortcuts
   useUndoRedo();
