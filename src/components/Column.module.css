@@ -209,6 +209,99 @@
   opacity: 0; cursor: pointer;
 }
 
+/* ─── Time Picker Popup ─── */
+.timePickerPopup {
+  margin-top: 8px;
+  padding: 10px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.timePickerHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.timePickerBody {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.timeSelect {
+  width: 52px;
+  padding: 5px 4px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--text-primary);
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  outline: none;
+  text-align: center;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.timeSelect:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-subtle);
+}
+
+.timeColon {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.periodToggle {
+  display: flex;
+  margin-left: 4px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.periodBtn {
+  padding: 5px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: inherit;
+  color: var(--text-muted);
+  background: var(--bg-base);
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.periodBtn:first-child {
+  border-right: 1px solid var(--border);
+}
+
+.periodActive {
+  background: var(--accent);
+  color: #fff;
+}
+
+.timePickerActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
 .showMoreBtn {
   width: 100%;
   padding: 8px;

@@ -27,6 +27,13 @@ export default function Column({ column, board, search, onModalOpenChange }: Pro
   const [wipValue, setWipValue] = useState(column.wipLimit || 0);
   const [displayLimit, setDisplayLimit] = useState(50);
 
+  // Time picker state
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [pendingDays, setPendingDays] = useState(0);
+  const [selectedHour, setSelectedHour] = useState(9);
+  const [selectedMinute, setSelectedMinute] = useState(0);
+  const [selectedPeriod, setSelectedPeriod] = useState<'AM'|'PM'>('AM');
+
   const allCards = column.cardIds
     .map((id) => board.cards[id])
     .filter(Boolean)
@@ -58,9 +65,31 @@ export default function Column({ column, board, search, onModalOpenChange }: Pro
   }
 
   function setDue(daysFromNow: number) {
+    setPendingDays(daysFromNow);
+    // Default to 9:00 AM for a sensible starting time
+    setSelectedHour(9);
+    setSelectedMinute(0);
+    setSelectedPeriod('AM');
+    setShowTimePicker(true);
+  }
+
+  function confirmDueWithTime() {
     const d = new Date();
-    d.setDate(d.getDate() + daysFromNow);
+    d.setDate(d.getDate() + pendingDays);
+    let h = selectedHour;
+    if (selectedPeriod === 'PM' && h !== 12) h += 12;
+    if (selectedPeriod === 'AM' && h === 12) h = 0;
+    d.setHours(h, selectedMinute, 0, 0);
+    setCardDue(d.toISOString());
+    setShowTimePicker(false);
+  }
+
+  function skipTime() {
+    const d = new Date();
+    d.setDate(d.getDate() + pendingDays);
+    d.setHours(0, 0, 0, 0);
     setCardDue(d.toISOString().split('T')[0]);
+    setShowTimePicker(false);
   }
 
   function isDateMatch(dateStr: string | null, daysFromNow: number) {
@@ -248,11 +277,56 @@ export default function Column({ column, board, search, onModalOpenChange }: Pro
               <input
                 type="date"
                 className={styles.dateInput}
-                value={cardDue ?? ''}
+                value={cardDue ? cardDue.split('T')[0] : ''}
                 onChange={(e) => setCardDue(e.target.value || null)}
               />
             </div>
           </div>
+
+          {/* Time Picker Popup */}
+          {showTimePicker && (
+            <div className={styles.timePickerPopup}>
+              <div className={styles.timePickerHeader}>
+                <CalendarIcon size={13} />
+                <span>{pendingDays === 0 ? 'Today' : 'Tomorrow'} — Select Time</span>
+              </div>
+              <div className={styles.timePickerBody}>
+                <select
+                  className={styles.timeSelect}
+                  value={selectedHour}
+                  onChange={(e) => setSelectedHour(parseInt(e.target.value))}
+                >
+                  {[12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(h => (
+                    <option key={h} value={h}>{h}</option>
+                  ))}
+                </select>
+                <span className={styles.timeColon}>:</span>
+                <select
+                  className={styles.timeSelect}
+                  value={selectedMinute}
+                  onChange={(e) => setSelectedMinute(parseInt(e.target.value))}
+                >
+                  {[0, 15, 30, 45].map(m => (
+                    <option key={m} value={m}>{m.toString().padStart(2, '0')}</option>
+                  ))}
+                </select>
+                <div className={styles.periodToggle}>
+                  <button
+                    className={`${styles.periodBtn} ${selectedPeriod === 'AM' ? styles.periodActive : ''}`}
+                    onClick={() => setSelectedPeriod('AM')}
+                  >AM</button>
+                  <button
+                    className={`${styles.periodBtn} ${selectedPeriod === 'PM' ? styles.periodActive : ''}`}
+                    onClick={() => setSelectedPeriod('PM')}
+                  >PM</button>
+                </div>
+              </div>
+              <div className={styles.timePickerActions}>
+                <button className="btn btn-ghost btn-sm" onClick={skipTime}>No time</button>
+                <button className="btn btn-primary btn-sm" onClick={confirmDueWithTime}>Set</button>
+              </div>
+            </div>
+          )}
 
           <div style={{ display: 'flex', gap: 6, marginTop: 12, alignItems: 'center' }}>
             <button type="button" className="btn btn-primary btn-sm" onClick={handleAddCard}>Add</button>
