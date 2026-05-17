@@ -5,7 +5,7 @@ import { useBoardContext } from '@/context/BoardContext';
 import Column from './Column';
 import BulkActionBar from './BulkActionBar';
 import { Plus } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import styles from './Board.module.css';
 
 interface Props { board: BoardType; search: string; }
@@ -17,6 +17,32 @@ export default function Board({ board, search }: Props) {
   const boardRef = useRef<HTMLDivElement>(null);
   // Track whether any card modal is open — disables column drag while modal is visible
   const [modalOpen, setModalOpen] = useState(false);
+  const [activeColIndex, setActiveColIndex] = useState(0);
+
+  // Mobile column page dots — IntersectionObserver
+  useEffect(() => {
+    const boardEl = boardRef.current;
+    if (!boardEl || typeof window === 'undefined') return;
+    if (window.innerWidth > 768) return; // desktop: skip
+
+    const columns = boardEl.querySelectorAll('[data-col-index]');
+    if (!columns.length) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const idx = parseInt((entry.target as HTMLElement).dataset.colIndex || '0');
+            setActiveColIndex(idx);
+          }
+        });
+      },
+      { root: boardEl, threshold: 0.6 }
+    );
+
+    columns.forEach(col => observer.observe(col));
+    return () => observer.disconnect();
+  }, [board.columns.length]);
 
   useEffect(() => {
     const boardEl = boardRef.current;
@@ -116,12 +142,14 @@ export default function Board({ board, search }: Props) {
                         cursor: modalOpen ? 'default' : undefined,
                       }}
                     >
-                      <Column
-                        column={col}
-                        board={board}
-                        search={search}
-                        onModalOpenChange={setModalOpen}
-                      />
+                      <div data-col-index={index}>
+                        <Column
+                          column={col}
+                          board={board}
+                          search={search}
+                          onModalOpenChange={setModalOpen}
+                        />
+                      </div>
                     </div>
                   )}
                 </Draggable>
@@ -155,6 +183,19 @@ export default function Board({ board, search }: Props) {
         </Droppable>
       </DragDropContext>
       <BulkActionBar />
+
+      {/* Mobile column page dots */}
+      {board.columns.length > 1 && (
+        <div className={styles.pageDots}>
+          {board.columns.map((col, i) => (
+            <span
+              key={col.id}
+              className={`${styles.pageDot} ${i === activeColIndex ? styles.pageDotActive : ''}`}
+              style={{ background: i === activeColIndex ? col.color : undefined }}
+            />
+          ))}
+        </div>
+      )}
     </>
   );
 }

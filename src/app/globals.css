@@ -235,6 +235,7 @@ textarea.input { resize: vertical; min-height: 80px; }
     max-height: 92vh;
     border-radius: 20px 20px 0 0;
     width: 100%;
+    padding-bottom: env(safe-area-inset-bottom) !important;
   }
   /* Bottom sheet handle */
   .modal-box::before {
@@ -262,4 +263,9 @@ textarea.input { resize: vertical; min-height: 80px; }
 
   /* Body scroll lock */
   body.scroll-locked { overflow: hidden !important; }
+
+  /* Safe area insets for notched phones */
+  .app-layout {
+    padding-top: env(safe-area-inset-top);
+  }
 }

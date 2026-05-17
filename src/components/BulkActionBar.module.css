@@ -91,3 +91,49 @@
   pointer-events: none;
   color: var(--text-secondary);
 }
+
+/* ─── Mobile ─── */
+@media (max-width: 768px) {
+  .actionBar {
+    left: 8px;
+    right: 8px;
+    bottom: 0;
+    transform: none;
+    width: auto;
+    border-radius: 16px 16px 0 0;
+    padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  @keyframes slideUp {
+    from {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .count {
+    border-right: none;
+    padding-right: 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-subtle);
+    font-size: 15px;
+  }
+
+  .actions {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .select {
+    flex: 1;
+    min-height: 44px;
+    font-size: 14px;
+  }
+}

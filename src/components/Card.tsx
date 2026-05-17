@@ -92,6 +92,9 @@ export default function CardItem({ card, index, board, columnId, onModalOpenChan
             }}
             onTouchStart={() => {
               longPressTimer.current = setTimeout(() => {
+                if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                  navigator.vibrate(10);
+                }
                 setShowBottomSheet(true);
               }, 500);
             }}

@@ -44,3 +44,31 @@
   }
 }
 
+/* Column page dots (mobile only) */
+.pageDots { display: none; }
+@media (max-width: 768px) {
+  .pageDots {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 0 12px;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    background: linear-gradient(transparent, var(--bg-base) 40%);
+    padding-top: 20px;
+  }
+  .pageDot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+    transition: all 0.25s ease;
+  }
+  .pageDotActive {
+    width: 20px;
+    border-radius: 4px;
+  }
+}
