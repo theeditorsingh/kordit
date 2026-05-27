@@ -223,6 +223,37 @@ textarea.input { resize: vertical; min-height: 80px; }
 .overdue { color: #FF5630 !important; }
 .due-soon { color: #FF991F !important; }
 
+/* ─── MATERIAL YOU (M3) MOBILE TOKENS ─── */
+@media (max-width: 768px) {
+  :root, [data-theme="light"] {
+    --m3-surface-tint: rgba(0, 82, 204, 0.05);
+    --m3-surface-container: #F0F1F4;
+    --m3-surface-container-high: #E8E9ED;
+    --m3-surface-container-highest: #E0E1E6;
+    --m3-on-surface-variant: #44474E;
+    --m3-outline: #74777F;
+    --m3-outline-variant: #C4C6D0;
+    --m3-elevation-1: 0 1px 3px 1px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.12);
+    --m3-elevation-2: 0 2px 6px 2px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.12);
+    --m3-radius-sm: 8px;
+    --m3-radius-md: 12px;
+    --m3-radius-lg: 16px;
+    --m3-radius-xl: 28px;
+    --m3-radius-full: 9999px;
+  }
+  [data-theme="dark"] {
+    --m3-surface-tint: rgba(130, 170, 255, 0.08);
+    --m3-surface-container: #1A1D24;
+    --m3-surface-container-high: #222530;
+    --m3-surface-container-highest: #2A2D38;
+    --m3-on-surface-variant: #C4C6D0;
+    --m3-outline: #8E9099;
+    --m3-outline-variant: #44474E;
+    --m3-elevation-1: 0 1px 3px 1px rgba(0,0,0,0.25), 0 1px 2px rgba(0,0,0,0.35);
+    --m3-elevation-2: 0 2px 6px 2px rgba(0,0,0,0.25), 0 1px 2px rgba(0,0,0,0.35);
+  }
+}
+
 /* ─── MOBILE RESPONSIVE ─── */
 @media (max-width: 768px) {
   /* Full-screen modals on mobile */
@@ -233,19 +264,21 @@ textarea.input { resize: vertical; min-height: 80px; }
   .modal-box {
     max-width: 100% !important;
     max-height: 92vh;
-    border-radius: 20px 20px 0 0;
+    border-radius: var(--m3-radius-xl, 28px) var(--m3-radius-xl, 28px) 0 0;
     width: 100%;
     padding-bottom: env(safe-area-inset-bottom) !important;
+    box-shadow: var(--m3-elevation-2);
   }
   /* Bottom sheet handle */
   .modal-box::before {
     content: '';
     display: block;
-    width: 40px;
+    width: 32px;
     height: 4px;
-    background: var(--border-subtle);
-    border-radius: 2px;
-    margin: 12px auto -4px; /* negative margin to pull header up */
+    background: var(--m3-outline-variant, var(--border-subtle));
+    border-radius: var(--m3-radius-full, 2px);
+    margin: 12px auto 8px;
+    opacity: 0.6;
   }
 
   /* App layout: hide sidebar gap on mobile */
@@ -253,10 +286,53 @@ textarea.input { resize: vertical; min-height: 80px; }
     overflow: visible;
   }
 
-  /* Touch-friendly targets */
-  .btn { min-height: 44px; padding: 10px 16px; }
-  .btn-icon { min-height: 44px; min-width: 44px; }
-  .input { min-height: 44px; font-size: 16px; } /* Prevents iOS auto-zoom */
+  /* ─── M3 Touch-friendly targets ─── */
+  .btn {
+    min-height: 48px;
+    padding: 12px 20px;
+    border-radius: var(--m3-radius-full, 20px);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+  }
+  .btn-primary {
+    box-shadow: var(--m3-elevation-1);
+  }
+  .btn-primary:active {
+    transform: scale(0.97);
+    box-shadow: none;
+  }
+  .btn-ghost {
+    border-radius: var(--m3-radius-full, 20px);
+  }
+  .btn-ghost:active {
+    background: var(--bg-hover);
+    transform: scale(0.97);
+  }
+  .btn-icon {
+    min-height: 48px;
+    min-width: 48px;
+    border-radius: var(--m3-radius-full, 50%);
+  }
+  .btn-sm {
+    min-height: 40px;
+    padding: 8px 16px;
+  }
+  .input {
+    min-height: 48px;
+    font-size: 16px; /* Prevents iOS auto-zoom */
+    border-radius: var(--m3-radius-md, 12px);
+    padding: 12px 16px;
+  }
+
+  /* ─── M3 Badge / Chip styling ─── */
+  .badge {
+    padding: 4px 12px;
+    border-radius: var(--m3-radius-sm, 8px);
+    font-size: 12px;
+    min-height: 28px;
+  }
 
   /* Sidebar overlay — show on mobile */
   .mobile-sidebar-overlay { display: block !important; }
@@ -268,4 +344,60 @@ textarea.input { resize: vertical; min-height: 80px; }
   .app-layout {
     padding-top: env(safe-area-inset-top);
   }
+}
+
+/* ─── M3 Floating Action Button ─── */
+.m3-fab {
+  position: fixed;
+  bottom: 56px;
+  right: 20px;
+  z-index: 90;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: var(--accent);
+  color: #fff;
+  display: none; /* shown only on mobile via media query */
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 3px 5px -1px rgba(0,0,0,0.2), 0 6px 10px rgba(0,0,0,0.14), 0 1px 18px rgba(0,0,0,0.12);
+  transition: transform 0.25s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.25s cubic-bezier(0.2, 0, 0, 1);
+  -webkit-tap-highlight-color: transparent;
+}
+.m3-fab:active {
+  transform: scale(0.93);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2), 0 2px 6px rgba(0,0,0,0.14);
+}
+@media (max-width: 768px) {
+  .m3-fab { display: flex; }
+  .m3-fab.m3-fab-hidden { display: none; }
+}
+
+/* ─── M3 Animation Easings ─── */
+@keyframes m3SlideUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes m3FadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ─── M3 Ripple (tap feedback) ─── */
+@media (max-width: 768px) {
+  .btn::after,
+  .btn-icon::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: currentColor;
+    opacity: 0;
+    transition: opacity 0.15s;
+    pointer-events: none;
+  }
+  .btn { position: relative; overflow: hidden; }
+  .btn:active::after { opacity: 0.08; }
 }

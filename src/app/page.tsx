@@ -55,7 +55,7 @@ export default function Home() {
             </h2>
             <p style={{ color: 'var(--text-secondary)', marginBottom: '32px' }}>Get started by choosing a template below.</p>
             
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', textAlign: 'left' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px', textAlign: 'left' }}>
               {TEMPLATES.map((tpl) => (
                 <button
                   key={tpl.id}
@@ -63,16 +63,17 @@ export default function Home() {
                   style={{
                     display: 'flex',
                     flexDirection: 'column',
-                    background: 'var(--bg-card)',
+                    background: 'var(--bg-card, var(--bg-surface))',
                     border: '1px solid var(--border-subtle)',
-                    borderRadius: '8px',
+                    borderRadius: '16px',
                     cursor: 'pointer',
-                    transition: 'all 0.2s ease',
+                    transition: 'all 0.2s cubic-bezier(0.2, 0, 0, 1)',
                     boxShadow: 'var(--shadow-sm)',
                     overflow: 'hidden',
-                    height: '100px',
+                    height: '110px',
                     textAlign: 'left',
-                    padding: 0
+                    padding: 0,
+                    WebkitTapHighlightColor: 'transparent',
                   }}
                   onMouseOver={(e) => {
                     e.currentTarget.style.borderColor = 'var(--accent)';
@@ -85,9 +86,9 @@ export default function Home() {
                     e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
                   }}
                 >
-                  <div style={{ width: '100%', height: '35%', backgroundColor: tpl.color, opacity: 0.9 }} />
-                  <div style={{ padding: '8px 12px', width: '100%', flex: 1, display: 'flex', alignItems: 'center' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.3 }}>{tpl.title}</span>
+                  <div style={{ width: '100%', height: '35%', backgroundColor: tpl.color, opacity: 0.9, borderRadius: '16px 16px 0 0' }} />
+                  <div style={{ padding: '10px 14px', width: '100%', flex: 1, display: 'flex', alignItems: 'center' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.3 }}>{tpl.title}</span>
                   </div>
                 </button>
               ))}

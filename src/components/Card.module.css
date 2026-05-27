@@ -140,3 +140,41 @@
 .progressAnimated {
   transition: width 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
+
+/* ─── M3 MOBILE CARD ─── */
+@media (max-width: 768px) {
+  .card {
+    border-radius: var(--m3-radius-md, 12px);
+    padding: 14px;
+    border-color: var(--m3-outline-variant, var(--border));
+    background: var(--m3-surface-container, var(--bg-elevated));
+    transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1), border-color 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .card:active {
+    transform: scale(0.98);
+  }
+
+  .title {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .footer {
+    margin-top: 10px;
+  }
+
+  .due, .checklist {
+    font-size: 12px;
+  }
+
+  .labels {
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+
+  .indicators {
+    gap: 6px;
+    margin-top: 8px;
+  }
+}
