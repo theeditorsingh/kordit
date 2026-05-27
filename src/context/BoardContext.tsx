@@ -527,12 +527,18 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
   const activeBoard = state.boards.find((b) => b.id === state.activeBoardId) ?? null;
 
   const pendingOpsRef = useRef(0);
+  const lastOpFinishedRef = useRef(0);
+
+  // Cooldown period (ms) after the last mutation finishes before allowing sync
+  const SYNC_COOLDOWN_MS = 3000;
 
   // ── Supabase Realtime + Fallback Polling ──────────────────────────────────
   const fetchAndSync = useCallback(async () => {
     if (document.visibilityState !== 'visible') return;
     if (!session?.user?.id) return;
     if (pendingOpsRef.current > 0) return;
+    // Don't sync if a mutation just finished — wait for cooldown
+    if (Date.now() - lastOpFinishedRef.current < SYNC_COOLDOWN_MS) return;
 
     try {
       const res = await fetch('/api/boards', { cache: 'no-store' });
@@ -676,7 +682,8 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
       console.error("Failed to create card on server", e);
       fetchAndSync();
     } finally {
-      setTimeout(() => { pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1); }, 500);
+      pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1);
+      lastOpFinishedRef.current = Date.now();
     }
     return tempId;
   }
@@ -690,7 +697,8 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
     } catch (e) {
       console.error('Failed to create column', e);
     } finally {
-      setTimeout(() => { pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1); }, 500);
+      pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1);
+      lastOpFinishedRef.current = Date.now();
     }
   }
 
@@ -703,7 +711,8 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
       console.error('Failed to move card', e);
       fetchAndSync();
     } finally {
-      setTimeout(() => { pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1); }, 500);
+      pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1);
+      lastOpFinishedRef.current = Date.now();
     }
   }
 
@@ -716,7 +725,8 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
       console.error('Failed to delete card', e);
       fetchAndSync();
     } finally {
-      setTimeout(() => { pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1); }, 500);
+      pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1);
+      lastOpFinishedRef.current = Date.now();
     }
   }
 
@@ -745,7 +755,8 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
       console.error("Failed to update card", e);
       fetchAndSync();
     } finally {
-      setTimeout(() => { pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1); }, 500);
+      pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1);
+      lastOpFinishedRef.current = Date.now();
     }
   }
 
@@ -763,7 +774,8 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
       console.error('Failed to move column', e);
       fetchAndSync();
     } finally {
-      setTimeout(() => { pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1); }, 500);
+      pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1);
+      lastOpFinishedRef.current = Date.now();
     }
   }
 
@@ -776,7 +788,8 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
       console.error('Failed to delete column', e);
       fetchAndSync();
     } finally {
-      setTimeout(() => { pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1); }, 500);
+      pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1);
+      lastOpFinishedRef.current = Date.now();
     }
   }
 
@@ -789,7 +802,8 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
       console.error("Failed to update column", e);
       fetchAndSync();
     } finally {
-      setTimeout(() => { pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1); }, 500);
+      pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1);
+      lastOpFinishedRef.current = Date.now();
     }
   }
 
@@ -802,7 +816,8 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
       console.error("Failed to update board", e);
       fetchAndSync();
     } finally {
-      setTimeout(() => { pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1); }, 500);
+      pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1);
+      lastOpFinishedRef.current = Date.now();
     }
   }
 
@@ -815,7 +830,8 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
       console.error("Failed to toggle favorite", e);
       fetchAndSync();
     } finally {
-      setTimeout(() => { pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1); }, 500);
+      pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1);
+      lastOpFinishedRef.current = Date.now();
     }
   }
 
@@ -837,7 +853,8 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
       console.error("Failed to archive board", e);
       fetchAndSync();
     } finally {
-      setTimeout(() => { pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1); }, 500);
+      pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1);
+      lastOpFinishedRef.current = Date.now();
     }
   }
 
@@ -866,7 +883,8 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
       console.error("Failed bulk delete", e);
       fetchAndSync();
     } finally {
-      setTimeout(() => { pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1); }, 500);
+      pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1);
+      lastOpFinishedRef.current = Date.now();
     }
   }
 
@@ -879,7 +897,8 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
       console.error("Failed bulk move", e);
       fetchAndSync();
     } finally {
-      setTimeout(() => { pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1); }, 500);
+      pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1);
+      lastOpFinishedRef.current = Date.now();
     }
   }
 
@@ -898,7 +917,8 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
       console.error("Failed bulk copy", e);
       fetchAndSync();
     } finally {
-      setTimeout(() => { pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1); }, 500);
+      pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1);
+      lastOpFinishedRef.current = Date.now();
     }
   }
 
@@ -912,7 +932,8 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
       console.error("Failed to invite member", error);
       fetchAndSync();
     } finally {
-      setTimeout(() => { pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1); }, 500);
+      pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1);
+      lastOpFinishedRef.current = Date.now();
     }
   }
 
@@ -925,7 +946,8 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
       console.error("Failed to remove member", error);
       fetchAndSync();
     } finally {
-      setTimeout(() => { pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1); }, 500);
+      pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1);
+      lastOpFinishedRef.current = Date.now();
     }
   }
 

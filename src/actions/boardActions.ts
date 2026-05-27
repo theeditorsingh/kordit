@@ -289,16 +289,58 @@ export async function moveCardAction(cardId: string, sourceColId: string, destCo
   if (!card) throw new Error("Card not found");
   await verifyBoardAccess(card.boardId, user.id);
 
+  // Move the card to its new column/position first
   if (sourceColId === destColId) {
-    await prisma.card.update({
-      where: { id: cardId },
-      data: { order: newOrder }
+    // Reorder within the same column
+    const colCards = await prisma.card.findMany({
+      where: { columnId: sourceColId },
+      orderBy: { order: 'asc' },
     });
+
+    // Remove the card from its current position and insert at newOrder
+    const filtered = colCards.filter(c => c.id !== cardId);
+    const movedCard = colCards.find(c => c.id === cardId)!;
+    filtered.splice(newOrder, 0, movedCard);
+
+    // Batch-update all order values in a transaction
+    await prisma.$transaction(
+      filtered.map((c, idx) =>
+        prisma.card.update({ where: { id: c.id }, data: { order: idx } })
+      )
+    );
   } else {
+    // Move across columns — update column assignment
     await prisma.card.update({
       where: { id: cardId },
-      data: { columnId: destColId, order: newOrder }
+      data: { columnId: destColId }
     });
+
+    // Reorder source column (close the gap)
+    const srcCards = await prisma.card.findMany({
+      where: { columnId: sourceColId },
+      orderBy: { order: 'asc' },
+    });
+    // Reorder destination column (insert at newOrder)
+    const dstCards = await prisma.card.findMany({
+      where: { columnId: destColId },
+      orderBy: { order: 'asc' },
+    });
+
+    // In dst, the moved card is already there from the update above.
+    // Remove it and re-insert at the desired position.
+    const dstFiltered = dstCards.filter(c => c.id !== cardId);
+    const movedCard = dstCards.find(c => c.id === cardId)!;
+    dstFiltered.splice(newOrder, 0, movedCard);
+
+    // Batch-update both columns in a single transaction
+    await prisma.$transaction([
+      ...srcCards.map((c, idx) =>
+        prisma.card.update({ where: { id: c.id }, data: { order: idx } })
+      ),
+      ...dstFiltered.map((c, idx) =>
+        prisma.card.update({ where: { id: c.id }, data: { order: idx } })
+      ),
+    ]);
 
     const sourceCol = await prisma.column.findUnique({ where: { id: sourceColId } });
     const destCol = await prisma.column.findUnique({ where: { id: destColId } });
@@ -362,7 +404,22 @@ export async function deleteCardAction(boardId: string, cardId: string) {
   const card = await prisma.card.findUnique({ where: { id: cardId } });
   if (card?.boardId !== boardId) throw new Error("Unauthorized");
 
+  const columnId = card.columnId;
   await prisma.card.delete({ where: { id: cardId } });
+
+  // Reorder remaining cards in the column to close the gap
+  const remaining = await prisma.card.findMany({
+    where: { columnId },
+    orderBy: { order: 'asc' },
+  });
+  if (remaining.length > 0) {
+    await prisma.$transaction(
+      remaining.map((c, idx) =>
+        prisma.card.update({ where: { id: c.id }, data: { order: idx } })
+      )
+    );
+  }
+
   if (card) {
     await logActivity(boardId, user.id, 'card_deleted', { cardTitle: card.title });
     await logAuditEvent(user.id, 'card_deleted', cardId, { cardTitle: card.title, boardId });
@@ -384,10 +441,34 @@ export async function bulkMoveCardsAction(boardId: string, cardIds: string[], ta
   const targetCol = await prisma.column.findUnique({ where: { id: targetColId } });
   if (targetCol?.boardId !== boardId) throw new Error("Unauthorized");
 
+  // Find affected source columns before moving
+  const cardsToMove = await prisma.card.findMany({
+    where: { id: { in: cardIds }, boardId },
+  });
+  const sourceColIds = [...new Set(cardsToMove.map(c => c.columnId))];
+
   await prisma.card.updateMany({
     where: { id: { in: cardIds }, boardId },
     data: { columnId: targetColId }
   });
+
+  // Reorder all affected columns (sources + target)
+  const allAffectedColIds = [...new Set([...sourceColIds, targetColId])];
+  const reorderOps = [];
+  for (const colId of allAffectedColIds) {
+    const colCards = await prisma.card.findMany({
+      where: { columnId: colId },
+      orderBy: { order: 'asc' },
+    });
+    reorderOps.push(
+      ...colCards.map((c, idx) =>
+        prisma.card.update({ where: { id: c.id }, data: { order: idx } })
+      )
+    );
+  }
+  if (reorderOps.length > 0) {
+    await prisma.$transaction(reorderOps);
+  }
 }
 
 export async function bulkCopyCardsAction(boardId: string, cardIds: string[], targetColId: string) {
