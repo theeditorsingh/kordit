@@ -8,7 +8,7 @@ import CardItem from './Card';
 import dynamic from 'next/dynamic';
 const CardModal = dynamic(() => import('./CardModal'), { ssr: false });
 import EmptyState from './EmptyState';
-import { Plus, MoreHorizontal, Trash2, AlignLeft, Calendar as CalendarIcon, Edit2, Settings, AlertCircle } from 'lucide-react';
+import { Plus, MoreHorizontal, Trash2, AlignLeft, Calendar as CalendarIcon, Edit2, Settings, AlertCircle, Copy, Check } from 'lucide-react';
 import styles from './Column.module.css';
 
 interface Props { column: ColumnType; board: Board; search: string; onModalOpenChange?: (open: boolean) => void; }
@@ -20,6 +20,7 @@ export default function Column({ column, board, search, onModalOpenChange }: Pro
   const [cardDesc, setCardDesc] = useState('');
   const [cardDue, setCardDue] = useState<string | null>(null);
   const [showMenu, setShowMenu] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [openingCardId, setOpeningCardId] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
@@ -111,6 +112,41 @@ export default function Column({ column, board, search, onModalOpenChange }: Pro
     setShowMenu(false);
   }
 
+  function handleCopyCards() {
+    const allColCards = column.cardIds
+      .map((id) => board.cards[id])
+      .filter(Boolean);
+
+    if (allColCards.length === 0) {
+      setShowMenu(false);
+      return;
+    }
+
+    const lines: string[] = [`${column.title} (${allColCards.length} card${allColCards.length !== 1 ? 's' : ''})`, ''];
+
+    allColCards.forEach((card, i) => {
+      lines.push(`${i + 1}. ${card.title}`);
+      if (card.description) lines.push(`   ${card.description}`);
+      if (card.priority && card.priority !== 'none') lines.push(`   Priority: ${card.priority}`);
+      if (card.dueDate) {
+        const d = new Date(card.dueDate);
+        lines.push(`   Due: ${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`);
+      }
+      if (card.labels && card.labels.length > 0) lines.push(`   Labels: ${card.labels.map(l => l.name).join(', ')}`);
+      if (card.checklist && card.checklist.length > 0) {
+        const done = card.checklist.filter(c => c.done).length;
+        lines.push(`   Checklist: ${done}/${card.checklist.length} done`);
+      }
+      lines.push('');
+    });
+
+    navigator.clipboard.writeText(lines.join('\n')).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+    setShowMenu(false);
+  }
+
   function saveTitle() {
     if (titleValue.trim() && titleValue.trim() !== column.title) {
       updateColumn(board.id, column.id, { title: titleValue.trim() });
@@ -152,6 +188,11 @@ export default function Column({ column, board, search, onModalOpenChange }: Pro
           </span>
         </div>
         <div style={{ position: 'relative' }}>
+          {copied && (
+            <span className={styles.copiedBadge}>
+              <Check size={10}/> Copied!
+            </span>
+          )}
           <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowMenu(!showMenu)}>
             <MoreHorizontal size={15}/>
           </button>
@@ -162,6 +203,9 @@ export default function Column({ column, board, search, onModalOpenChange }: Pro
               </button>
               <button className={styles.menuItem} onClick={() => { setEditingTitle(true); setShowMenu(false); }}>
                 <Edit2 size={13}/> Rename
+              </button>
+              <button className={styles.menuItem} onClick={handleCopyCards}>
+                <Copy size={13}/> Copy All Cards
               </button>
               <div className={styles.menuDivider} />
               <button className={`${styles.menuItem} ${styles.menuDanger}`} onClick={handleDeleteColumn}>
