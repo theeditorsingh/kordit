@@ -345,8 +345,85 @@
   border-color: var(--text-muted);
 }
 
+/* ─── M3 MOBILE COLUMN ─── */
 @media (max-width: 768px) {
   .column {
     scroll-snap-align: center;
+    width: calc(100vw - 32px);
+    border-radius: var(--m3-radius-lg, 16px);
+    border-color: var(--m3-outline-variant, var(--border));
+    background: var(--m3-surface-container, var(--bg-surface));
+    max-height: calc(100vh - 120px);
+  }
+
+  .header {
+    padding: 14px 16px 10px;
+    border-radius: var(--m3-radius-lg, 16px) var(--m3-radius-lg, 16px) 0 0;
+    min-height: 48px;
+  }
+
+  .title {
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .count {
+    font-size: 12px;
+    padding: 2px 10px;
+    border-radius: 9999px;
+    min-height: 24px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .cardList {
+    padding: 6px 10px;
+    gap: 10px;
+  }
+
+  .addBtn {
+    padding: 14px 16px;
+    font-size: 14px;
+    border-radius: 0 0 var(--m3-radius-lg, 16px) var(--m3-radius-lg, 16px);
+    min-height: 48px;
+  }
+
+  .addForm {
+    padding: 12px;
+  }
+
+  .menu {
+    border-radius: var(--m3-radius-md, 12px);
+    padding: 8px;
+    min-width: 200px;
+    box-shadow: var(--m3-elevation-2, var(--shadow-md));
+  }
+
+  .menuItem {
+    padding: 12px 14px;
+    border-radius: var(--m3-radius-sm, 8px);
+    font-size: 14px;
+    min-height: 44px;
+  }
+
+  .emptyCol {
+    padding: 24px 0;
+    font-size: 13px;
+    border-radius: var(--m3-radius-md, 12px);
+  }
+
+  .datePill {
+    padding: 8px 16px;
+    border-radius: 9999px;
+    font-size: 13px;
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .showMoreBtn {
+    border-radius: var(--m3-radius-sm, 8px);
+    padding: 12px;
+    font-size: 13px;
   }
 }

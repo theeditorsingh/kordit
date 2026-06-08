@@ -243,3 +243,63 @@
 .memberRole:hover {
   background-color: var(--bg-hover);
 }
+
+/* ─── M3 MOBILE SHARE MODAL ─── */
+@media (max-width: 768px) {
+  .overlay {
+    align-items: flex-end;
+  }
+  .modal {
+    border-radius: var(--m3-radius-xl, 28px) var(--m3-radius-xl, 28px) 0 0;
+    max-width: 100%;
+    box-shadow: var(--m3-elevation-2, 0 8px 32px rgba(0,0,0,0.4));
+    max-height: 90vh;
+  }
+  .modal::before {
+    content: '';
+    display: block;
+    width: 32px;
+    height: 4px;
+    background: var(--m3-outline-variant, var(--border-subtle));
+    border-radius: 9999px;
+    margin: 12px auto 4px;
+    opacity: 0.6;
+  }
+  .header {
+    padding: 12px 20px 16px;
+  }
+  .header h2 {
+    font-size: 18px;
+    font-weight: 700;
+  }
+  .content {
+    padding: 0 20px 20px;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  }
+  .input {
+    border-radius: var(--m3-radius-md, 12px);
+    min-height: 48px;
+    font-size: 16px;
+  }
+  .roleSelect {
+    border-radius: var(--m3-radius-md, 12px);
+    min-height: 48px;
+  }
+  .shareBtn {
+    border-radius: 9999px;
+    min-height: 48px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .tab {
+    font-size: 14px;
+    padding: 10px 0;
+  }
+  .memberItem {
+    min-height: 56px;
+  }
+  .avatar {
+    width: 36px;
+    height: 36px;
+  }
+}

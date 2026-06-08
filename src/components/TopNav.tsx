@@ -299,9 +299,9 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
                   marginTop: '8px',
                   background: 'var(--bg-surface)',
                   border: '1px solid var(--border-subtle)',
-                  borderRadius: '6px',
-                  width: '200px',
-                  boxShadow: 'var(--shadow-md)',
+                  borderRadius: '16px',
+                  width: '220px',
+                  boxShadow: 'var(--shadow-lg)',
                   zIndex: 100,
                   padding: '8px',
                   display: 'flex',
@@ -309,23 +309,26 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
                   gap: '4px'
                 }}
               >
-                <div style={{ padding: '4px 8px', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)' }}>
+                <div style={{ padding: '6px 12px', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   Account
                 </div>
                 <button
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '8px',
+                    gap: '10px',
                     width: '100%',
-                    padding: '8px',
+                    padding: '12px',
                     background: 'none',
                     border: 'none',
-                    borderRadius: '4px',
+                    borderRadius: '12px',
                     color: 'var(--text-secondary)',
-                    fontSize: '13px',
+                    fontSize: '14px',
+                    fontWeight: 500,
                     cursor: 'pointer',
-                    textAlign: 'left'
+                    textAlign: 'left',
+                    transition: 'background 0.15s',
+                    minHeight: '44px',
                   }}
                   onMouseOver={(e) => {
                     e.currentTarget.style.background = 'var(--bg-hover)';
@@ -338,23 +341,26 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
                   onClick={() => { setShowUserMenu(false); setShowProfile(true); }}
                   id="open-profile-settings-btn"
                 >
-                  <Settings size={14} />
+                  <Settings size={16} />
                   Profile {'&'} Settings
                 </button>
                 <button
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '8px',
+                    gap: '10px',
                     width: '100%',
-                    padding: '8px',
+                    padding: '12px',
                     background: 'none',
                     border: 'none',
-                    borderRadius: '4px',
+                    borderRadius: '12px',
                     color: 'var(--text-secondary)',
-                    fontSize: '13px',
+                    fontSize: '14px',
+                    fontWeight: 500,
                     cursor: 'pointer',
-                    textAlign: 'left'
+                    textAlign: 'left',
+                    transition: 'background 0.15s',
+                    minHeight: '44px',
                   }}
                   onMouseOver={(e) => {
                     e.currentTarget.style.background = 'rgba(255, 86, 48, 0.1)';
@@ -366,7 +372,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
                   }}
                   onClick={() => signOut({ callbackUrl: '/login' })}
                 >
-                  <LogOut size={14} />
+                  <LogOut size={16} />
                   Sign Out
                 </button>
               </div>
@@ -386,32 +392,35 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
           initialTab={profileTab}
         />
       )}
-
       {/* Mobile More Actions Bottom Sheet */}
       {showMore && (
         <>
           <div className="modal-overlay" onClick={() => setShowMore(false)} style={{ zIndex: 400 }}>
-            <div className="modal-box" style={{ maxWidth: '100%', position: 'fixed', bottom: 0, borderRadius: '20px 20px 0 0', padding: '8px 0 24px' }} onClick={e => e.stopPropagation()}>
-              <div style={{ width: 40, height: 4, background: 'var(--border-subtle)', borderRadius: 2, margin: '8px auto 12px' }} />
-              <div style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <div className="modal-box" style={{ maxWidth: '100%', position: 'fixed', bottom: 0, borderRadius: '28px 28px 0 0', padding: '4px 0', paddingBottom: 'calc(24px + env(safe-area-inset-bottom))' }} onClick={e => e.stopPropagation()}>
+              <div style={{ width: 32, height: 4, background: 'var(--m3-outline-variant, var(--border-subtle))', borderRadius: 9999, margin: '12px auto 16px', opacity: 0.6 }} />
+              <div style={{ padding: '0 12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {[
-                  { icon: <Palette size={18} />, label: 'Board Background', action: () => { setShowMore(false); setShowBgPicker(true); } },
-                  { icon: <Zap size={18} />, label: 'Automations', action: () => { setShowMore(false); setShowAutomations(true); } },
-                  { icon: <Copy size={18} />, label: 'Save as Template', action: () => { setShowMore(false); if (activeBoard && confirm('Save as template?')) saveBoardAsTemplate(activeBoard.id); } },
-                  { icon: <Sparkles size={18} />, label: 'AI Weekly Digest', action: () => { setShowMore(false); setShowDigest(true); } },
-                  { icon: <Share2 size={18} />, label: 'Share Board', action: () => { setShowMore(false); setShowShareModal(true); } },
+                  { icon: <Palette size={20} />, label: 'Board Background', action: () => { setShowMore(false); setShowBgPicker(true); } },
+                  { icon: <Zap size={20} />, label: 'Automations', action: () => { setShowMore(false); setShowAutomations(true); } },
+                  { icon: <Copy size={20} />, label: 'Save as Template', action: () => { setShowMore(false); if (activeBoard && confirm('Save as template?')) saveBoardAsTemplate(activeBoard.id); } },
+                  { icon: <Sparkles size={20} />, label: 'AI Weekly Digest', action: () => { setShowMore(false); setShowDigest(true); } },
+                  { icon: <Share2 size={20} />, label: 'Share Board', action: () => { setShowMore(false); setShowShareModal(true); } },
                 ].map((item, i) => (
                   <button
                     key={i}
                     onClick={item.action}
                     style={{
-                      display: 'flex', alignItems: 'center', gap: 14, width: '100%',
-                      padding: '14px 20px', background: 'none', border: 'none', borderRadius: 10,
+                      display: 'flex', alignItems: 'center', gap: 16, width: '100%',
+                      padding: '16px 20px', background: 'none', border: 'none', borderRadius: 9999,
                       fontSize: 15, fontWeight: 500, color: 'var(--text-primary)', cursor: 'pointer',
-                      fontFamily: 'inherit', transition: 'background 0.15s',
+                      fontFamily: 'inherit', transition: 'all 0.2s cubic-bezier(0.2, 0, 0, 1)',
+                      minHeight: 56, WebkitTapHighlightColor: 'transparent',
                     }}
                   >
-                    <span style={{ color: 'var(--text-muted)' }}>{item.icon}</span>
+                    <span style={{
+                      width: 40, height: 40, borderRadius: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: 'var(--accent-subtle)', color: 'var(--accent)', flexShrink: 0,
+                    }}>{item.icon}</span>
                     {item.label}
                   </button>
                 ))}
