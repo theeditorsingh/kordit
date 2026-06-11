@@ -117,6 +117,14 @@
   overflow-y: auto;
 }
 
+/* Mobile: always scrollable — no hover state on touch */
+@media (max-width: 768px) {
+  .cardList {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
 .emptyCol {
   font-size: 12px; color: var(--text-muted);
   text-align: center; padding: 16px 0;
@@ -353,7 +361,8 @@
     border-radius: var(--m3-radius-lg, 16px);
     border-color: var(--m3-outline-variant, var(--border));
     background: var(--m3-surface-container, var(--bg-surface));
-    max-height: calc(100vh - 120px);
+    /* 56px topnav + 12px padding + 48px page-dots bar at bottom */
+    max-height: calc(100vh - 116px - 48px);
   }
 
   .header {

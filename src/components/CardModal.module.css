@@ -369,6 +369,7 @@
 
   .body {
     padding: 16px;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
     gap: 20px;
   }
 

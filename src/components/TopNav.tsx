@@ -138,25 +138,27 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
       <div className={styles.right}>
         {activeBoard && (
           <>
-            {/* Undo / Redo — always visible */}
-            <button
-              className="btn btn-ghost btn-icon btn-sm"
-              onClick={undo}
-              disabled={!canUndo}
-              title="Undo (Ctrl+Z)"
-              style={{ opacity: canUndo ? 1 : 0.35 }}
-            >
-              <Undo2 size={15} />
-            </button>
-            <button
-              className="btn btn-ghost btn-icon btn-sm"
-              onClick={redo}
-              disabled={!canRedo}
-              title="Redo (Ctrl+Shift+Z)"
-              style={{ opacity: canRedo ? 1 : 0.35 }}
-            >
-              <Redo2 size={15} />
-            </button>
+            {/* Undo / Redo — desktop only (available in More sheet on mobile) */}
+            <div className={styles.desktopOnly}>
+              <button
+                className="btn btn-ghost btn-icon btn-sm"
+                onClick={undo}
+                disabled={!canUndo}
+                title="Undo (Ctrl+Z)"
+                style={{ opacity: canUndo ? 1 : 0.35 }}
+              >
+                <Undo2 size={15} />
+              </button>
+              <button
+                className="btn btn-ghost btn-icon btn-sm"
+                onClick={redo}
+                disabled={!canRedo}
+                title="Redo (Ctrl+Shift+Z)"
+                style={{ opacity: canRedo ? 1 : 0.35 }}
+              >
+                <Redo2 size={15} />
+              </button>
+            </div>
 
             {/* Desktop-only actions (hidden on mobile) */}
             <div className={styles.desktopOnly}>
@@ -265,6 +267,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
             >
               <Search size={18} />
             </button>
+            {/* Share — icon-only on mobile (tabLabel hidden at ≤768px) */}
             <button className="btn btn-primary btn-sm" onClick={() => setShowShareModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 8 }}>
               <Share2 size={14} /> <span className={styles.tabLabel}>Share</span>
             </button>
@@ -400,6 +403,8 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
               <div style={{ width: 32, height: 4, background: 'var(--m3-outline-variant, var(--border-subtle))', borderRadius: 9999, margin: '12px auto 16px', opacity: 0.6 }} />
               <div style={{ padding: '0 12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {[
+                  { icon: <Undo2 size={20} />, label: 'Undo', action: () => { setShowMore(false); undo(); }, disabled: !canUndo },
+                  { icon: <Redo2 size={20} />, label: 'Redo', action: () => { setShowMore(false); redo(); }, disabled: !canRedo },
                   { icon: <Palette size={20} />, label: 'Board Background', action: () => { setShowMore(false); setShowBgPicker(true); } },
                   { icon: <Zap size={20} />, label: 'Automations', action: () => { setShowMore(false); setShowAutomations(true); } },
                   { icon: <Copy size={20} />, label: 'Save as Template', action: () => { setShowMore(false); if (activeBoard && confirm('Save as template?')) saveBoardAsTemplate(activeBoard.id); } },
@@ -409,12 +414,14 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
                   <button
                     key={i}
                     onClick={item.action}
+                    disabled={(item as any).disabled}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 16, width: '100%',
                       padding: '16px 20px', background: 'none', border: 'none', borderRadius: 9999,
-                      fontSize: 15, fontWeight: 500, color: 'var(--text-primary)', cursor: 'pointer',
+                      fontSize: 15, fontWeight: 500, color: 'var(--text-primary)', cursor: (item as any).disabled ? 'default' : 'pointer',
                       fontFamily: 'inherit', transition: 'all 0.2s cubic-bezier(0.2, 0, 0, 1)',
                       minHeight: 56, WebkitTapHighlightColor: 'transparent',
+                      opacity: (item as any).disabled ? 0.35 : 1,
                     }}
                   >
                     <span style={{

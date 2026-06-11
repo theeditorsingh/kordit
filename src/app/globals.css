@@ -281,10 +281,7 @@ textarea.input { resize: vertical; min-height: 80px; }
     opacity: 0.6;
   }
 
-  /* App layout: hide sidebar gap on mobile */
-  .app-body {
-    overflow: visible;
-  }
+  /* App layout: sidebar is fixed on mobile, no overflow changes needed */
 
   /* ─── M3 Touch-friendly targets ─── */
   .btn {
@@ -333,9 +330,6 @@ textarea.input { resize: vertical; min-height: 80px; }
     font-size: 12px;
     min-height: 28px;
   }
-
-  /* Sidebar overlay — show on mobile */
-  .mobile-sidebar-overlay { display: block !important; }
 
   /* Body scroll lock */
   body.scroll-locked { overflow: hidden !important; }
