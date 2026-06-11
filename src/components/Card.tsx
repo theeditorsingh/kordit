@@ -8,6 +8,7 @@ import { getInitials } from '@/utils/storage';
 import CardModal from './CardModal';
 import { useBoardContext } from '@/context/BoardContext';
 import styles from './Card.module.css';
+import { useSwipeDown } from '@/hooks/useSwipeDown';
 
 interface Props { card: Card; index: number; board: Board; columnId: string; onModalOpenChange?: (open: boolean) => void; }
 
@@ -47,6 +48,9 @@ export default function CardItem({ card, index, board, columnId, onModalOpenChan
   const [showBottomSheet, setShowBottomSheet] = useState(false);
   const { deleteCard, toggleCardSelection, state } = useBoardContext();
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Swipe-down to dismiss the long-press bottom sheet
+  const cardSheetSwipe = useSwipeDown({ onDismiss: () => setShowBottomSheet(false) });
 
   const clearLongPress = useCallback(() => {
     if (longPressTimer.current) {
@@ -263,8 +267,11 @@ export default function CardItem({ card, index, board, columnId, onModalOpenChan
         >
           <div
             className="modal-box"
-            style={{ maxWidth: '100%', position: 'fixed', bottom: 0, borderRadius: '20px 20px 0 0', padding: '8px 0 24px' }}
+            style={{ maxWidth: '100%', position: 'fixed', bottom: 0, borderRadius: '20px 20px 0 0', padding: '8px 0 24px', paddingBottom: 'calc(24px + env(safe-area-inset-bottom))', ...cardSheetSwipe.dragStyle }}
             onClick={e => e.stopPropagation()}
+            onTouchStart={cardSheetSwipe.onTouchStart}
+            onTouchMove={cardSheetSwipe.onTouchMove}
+            onTouchEnd={cardSheetSwipe.onTouchEnd}
           >
             <div style={{ width: 40, height: 4, background: 'var(--border-subtle)', borderRadius: 2, margin: '8px auto 12px' }} />
             <div style={{ padding: '0 8px', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', paddingLeft: 20, marginBottom: 4 }}>

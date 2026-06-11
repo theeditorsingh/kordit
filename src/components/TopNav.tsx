@@ -18,6 +18,7 @@ import { ViewMode } from '@/types';
 import styles from './TopNav.module.css';
 import NotificationPermissionBanner from './NotificationPermissionBanner';
 import { useReminders } from '@/hooks/useReminders';
+import { useSwipeDown } from '@/hooks/useSwipeDown';
 
 interface Props {
   view: ViewMode;
@@ -49,6 +50,9 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
   const [showProfile, setShowProfile] = useState(false);
   const [profileTab, setProfileTab] = useState<'profile'|'security'|'danger'>('profile');
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Swipe-down to dismiss the More sheet
+  const moreSheetSwipe = useSwipeDown({ onDismiss: () => setShowMore(false) });
 
   // Auto-open profile on password reset return (user clicked magic link in email)
   useEffect(() => {
@@ -399,7 +403,14 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
       {showMore && (
         <>
           <div className="modal-overlay" onClick={() => setShowMore(false)} style={{ zIndex: 400 }}>
-            <div className="modal-box" style={{ maxWidth: '100%', position: 'fixed', bottom: 0, borderRadius: '28px 28px 0 0', padding: '4px 0', paddingBottom: 'calc(24px + env(safe-area-inset-bottom))' }} onClick={e => e.stopPropagation()}>
+            <div
+              className="modal-box"
+              style={{ maxWidth: '100%', position: 'fixed', bottom: 0, borderRadius: '28px 28px 0 0', padding: '4px 0', paddingBottom: 'calc(24px + env(safe-area-inset-bottom))', ...moreSheetSwipe.dragStyle }}
+              onClick={e => e.stopPropagation()}
+              onTouchStart={moreSheetSwipe.onTouchStart}
+              onTouchMove={moreSheetSwipe.onTouchMove}
+              onTouchEnd={moreSheetSwipe.onTouchEnd}
+            >
               <div style={{ width: 32, height: 4, background: 'var(--m3-outline-variant, var(--border-subtle))', borderRadius: 9999, margin: '12px auto 16px', opacity: 0.6 }} />
               <div style={{ padding: '0 12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {[
