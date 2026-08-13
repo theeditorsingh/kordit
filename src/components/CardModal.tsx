@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import CommentSection from './CommentSection';
 import {
   X, Plus, Trash2, Check, Calendar, Tag, Users, AlignLeft, List,
-  Image, Link2, Repeat, AlertTriangle, Sparkles, Loader2, Bell
+  Image, Link2, Repeat, AlertTriangle, Sparkles, Loader2, Bell, CheckCircle2
 } from 'lucide-react';
 import { getInitials } from '@/utils/storage';
 import styles from './CardModal.module.css';
@@ -17,7 +17,10 @@ const PRIORITIES: Priority[] = ['none', 'urgent', 'high', 'medium', 'low'];
 const LABEL_COLORS = ['#0052CC','#36B37E','#FF5630','#FF991F','#6554C0','#00B8D9','#FF7452','#FFC400'];
 const COVER_COLORS = ['#0052CC','#36B37E','#FF5630','#FF991F','#6554C0','#00B8D9','#FF7452','#FFC400','#172B4D','#091E42'];
 
+// Board-level label (from DB)
+interface BoardLabel { id: string; name: string; color: string; }
 
+type SaveStatus = 'idle' | 'saving' | 'saved';
 
 function getReminderOption(dueDate: string, reminderAt: string): string {
   const due = new Date(dueDate).getTime();
@@ -49,6 +52,18 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
   const [showDependencies, setShowDependencies] = useState(false);
   const [showRecurring, setShowRecurring] = useState(false);
 
+  // Board-level label library
+  const [boardLabels, setBoardLabels] = useState<BoardLabel[]>([]);
+  const [recentLabels, setRecentLabels] = useState<BoardLabel[]>([]);
+  const [labelDropdownOpen, setLabelDropdownOpen] = useState(false);
+  const [labelFilter, setLabelFilter] = useState('');
+  const labelInputRef = useRef<HTMLInputElement>(null);
+  const labelDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Save status indicator
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // AI state
   const [aiLoading, setAiLoading] = useState<'subtasks' | 'date' | 'categorize' | null>(null);
   const [aiDateReasoning, setAiDateReasoning] = useState<string | null>(null);
@@ -59,14 +74,71 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
   const [dragY, setDragY] = useState(0);
   const dragStartY = useRef<number | null>(null);
   const modalBoxRef = useRef<HTMLDivElement>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
+
+  // ── Auto-focus title on open ────────────────────────────────────────────
+  useEffect(() => {
+    // Short delay to allow animation to settle
+    const t = setTimeout(() => titleInputRef.current?.focus(), 150);
+    return () => clearTimeout(t);
+  }, []);
+
+  // ── Load board-level labels ─────────────────────────────────────────────
+  useEffect(() => {
+    fetch(`/api/boards/${board.id}/labels`)
+      .then(r => r.json())
+      .then((labels: BoardLabel[]) => {
+        if (Array.isArray(labels)) {
+          setBoardLabels(labels);
+          // Show the 5 most recent as "recently used"
+          setRecentLabels(labels.slice(0, 5));
+        }
+      })
+      .catch(() => {/* non-fatal */});
+  }, [board.id]);
+
+  // ── Close label dropdown when clicking outside ─────────────────────────
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (
+        labelDropdownRef.current &&
+        !labelDropdownRef.current.contains(e.target as Node) &&
+        labelInputRef.current &&
+        !labelInputRef.current.contains(e.target as Node)
+      ) {
+        setLabelDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  // ── Keyboard shortcuts: Ctrl+Enter to save, Escape to save & close ─────
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      // Escape: save & close
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        save();
+        return;
+      }
+      // Ctrl+Enter: save & close
+      if (e.ctrlKey && e.key === 'Enter') {
+        e.preventDefault();
+        save();
+        return;
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    // Only activate if touching the top handle area (first 40px)
     const box = modalBoxRef.current;
     if (!box) return;
     const rect = box.getBoundingClientRect();
     const touchY = e.touches[0].clientY;
-    // Allow drag from top 50px of modal (the handle area)
     if (touchY - rect.top < 50) {
       dragStartY.current = touchY;
     }
@@ -75,21 +147,22 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     if (dragStartY.current === null) return;
     const dy = e.touches[0].clientY - dragStartY.current;
-    if (dy > 0) { // only drag downward
-      setDragY(dy);
-    }
+    if (dy > 0) { setDragY(dy); }
   }, []);
 
   const handleTouchEnd = useCallback(() => {
-    if (dragY > 100) {
-      save();
-    }
+    if (dragY > 100) { save(); }
     setDragY(0);
     dragStartY.current = null;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dragY]);
 
   function save() {
+    setSaveStatus('saving');
     updateCard(board.id, data);
+    setSaveStatus('saved');
+    if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+    savedTimerRef.current = setTimeout(() => setSaveStatus('idle'), 1800);
     onClose();
   }
 
@@ -127,11 +200,49 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
     setData((d) => ({ ...d, checklist: d.checklist.filter((c) => c.id !== id) }));
   }
 
-  function addLabel() {
-    if (!newLabelName.trim()) return;
-    const label: Label = { id: crypto.randomUUID(), name: newLabelName.trim(), color: newLabelColor };
+  // ── Label helpers ───────────────────────────────────────────────────────
+
+  /** Pick an existing board label or create a new one */
+  async function selectOrCreateLabel(name: string, color: string) {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+
+    // Check if already on this card
+    if (data.labels.some(l => l.name.toLowerCase() === trimmed.toLowerCase())) {
+      setLabelDropdownOpen(false);
+      setNewLabelName('');
+      setLabelFilter('');
+      return;
+    }
+
+    // Add to card locally
+    const label: Label = { id: crypto.randomUUID(), name: trimmed, color };
     setData((d) => ({ ...d, labels: [...d.labels, label] }));
-    setNewLabelName(''); setShowLabelForm(false);
+
+    // Persist to board label library
+    try {
+      const res = await fetch(`/api/boards/${board.id}/labels`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: trimmed, color }),
+      });
+      if (res.ok) {
+        const saved: BoardLabel = await res.json();
+        setBoardLabels(prev => {
+          const without = prev.filter(l => l.id !== saved.id);
+          return [saved, ...without];
+        });
+        setRecentLabels(prev => {
+          const without = prev.filter(l => l.name !== saved.name);
+          return [saved, ...without].slice(0, 5);
+        });
+      }
+    } catch {/* non-fatal */}
+
+    setNewLabelName('');
+    setLabelFilter('');
+    setShowLabelForm(false);
+    setLabelDropdownOpen(false);
   }
 
   function removeLabel(id: string) {
@@ -151,6 +262,20 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
   const blockedByCards = (data.blockedBy || []).map(id => board.cards[id]).filter(Boolean);
   const doneCount = data.checklist.filter((c) => c.done).length;
   const totalCount = data.checklist.length;
+
+  // Filtered label dropdown options
+  const cardLabelNames = new Set(data.labels.map(l => l.name.toLowerCase()));
+  const filteredBoardLabels = boardLabels.filter(l =>
+    !cardLabelNames.has(l.name.toLowerCase()) &&
+    l.name.toLowerCase().includes(labelFilter.toLowerCase())
+  );
+  const filteredRecentLabels = recentLabels.filter(l =>
+    !cardLabelNames.has(l.name.toLowerCase()) &&
+    l.name.toLowerCase().includes(labelFilter.toLowerCase())
+  );
+  const showCreateOption = labelFilter.trim() &&
+    !boardLabels.some(l => l.name.toLowerCase() === labelFilter.trim().toLowerCase()) &&
+    !cardLabelNames.has(labelFilter.trim().toLowerCase());
 
   // ── AI Functions ────────────────────────────────────────────────────────
   async function aiGenerateSubtasks() {
@@ -277,6 +402,7 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
           <div className={styles.mainColumn}>
             {/* Title */}
             <input
+              ref={titleInputRef}
               className={styles.titleInput}
               value={data.title}
               onChange={(e) => setData((d) => ({ ...d, title: e.target.value }))}
@@ -420,6 +546,143 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
               </div>
             )}
 
+            {/* ── LABELS (moved to top of sidebar) ── */}
+            <div className={styles.section}>
+              <div className={styles.sectionLabel} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Tag size={14}/> Labels</span>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  onClick={aiCategorize}
+                  disabled={!!aiLoading}
+                  style={{ color: 'var(--accent)', padding: '2px 6px', fontSize: 11 }}
+                  title="Auto-Categorize Priority & Labels"
+                >
+                  {aiLoading === 'categorize' ? <Loader2 size={11} className={styles.spin} /> : <Tag size={11} />} Auto
+                </button>
+              </div>
+              <div className={styles.labelList}>
+                {data.labels.map((l) => (
+                  <span key={l.id} className={styles.labelChip} style={{ background: l.color }}>
+                    {l.name}
+                    <button onClick={() => removeLabel(l.id)} className={styles.chipX}><X size={10}/></button>
+                  </span>
+                ))}
+
+                {/* Combobox trigger */}
+                <button
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => { setShowLabelForm(true); setLabelDropdownOpen(true); setTimeout(() => labelInputRef.current?.focus(), 50); }}
+                >
+                  <Plus size={12}/> Add
+                </button>
+              </div>
+
+              {/* Label combobox form */}
+              {showLabelForm && (
+                <div className={styles.labelForm}>
+                  <div className={styles.labelComboWrap} style={{ position: 'relative' }}>
+                    <input
+                      ref={labelInputRef}
+                      className="input"
+                      style={{ flex: 1, fontSize: 12, padding: '6px 10px' }}
+                      placeholder="Search or create label..."
+                      value={labelFilter || newLabelName}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setLabelFilter(val);
+                        setNewLabelName(val);
+                        setLabelDropdownOpen(true);
+                      }}
+                      onFocus={() => setLabelDropdownOpen(true)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && newLabelName.trim()) {
+                          selectOrCreateLabel(newLabelName, newLabelColor);
+                        }
+                        if (e.key === 'Escape') {
+                          setLabelDropdownOpen(false);
+                          setShowLabelForm(false);
+                        }
+                      }}
+                    />
+
+                    {/* Dropdown */}
+                    {labelDropdownOpen && (
+                      <div ref={labelDropdownRef} className={styles.labelDropdown}>
+                        {/* Recently used section */}
+                        {filteredRecentLabels.length > 0 && (
+                          <>
+                            <div className={styles.labelDropdownGroup}>Recently used</div>
+                            {filteredRecentLabels.map(l => (
+                              <button
+                                key={l.id}
+                                className={styles.labelOption}
+                                onMouseDown={(e) => { e.preventDefault(); selectOrCreateLabel(l.name, l.color); }}
+                              >
+                                <span className={styles.labelOptionDot} style={{ background: l.color }} />
+                                <span className={styles.labelOptionName}>{l.name}</span>
+                              </button>
+                            ))}
+                            {filteredBoardLabels.filter(l => !filteredRecentLabels.some(r => r.id === l.id)).length > 0 && (
+                              <div className={styles.labelDropdownDivider} />
+                            )}
+                          </>
+                        )}
+
+                        {/* All board labels (excluding recently used) */}
+                        {filteredBoardLabels.filter(l => !filteredRecentLabels.some(r => r.id === l.id)).map(l => (
+                          <button
+                            key={l.id}
+                            className={styles.labelOption}
+                            onMouseDown={(e) => { e.preventDefault(); selectOrCreateLabel(l.name, l.color); }}
+                          >
+                            <span className={styles.labelOptionDot} style={{ background: l.color }} />
+                            <span className={styles.labelOptionName}>{l.name}</span>
+                          </button>
+                        ))}
+
+                        {/* Create new option */}
+                        {showCreateOption && (
+                          <button
+                            className={`${styles.labelOption} ${styles.labelOptionCreate}`}
+                            onMouseDown={(e) => { e.preventDefault(); selectOrCreateLabel(newLabelName, newLabelColor); }}
+                          >
+                            <Plus size={12} />
+                            <span>Create &ldquo;<strong>{labelFilter.trim()}</strong>&rdquo;</span>
+                          </button>
+                        )}
+
+                        {/* Empty state */}
+                        {filteredRecentLabels.length === 0 && filteredBoardLabels.length === 0 && !showCreateOption && (
+                          <div className={styles.labelDropdownEmpty}>
+                            {boardLabels.length === 0 ? 'No labels yet — type to create one' : 'No matching labels'}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Color picker for new labels */}
+                  <div className={styles.colorPicker}>
+                    {LABEL_COLORS.map((c) => (
+                      <button
+                        key={c}
+                        className={`${styles.colorDot} ${newLabelColor === c ? styles.colorActive : ''}`}
+                        style={{ background: c }}
+                        onClick={() => setNewLabelColor(c)}
+                      />
+                    ))}
+                  </div>
+                  <button
+                    className="btn btn-primary btn-sm"
+                    onClick={() => selectOrCreateLabel(newLabelName, newLabelColor)}
+                    disabled={!newLabelName.trim()}
+                  >
+                    Add Label
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* Members / Assignees */}
             {board.members.length > 0 && (
               <div className={styles.section}>
@@ -442,56 +705,6 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
                 </div>
               </div>
             )}
-
-            {/* Labels + Inline AI Auto-Categorize */}
-            <div className={styles.section}>
-              <div className={styles.sectionLabel} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Tag size={14}/> Labels</span>
-                <button
-                  className="btn btn-ghost btn-sm"
-                  onClick={aiCategorize}
-                  disabled={!!aiLoading}
-                  style={{ color: 'var(--accent)', padding: '2px 6px', fontSize: 11 }}
-                  title="Auto-Categorize Priority & Labels"
-                >
-                  {aiLoading === 'categorize' ? <Loader2 size={11} className={styles.spin} /> : <Tag size={11} />} Auto
-                </button>
-              </div>
-              <div className={styles.labelList}>
-                {data.labels.map((l) => (
-                  <span key={l.id} className={styles.labelChip} style={{ background: l.color }}>
-                    {l.name}
-                    <button onClick={() => removeLabel(l.id)} className={styles.chipX}><X size={10}/></button>
-                  </span>
-                ))}
-                <button className="btn btn-ghost btn-sm" onClick={() => setShowLabelForm(!showLabelForm)}>
-                  <Plus size={12}/> Add
-                </button>
-              </div>
-              {showLabelForm && (
-                <div className={styles.labelForm}>
-                  <input
-                    className="input"
-                    style={{ flex: 1, fontSize: 12, padding: '6px 10px' }}
-                    placeholder="Label name..."
-                    value={newLabelName}
-                    onChange={(e) => setNewLabelName(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && addLabel()}
-                  />
-                  <div className={styles.colorPicker}>
-                    {LABEL_COLORS.map((c) => (
-                      <button
-                        key={c}
-                        className={`${styles.colorDot} ${newLabelColor === c ? styles.colorActive : ''}`}
-                        style={{ background: c }}
-                        onClick={() => setNewLabelColor(c)}
-                      />
-                    ))}
-                  </div>
-                  <button className="btn btn-primary btn-sm" onClick={addLabel}>Add</button>
-                </div>
-              )}
-            </div>
 
             {/* Due Date + Inline AI Suggest */}
             <div className={styles.section}>
@@ -524,7 +737,6 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
                     setData((d) => ({
                       ...d,
                       dueDate: iso,
-                      // Auto-set reminder to "at due time" when a datetime is picked
                       reminderAt: d.reminderAt ? d.reminderAt : iso,
                     }));
                     if (typeof window !== 'undefined') {
@@ -556,7 +768,6 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
                         case '1-hour': reminderAt = new Date(due.getTime() - 60 * 60_000).toISOString(); break;
                         case '1-day': reminderAt = new Date(due.getTime() - 24 * 60 * 60_000).toISOString(); break;
                       }
-                      // Flag for permission banner
                       if (typeof window !== 'undefined') {
                         localStorage.setItem('kordit-has-reminder', 'true');
                       }
@@ -641,7 +852,23 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
           <button className="btn btn-danger btn-sm" onClick={deleteCard}>
             <Trash2 size={13}/> Delete Card
           </button>
-          <button className="btn btn-primary" onClick={save}>Save Changes</button>
+          <div className={styles.footerRight}>
+            {/* Saved indicator */}
+            {saveStatus === 'saving' && (
+              <span className={styles.saveIndicator}>
+                <Loader2 size={13} className={styles.spin} /> Saving…
+              </span>
+            )}
+            {saveStatus === 'saved' && (
+              <span className={`${styles.saveIndicator} ${styles.saveIndicatorSaved}`}>
+                <CheckCircle2 size={13} /> Saved
+              </span>
+            )}
+            {saveStatus === 'idle' && (
+              <span className={styles.saveHint}>Ctrl+Enter to save</span>
+            )}
+            <button className="btn btn-primary" onClick={save}>Save Changes</button>
+          </div>
         </div>
       </motion.div>
     </motion.div>

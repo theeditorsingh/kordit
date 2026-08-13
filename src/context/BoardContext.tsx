@@ -674,7 +674,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
         isRecurring: realCard.isRecurring || false,
         recurringRule: realCard.recurringRule || '',
         blockedBy: (Array.isArray(realCard.blockedBy) ? realCard.blockedBy : []) as any,
-        reminderAt: realCard.reminderAt ? new Date(realCard.reminderAt).toISOString() : null,
+        reminderAt: (realCard as any).reminderAt ? new Date((realCard as any).reminderAt).toISOString() : null,
       };
 
       dispatch({ type: 'REPLACE_CARD_ID', boardId, columnId, oldId: tempId, newCard: formattedCard });

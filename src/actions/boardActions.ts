@@ -743,3 +743,27 @@ export async function deleteBoardCategoryAction(categoryId: string) {
   await prisma.boardCategory.delete({ where: { id: categoryId } });
   revalidatePath('/');
 }
+
+// ── Board Label Library Actions ─────────────────────────────────────────────
+
+export async function getBoardLabelsAction(boardId: string) {
+  const user = await getAuthUser();
+  await verifyBoardAccess(boardId, user.id);
+  return prisma.boardLabel.findMany({
+    where: { boardId },
+    orderBy: { createdAt: 'desc' },
+  });
+}
+
+export async function upsertBoardLabelAction(boardId: string, name: string, color: string) {
+  const user = await getAuthUser();
+  await verifyBoardAccess(boardId, user.id);
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error('Label name cannot be empty');
+  return prisma.boardLabel.upsert({
+    where: { boardId_name: { boardId, name: trimmed } },
+    update: { color },
+    create: { boardId, name: trimmed, color },
+  });
+}
+
