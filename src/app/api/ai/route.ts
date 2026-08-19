@@ -15,7 +15,7 @@ function getGroq(): Groq {
   return _groq;
 }
 
-const MODEL = 'llama-3.1-8b-instant';
+const MODEL = 'llama3-8b-8192';
 
 async function chat(systemPrompt: string, userPrompt: string): Promise<string> {
   const completion = await getGroq().chat.completions.create({
