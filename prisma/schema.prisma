@@ -64,18 +64,6 @@ model VerificationToken {
 
 // Kordit Models
 
-model BoardCategory {
-  id        String   @id @default(cuid())
-  name      String
-  color     String   @default("#0052CC")
-  order     Int      @default(0)
-  userId    String
-  createdAt DateTime @default(now())
-
-  boards Board[]
-
-  @@unique([userId, name])
-}
 
 model Board {
   id             String   @id @default(cuid())
@@ -92,8 +80,6 @@ model Board {
 
   ownerId    String
   owner      User           @relation("BoardOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  categoryId String?
-  category   BoardCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
   columns     Column[]
   cards       Card[]
@@ -137,11 +123,6 @@ model Card {
   // Time Tracking
   timeSpent    Int      @default(0)        // Total seconds tracked
   timerStarted DateTime?                   // When timer was last started (null = not running)
-
-  // Recurring
-  isRecurring     Boolean @default(false)
-  recurringRule   String  @default("")     // e.g. "daily", "weekly:mon,wed,fri", "monthly:1"
-  lastRecurredAt  DateTime?
 
   boardId  String
   board    Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)

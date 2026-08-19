@@ -101,7 +101,7 @@ export async function updateBoardAction(boardId: string, updates: Record<string,
   const user = await getAuthUser();
   await verifyBoardAccess(boardId, user.id);
 
-  const allowedFields = ['title', 'color', 'background', 'backgroundType', 'visibility', 'categoryId'];
+  const allowedFields = ['title', 'color', 'background', 'backgroundType', 'visibility'];
   const data: Record<string, any> = {};
   for (const key of allowedFields) {
     if (updates[key] !== undefined) data[key] = updates[key];
@@ -725,24 +725,6 @@ async function runAutomations(boardId: string, triggerType: string, context: Rec
   }
 }
 
-// ── Board Category Actions ──────────────────────────────────────────────────
-
-export async function createBoardCategoryAction(name: string, color: string = '#0052CC') {
-  const user = await getAuthUser();
-  const category = await prisma.boardCategory.create({
-    data: { name, color, userId: user.id }
-  });
-  return category;
-}
-
-export async function deleteBoardCategoryAction(categoryId: string) {
-  const user = await getAuthUser();
-  const category = await prisma.boardCategory.findUnique({ where: { id: categoryId } });
-  if (category?.userId !== user.id) throw new Error("Unauthorized");
-
-  await prisma.boardCategory.delete({ where: { id: categoryId } });
-  revalidatePath('/');
-}
 
 // ── Board Label Library Actions ─────────────────────────────────────────────
 

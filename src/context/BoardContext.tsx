@@ -449,8 +449,6 @@ function formatPrismaBoards(prismaBoards: any[]): Board[] {
         coverColor: card.coverColor || '',
         timeSpent: card.timeSpent || 0,
         timerStarted: card.timerStarted ? new Date(card.timerStarted).toISOString() : null,
-        isRecurring: card.isRecurring || false,
-        recurringRule: card.recurringRule || '',
         blockedBy: Array.isArray(card.blockedBy) ? card.blockedBy : [],
         reminderAt: card.reminderAt ? new Date(card.reminderAt).toISOString() : null,
       };
@@ -471,7 +469,6 @@ function formatPrismaBoards(prismaBoards: any[]): Board[] {
       backgroundType: pb.backgroundType || 'color',
       isArchived: pb.isArchived || false,
       isFavorite: pb.isFavorite || false,
-      categoryId: pb.categoryId || null,
       columns: pb.columns.map((col: any) => ({
         id: col.id,
         title: col.title,
@@ -645,8 +642,6 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
       coverColor: '',
       timeSpent: 0,
       timerStarted: null,
-      isRecurring: false,
-      recurringRule: '',
       blockedBy: [],
       reminderAt: null,
     };
@@ -671,8 +666,6 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
         coverColor: realCard.coverColor || '',
         timeSpent: realCard.timeSpent || 0,
         timerStarted: realCard.timerStarted ? new Date(realCard.timerStarted).toISOString() : null,
-        isRecurring: realCard.isRecurring || false,
-        recurringRule: realCard.recurringRule || '',
         blockedBy: (Array.isArray(realCard.blockedBy) ? realCard.blockedBy : []) as any,
         reminderAt: (realCard as any).reminderAt ? new Date((realCard as any).reminderAt).toISOString() : null,
       };
@@ -746,8 +739,6 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
         coverColor: card.coverColor,
         timeSpent: card.timeSpent,
         timerStarted: card.timerStarted,
-        isRecurring: card.isRecurring,
-        recurringRule: card.recurringRule,
         blockedBy: card.blockedBy,
         reminderAt: card.reminderAt,
       });

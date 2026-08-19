@@ -1,8 +1,7 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { signOut } from 'next-auth/react';
 import { useBoardContext } from '@/context/BoardContext';
-import { useUndoRedo } from '@/hooks/useUndoRedo';
 import { useTheme } from '@/context/ThemeContext';
 import { clearPasswordForResetAction } from '@/actions/userActions';
 import {
@@ -76,8 +75,25 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
     }
   }, []);
 
-  // Activate keyboard shortcuts
-  useUndoRedo();
+  // Undo/Redo keyboard shortcuts (inlined from useUndoRedo)
+  const handleUndoRedoKey = useCallback(
+    (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        if (e.shiftKey) {
+          e.preventDefault();
+          redo();
+        } else {
+          e.preventDefault();
+          undo();
+        }
+      }
+    },
+    [undo, redo]
+  );
+  useEffect(() => {
+    window.addEventListener('keydown', handleUndoRedoKey);
+    return () => window.removeEventListener('keydown', handleUndoRedoKey);
+  }, [handleUndoRedoKey]);
 
   // Start reminder checker
   useReminders();
