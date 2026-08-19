@@ -2,12 +2,9 @@
 import { useState } from 'react';
 import { Board, Card } from '@/types';
 import { useBoardContext } from '@/context/BoardContext';
-import { AnimatePresence } from 'framer-motion';
 import { Calendar, CheckSquare, ChevronDown, ChevronRight } from 'lucide-react';
 import { getInitials } from '@/utils/storage';
 import dynamic from 'next/dynamic';
-import { List } from 'react-window';
-import { AutoSizer } from 'react-virtualized-auto-sizer';
 const CardModal = dynamic(() => import('./CardModal'), { ssr: false });
 import styles from './ListView.module.css';
 
@@ -24,34 +21,31 @@ function getDueDateClass(date: string | null) {
   return '';
 }
 
-function RowComponent({ index, style, cards, board, colId, setSelectedCard }: any) {
-  const card = cards[index];
+function RowComponent({ card, board, colId, setSelectedCard }: any) {
   const done = card.checklist.filter((c: any) => c.done).length;
   const total = card.checklist.length;
   const assignees = card.assigneeIds.map((id: string) => board.members.find((m: any) => m.id === id)).filter(Boolean);
   return (
-    <div style={style}>
-      <div className={styles.row} onClick={() => setSelectedCard({ card, colId })}>
-        <span className={`priority-dot dot-${card.priority}`}/>
-        <span className={styles.rowTitle}>{card.title}</span>
-        <div className={styles.rowMeta}>
-          {card.labels.slice(0, 2).map((l: any) => (
-            <span key={l.id} className="card-chip" style={{ background: l.color, fontSize: 10 }}>{l.name}</span>
-          ))}
-          {card.dueDate && (
-            <span className={`${styles.metaItem} ${getDueDateClass(card.dueDate)}`}>
-              <Calendar size={11}/>{formatDate(card.dueDate)}
-            </span>
-          )}
-          {total > 0 && (
-            <span className={`${styles.metaItem} ${done === total ? styles.allDone : ''}`}>
-              <CheckSquare size={11}/>{done}/{total}
-            </span>
-          )}
-          {assignees.map((m: any) => (
-            <span key={m!.id} className="avatar avatar-sm" style={{ background: m!.color }}>{getInitials(m!.name)}</span>
-          ))}
-        </div>
+    <div className={styles.row} onClick={() => setSelectedCard({ card, colId })}>
+      <span className={`priority-dot dot-${card.priority}`}/>
+      <span className={styles.rowTitle}>{card.title}</span>
+      <div className={styles.rowMeta}>
+        {card.labels.slice(0, 2).map((l: any) => (
+          <span key={l.id} className="card-chip" style={{ background: l.color, fontSize: 10 }}>{l.name}</span>
+        ))}
+        {card.dueDate && (
+          <span className={`${styles.metaItem} ${getDueDateClass(card.dueDate)}`}>
+            <Calendar size={11}/>{formatDate(card.dueDate)}
+          </span>
+        )}
+        {total > 0 && (
+          <span className={`${styles.metaItem} ${done === total ? styles.allDone : ''}`}>
+            <CheckSquare size={11}/>{done}/{total}
+          </span>
+        )}
+        {assignees.map((m: any) => (
+          <span key={m!.id} className="avatar avatar-sm" style={{ background: m!.color }}>{getInitials(m!.name)}</span>
+        ))}
       </div>
     </div>
   );
@@ -88,17 +82,16 @@ export default function ListView({ board, search }: Props) {
                 {cards.length === 0 ? (
                   <div className={styles.emptyRow}>No cards in this column</div>
                 ) : (
-                  <div style={{ height: Math.min(400, cards.length * 40), width: '100%' }}>
-                    <AutoSizer renderProp={({ height, width }) => (
-                        <List
-                          style={{ height: height ?? 400, width: width ?? 100 }}
-                          rowCount={cards.length}
-                          rowHeight={40}
-                          rowComponent={RowComponent}
-                          rowProps={{ cards, board, colId: col.id, setSelectedCard }}
-                        />
-                      )}
-                    />
+                  <div className={styles.listContainer}>
+                    {cards.map((card: Card) => (
+                      <RowComponent
+                        key={card.id}
+                        card={card}
+                        board={board}
+                        colId={col.id}
+                        setSelectedCard={setSelectedCard}
+                      />
+                    ))}
                   </div>
                 )}
               </div>
@@ -107,7 +100,6 @@ export default function ListView({ board, search }: Props) {
         );
       })}
 
-      <AnimatePresence>
         {selectedCard && (
           <CardModal
             card={selectedCard.card}
@@ -116,7 +108,6 @@ export default function ListView({ board, search }: Props) {
             onClose={() => setSelectedCard(null)}
           />
         )}
-      </AnimatePresence>
     </div>
   );
 }

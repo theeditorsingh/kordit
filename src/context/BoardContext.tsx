@@ -447,9 +447,7 @@ function formatPrismaBoards(prismaBoards: any[]): Board[] {
         createdAt: new Date(card.createdAt).toISOString(),
         coverImage: card.coverImage || '',
         coverColor: card.coverColor || '',
-        timeSpent: card.timeSpent || 0,
-        timerStarted: card.timerStarted ? new Date(card.timerStarted).toISOString() : null,
-        blockedBy: Array.isArray(card.blockedBy) ? card.blockedBy : [],
+
         reminderAt: card.reminderAt ? new Date(card.reminderAt).toISOString() : null,
       };
 
@@ -640,9 +638,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
       createdAt: new Date().toISOString(),
       coverImage: '',
       coverColor: '',
-      timeSpent: 0,
-      timerStarted: null,
-      blockedBy: [],
+
       reminderAt: null,
     };
     dispatch({ type: 'ADD_CARD', boardId, columnId, card: tempCard });
@@ -664,9 +660,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
         createdAt: new Date(realCard.createdAt).toISOString(),
         coverImage: realCard.coverImage || '',
         coverColor: realCard.coverColor || '',
-        timeSpent: realCard.timeSpent || 0,
-        timerStarted: realCard.timerStarted ? new Date(realCard.timerStarted).toISOString() : null,
-        blockedBy: (Array.isArray(realCard.blockedBy) ? realCard.blockedBy : []) as any,
+
         reminderAt: (realCard as any).reminderAt ? new Date((realCard as any).reminderAt).toISOString() : null,
       };
 
@@ -737,9 +731,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
         assigneeIds: card.assigneeIds,
         coverImage: card.coverImage,
         coverColor: card.coverColor,
-        timeSpent: card.timeSpent,
-        timerStarted: card.timerStarted,
-        blockedBy: card.blockedBy,
+
         reminderAt: card.reminderAt,
       });
     } catch (e) {

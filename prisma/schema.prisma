@@ -120,9 +120,6 @@ model Card {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  // Time Tracking
-  timeSpent    Int      @default(0)        // Total seconds tracked
-  timerStarted DateTime?                   // When timer was last started (null = not running)
 
   boardId  String
   board    Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
@@ -134,9 +131,6 @@ model Card {
   labels      Json @default("[]")
   checklist   Json @default("[]")
   assigneeIds Json @default("[]")
-
-  // Dependencies (JSON array of card IDs this card is blocked by)
-  blockedBy Json @default("[]")
 
   comments   Comment[]
   activities Activity[]

@@ -2,8 +2,8 @@
 import { useState, useRef, useCallback } from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 import { Board, Card } from '@/types';
-import { AnimatePresence, motion } from 'framer-motion';
-import { Calendar, CheckSquare, AlertTriangle, Repeat, Edit2, Trash2, CheckCircle2, AlignLeft } from 'lucide-react';
+
+import { Calendar, CheckSquare, AlertTriangle, Edit2, Trash2, CheckCircle2, AlignLeft } from 'lucide-react';
 import { getInitials } from '@/utils/storage';
 import CardModal from './CardModal';
 import { useBoardContext } from '@/context/BoardContext';
@@ -35,13 +35,6 @@ function formatDate(date: string) {
 }
 
 
-
-const contextMenuVariants = {
-  hidden: { opacity: 0, scale: 0.92, y: -4 },
-  visible: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.15, ease: [0.25, 0.1, 0.25, 1] as [number, number, number, number] } },
-  exit: { opacity: 0, scale: 0.92, y: -4, transition: { duration: 0.1 } },
-};
-
 export default function CardItem({ card, index, board, columnId, onModalOpenChange }: Props) {
   const [open, setOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number } | null>(null);
@@ -64,7 +57,7 @@ export default function CardItem({ card, index, board, columnId, onModalOpenChan
   const doneItems = card.checklist.filter((c) => c.done).length;
   const totalItems = card.checklist.length;
   const assignees = card.assigneeIds.map((id) => board.members.find((m) => m.id === id)).filter(Boolean);
-  const hasBlockers = (card.blockedBy || []).length > 0;
+
   const progressPercent = totalItems > 0 ? (doneItems / totalItems) * 100 : 0;
 
   return (
@@ -75,7 +68,7 @@ export default function CardItem({ card, index, board, columnId, onModalOpenChan
             ref={provided.innerRef}
             {...provided.draggableProps}
             {...provided.dragHandleProps}
-            className={`${styles.card} ${styles.cardAnimated} ${snapshot.isDragging ? styles.dragging : ''} ${isSelected ? styles.selected : ''} ${hasBlockers ? styles.blocked : ''}`}
+            className={`${styles.card} ${styles.cardAnimated} ${snapshot.isDragging ? styles.dragging : ''} ${isSelected ? styles.selected : ''}`}
             style={{
               ...provided.draggableProps.style,
               ...(isSelected ? { border: '2px solid #0052CC', backgroundColor: 'rgba(0, 82, 204, 0.05)' } : {}),
@@ -147,21 +140,6 @@ export default function CardItem({ card, index, board, columnId, onModalOpenChan
             {/* Title — full width */}
             <div className={styles.title}>{card.title}</div>
 
-            {/* Indicators row */}
-            {(hasBlockers || card.isRecurring) && (
-              <div className={styles.indicators}>
-                {hasBlockers && (
-                  <span className={styles.blockerBadge}>
-                    <AlertTriangle size={10} /> Blocked
-                  </span>
-                )}
-                {card.isRecurring && (
-                  <span className={styles.recurBadge}>
-                    <Repeat size={10} />
-                  </span>
-                )}
-              </div>
-            )}
 
             {/* Footer: checklist + time on left, avatars on right */}
             {(totalItems > 0 || assignees.length > 0 || card.description) && (
@@ -203,7 +181,6 @@ export default function CardItem({ card, index, board, columnId, onModalOpenChan
         )}
       </Draggable>
 
-      <AnimatePresence>
         {contextMenu && (
           <>
             <div
@@ -211,11 +188,8 @@ export default function CardItem({ card, index, board, columnId, onModalOpenChan
               onClick={(e) => { e.stopPropagation(); setContextMenu(null); }}
               onContextMenu={(e) => { e.preventDefault(); setContextMenu(null); }}
             />
-            <motion.div
-              variants={contextMenuVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
+            <div
+
               style={{
                 position: 'fixed',
                 top: contextMenu.y,
@@ -253,10 +227,9 @@ export default function CardItem({ card, index, board, columnId, onModalOpenChan
               >
                 Delete
               </button>
-            </motion.div>
+            </div>
           </>
         )}
-      </AnimatePresence>
 
       {/* Mobile bottom sheet context menu (long-press) */}
       {showBottomSheet && (
@@ -324,14 +297,12 @@ export default function CardItem({ card, index, board, columnId, onModalOpenChan
         </div>
       )}
 
-      <AnimatePresence>
         {open && (
           <CardModal card={card} board={board} columnId={columnId} onClose={() => {
             setOpen(false);
             onModalOpenChange?.(false);
           }} />
         )}
-      </AnimatePresence>
     </>
   );
 }

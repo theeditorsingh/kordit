@@ -35,9 +35,7 @@ export interface Card {
   createdAt: string;
   coverImage?: string;
   coverColor?: string;
-  timeSpent?: number;
-  timerStarted?: string | null;
-  blockedBy?: string[];
+
   reminderAt?: string | null;
 }
 

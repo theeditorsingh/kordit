@@ -2,11 +2,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Board, Card, ChecklistItem, Label, Priority } from '@/types';
 import { useBoardContext } from '@/context/BoardContext';
-import { motion } from 'framer-motion';
+
 import CommentSection from './CommentSection';
 import {
   X, Plus, Trash2, Check, Calendar, Tag, Users, AlignLeft, List,
-  Image, Link2, Repeat, AlertTriangle, Sparkles, Loader2, Bell, CheckCircle2
+  Image, Link2, AlertTriangle, Sparkles, Loader2, Bell, CheckCircle2
 } from 'lucide-react';
 import { getInitials } from '@/utils/storage';
 import styles from './CardModal.module.css';
@@ -49,8 +49,7 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
   const [newLabelColor, setNewLabelColor] = useState(LABEL_COLORS[0]);
   const [showLabelForm, setShowLabelForm] = useState(false);
   const [showCoverPicker, setShowCoverPicker] = useState(false);
-  const [showDependencies, setShowDependencies] = useState(false);
-  const [showRecurring, setShowRecurring] = useState(false);
+
 
   // Board-level label library
   const [boardLabels, setBoardLabels] = useState<BoardLabel[]>([]);
@@ -249,17 +248,7 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
     setData((d) => ({ ...d, labels: d.labels.filter((l) => l.id !== id) }));
   }
 
-  function toggleDependency(cardId: string) {
-    setData(d => ({
-      ...d,
-      blockedBy: (d.blockedBy || []).includes(cardId)
-        ? (d.blockedBy || []).filter(id => id !== cardId)
-        : [...(d.blockedBy || []), cardId]
-    }));
-  }
 
-  const allCards = Object.values(board.cards).filter(c => c.id !== card.id);
-  const blockedByCards = (data.blockedBy || []).map(id => board.cards[id]).filter(Boolean);
   const doneCount = data.checklist.filter((c) => c.done).length;
   const totalCount = data.checklist.length;
 
@@ -351,22 +340,14 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
   }
 
   return (
-    <motion.div
+    <div
       className="modal-overlay"
       onClick={(e) => e.target === e.currentTarget && save()}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.2 }}
     >
-      <motion.div
+      <div
         ref={modalBoxRef}
         className="modal-box"
         style={{ maxWidth: 860, transform: dragY > 0 ? `translateY(${dragY}px)` : undefined, opacity: dragY > 0 ? Math.max(0.5, 1 - dragY / 300) : undefined, transition: dragY === 0 ? 'transform 0.3s ease, opacity 0.3s ease' : 'none' }}
-        initial={{ opacity: 0, scale: 0.95, y: 16 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 16 }}
-        transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] as [number, number, number, number] }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -506,18 +487,6 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
                 onClick={() => setShowCoverPicker(!showCoverPicker)}
               >
                 <Image size={13} /> Cover
-              </button>
-              <button
-                className={`${styles.quickBtn} ${showDependencies ? styles.quickActive : ''}`}
-                onClick={() => setShowDependencies(!showDependencies)}
-              >
-                <Link2 size={13} /> Dependencies
-              </button>
-              <button
-                className={`${styles.quickBtn} ${showRecurring ? styles.quickActive : ''}`}
-                onClick={() => setShowRecurring(!showRecurring)}
-              >
-                <Repeat size={13} /> Recurring
               </button>
             </div>
 
@@ -784,66 +753,7 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
               </div>
             )}
 
-            {/* Dependencies */}
-            {showDependencies && (
-              <div className={styles.section}>
-                <div className={styles.sectionLabel}><Link2 size={14} /> Blocked By</div>
-                {blockedByCards.length > 0 && (
-                  <div className={styles.depList}>
-                    {blockedByCards.map(c => (
-                      <div key={c.id} className={styles.depItem}>
-                        <AlertTriangle size={12} style={{ color: '#FF5630' }} />
-                        <span>{c.title}</span>
-                        <button className={styles.depRemove} onClick={() => toggleDependency(c.id)}>
-                          <X size={11} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <select
-                  className="input"
-                  style={{ fontSize: 12 }}
-                  value=""
-                  onChange={(e) => { if (e.target.value) toggleDependency(e.target.value); }}
-                >
-                  <option value="">Add dependency...</option>
-                  {allCards.filter(c => !(data.blockedBy || []).includes(c.id)).map(c => (
-                    <option key={c.id} value={c.id}>{c.title}</option>
-                  ))}
-                </select>
-              </div>
-            )}
 
-            {/* Recurring */}
-            {showRecurring && (
-              <div className={styles.section}>
-                <div className={styles.sectionLabel}><Repeat size={14} /> Recurring Task</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={data.isRecurring || false}
-                      onChange={(e) => setData(d => ({ ...d, isRecurring: e.target.checked }))}
-                    />
-                    Enable recurring
-                  </label>
-                </div>
-                {data.isRecurring && (
-                  <select
-                    className="input"
-                    style={{ fontSize: 12, marginTop: 6 }}
-                    value={data.recurringRule || 'daily'}
-                    onChange={(e) => setData(d => ({ ...d, recurringRule: e.target.value }))}
-                  >
-                    <option value="daily">Daily</option>
-                    <option value="weekly">Weekly</option>
-                    <option value="biweekly">Every 2 Weeks</option>
-                    <option value="monthly">Monthly</option>
-                  </select>
-                )}
-              </div>
-            )}
           </div>
         </div>
 
@@ -870,7 +780,7 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
             <button className="btn btn-primary" onClick={save}>Save Changes</button>
           </div>
         </div>
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   );
 }
