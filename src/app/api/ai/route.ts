@@ -36,6 +36,18 @@ function getErrorMessage(error: unknown): string {
   return String(error);
 }
 
+// Escapes characters that could let user-controlled text break out of the
+// plain-text slot it's interpolated into and be read as prompt structure/instructions.
+function sanitizeUserInput(input: string): string {
+  return input
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/'/g, "\\'")
+    .replace(/\r/g, '\\r')
+    .replace(/\n/g, '\\n')
+    .replace(/\t/g, '\\t');
+}
+
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
@@ -56,8 +68,10 @@ export async function POST(req: NextRequest) {
       case 'subtasks': {
         const { cardTitle, cardDescription } = payload ?? {};
         if (!cardTitle) return NextResponse.json({ error: 'cardTitle is required' }, { status: 400 });
+        const safeTitle = sanitizeUserInput(cardTitle);
+        const safeDescription = cardDescription ? sanitizeUserInput(cardDescription) : undefined;
         const system = `You are a task management assistant. Break the given task into clear, actionable subtasks. Respond ONLY with a JSON array of strings, no explanation, no markdown. Example: ["Subtask 1","Subtask 2","Subtask 3"]`;
-        const user = `Task: "${cardTitle}"${cardDescription ? `\nDescription: ${cardDescription}` : ''}`;
+        const user = `Task: "${safeTitle}"${safeDescription ? `\nDescription: ${safeDescription}` : ''}`;
         const raw = await chat(system, user);
         let subtasks: string[] = [];
         try {
@@ -73,7 +87,7 @@ export async function POST(req: NextRequest) {
         const { cardTitle, priority } = payload ?? {};
         if (!cardTitle) return NextResponse.json({ error: 'cardTitle is required' }, { status: 400 });
         const system = `You are a project planning assistant. Suggest a realistic due date. Priority: urgent=1 day, high=3 days, medium=7 days, low=21 days. Respond ONLY with valid JSON: {"daysFromNow": number, "reasoning": "one short sentence"}`;
-        const user = `Task: "${cardTitle}"\nPriority: ${priority ?? 'medium'}`;
+        const user = `Task: "${sanitizeUserInput(cardTitle)}"\nPriority: ${priority ?? 'medium'}`;
         const raw = await chat(system, user);
         let result = { daysFromNow: 7, reasoning: 'Based on task complexity' };
         try {
@@ -92,7 +106,7 @@ export async function POST(req: NextRequest) {
         const { cardTitle } = payload ?? {};
         if (!cardTitle) return NextResponse.json({ error: 'cardTitle is required' }, { status: 400 });
         const system = `You are a task categorization assistant. Given a task title, suggest a priority and up to 3 labels. Priority must be one of: urgent, high, medium, low. Labels should be 1-2 words. Respond ONLY with valid JSON: {"priority": "medium", "labels": ["Design","Frontend"]}`;
-        const user = `Task: "${cardTitle}"`;
+        const user = `Task: "${sanitizeUserInput(cardTitle)}"`;
         const raw = await chat(system, user);
         let result = { priority: 'medium', labels: [] as string[] };
         try {
@@ -127,9 +141,10 @@ export async function POST(req: NextRequest) {
           where: { id: boardId },
           select: { title: true },
         });
+        const safeBoardTitle = sanitizeUserInput(board?.title ?? 'Board');
 
         if (activities.length === 0) {
-          return NextResponse.json({ digest: `**${board?.title ?? 'Board'} — Weekly Digest**\n\nNo activity recorded this week. Time to get moving! 🚀` });
+          return NextResponse.json({ digest: `**${safeBoardTitle} — Weekly Digest**\n\nNo activity recorded this week. Time to get moving! 🚀` });
         }
 
         const activityText = activities.map(a => {
@@ -147,7 +162,7 @@ export async function POST(req: NextRequest) {
         }).join('\n');
 
         const system = `You are a project management assistant generating a weekly board digest. Format in clean markdown: ## Summary, ## Key Activities, ## Insights & Suggestions. Be encouraging and concise. Max 250 words.`;
-        const user = `Board: "${board?.title}"\nActivity this week:\n${activityText}`;
+        const user = `Board: "${safeBoardTitle}"\nActivity this week:\n${activityText}`;
         const digest = await chat(system, user);
         return NextResponse.json({ digest });
       }

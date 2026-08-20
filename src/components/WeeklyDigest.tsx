@@ -32,9 +32,21 @@ export default function WeeklyDigest({ boardId, boardTitle, onClose }: Props) {
     }
   }
 
-  // Simple markdown to HTML (bold, italics, headers, line breaks)
+  // Escape HTML entities first so raw text (including any markup the AI
+  // echoes back from board activity) can never be parsed as tags/attributes.
+  function escapeHtml(text: string) {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  // Simple markdown to HTML (bold, italics, headers, line breaks).
+  // Runs after escaping, so only the tags inserted below can ever appear.
   function renderMarkdown(text: string) {
-    let html = text
+    return escapeHtml(text)
       .replace(/^## (.+)$/gm, '<h3 class="digestH3">$1</h3>')
       .replace(/^### (.+)$/gm, '<h4 class="digestH4">$1</h4>')
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
@@ -42,15 +54,6 @@ export default function WeeklyDigest({ boardId, boardTitle, onClose }: Props) {
       .replace(/^- (.+)$/gm, '<li>$1</li>')
       .replace(/(<li>[^<]*<\/li>\n?)+/g, '<ul>$&</ul>')
       .replace(/\n/g, '<br/>');
-    // Sanitize: strip dangerous tags and event handlers
-    html = html.replace(/<script[\s\S]*?<\/script>/gi, '');
-    html = html.replace(/<iframe[\s\S]*?<\/iframe>/gi, '');
-    html = html.replace(/<object[\s\S]*?<\/object>/gi, '');
-    html = html.replace(/<embed[^>]*>/gi, '');
-    html = html.replace(/<link[^>]*>/gi, '');
-    html = html.replace(/\bon\w+\s*=\s*["'][^"']*["']/gi, '');
-    html = html.replace(/javascript\s*:/gi, '');
-    return html;
   }
 
 

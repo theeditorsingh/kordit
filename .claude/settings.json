@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C \"c:/Users/signity/Desktop/DM Tool/Task/kordit\" status)",
+      "Bash(git -C \"c:/Users/signity/Desktop/DM Tool/Task/kordit\" log --oneline -10)",
+      "Bash(git -C \"c:/Users/signity/Desktop/DM Tool/Task/kordit\" remote -v)"
+    ]
+  }
+}
