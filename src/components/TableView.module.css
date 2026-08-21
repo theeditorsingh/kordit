@@ -1,0 +1,358 @@
+/* ── Wrapper ───────────────────────────────────────────────────────────────── */
+.wrap {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  padding: 20px 20px 0;
+  gap: 0;
+}
+
+/* ── Scrollable table container ───────────────────────────────────────────── */
+.tableContainer {
+  flex: 1;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-surface);
+}
+
+/* ── Table base ───────────────────────────────────────────────────────────── */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  min-width: 700px;
+}
+
+/* ── Header ───────────────────────────────────────────────────────────────── */
+.headerRow {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.th {
+  padding: 10px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-muted);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+  user-select: none;
+}
+
+/* Column widths */
+.colCard      { width: 38%; }
+.colList      { width: 16%; }
+.colLabels    { width: 18%; }
+.colMembers   { width: 13%; }
+.colDue       { width: 11%; }
+.colChecklist { width: 4%; text-align: center; }
+
+/* ── Rows ─────────────────────────────────────────────────────────────────── */
+.row {
+  cursor: pointer;
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background 0.12s;
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.row:hover {
+  background: var(--bg-hover);
+}
+
+/* Zebra stripe (very subtle) */
+.row:nth-child(even) {
+  background: var(--bg-base);
+}
+.row:nth-child(even):hover {
+  background: var(--bg-hover);
+}
+
+/* ── Cell base ────────────────────────────────────────────────────────────── */
+.td {
+  padding: 10px 14px;
+  vertical-align: middle;
+  font-size: 13px;
+  color: var(--text-secondary);
+  overflow: hidden;
+}
+
+/* ── Card cell ────────────────────────────────────────────────────────────── */
+.tdCard {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-primary);
+}
+
+.priorityDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 1px solid rgba(255,255,255,0.15);
+}
+
+.doneIcon {
+  font-size: 13px;
+  color: #36B37E;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.cardTitle {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.cardTitleDone {
+  text-decoration: line-through;
+  opacity: 0.55;
+}
+
+/* ── List (column) cell ───────────────────────────────────────────────────── */
+.tdList {}
+
+.listBadge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid currentColor;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.85;
+}
+
+/* ── Labels cell ──────────────────────────────────────────────────────────── */
+.tdLabels {}
+
+.labelsWrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.labelChip {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.25);
+}
+
+.labelMore {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 600;
+  align-self: center;
+}
+
+/* ── Members cell ─────────────────────────────────────────────────────────── */
+.tdMembers {}
+
+.avatarRow {
+  display: flex;
+  align-items: center;
+  gap: -4px;
+}
+
+.avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 9px;
+  font-weight: 700;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 2px solid var(--bg-surface);
+  margin-left: -4px;
+  letter-spacing: 0;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.avatar:first-child { margin-left: 0; }
+
+.avatarMore {
+  background: var(--bg-overlay);
+  color: var(--text-muted);
+  font-size: 8px;
+}
+
+/* ── Due date cell ────────────────────────────────────────────────────────── */
+.tdDue {}
+
+.dueDate {
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.overdue   { color: #FF5630; font-weight: 700; }
+.due-soon  { color: #FF991F; font-weight: 600; }
+.due-today { color: #0052CC; font-weight: 600; }
+
+/* ── Checklist cell ───────────────────────────────────────────────────────── */
+.tdChecklist { text-align: center; }
+
+.checkPill {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--bg-overlay);
+  color: var(--text-muted);
+}
+
+.checkPillDone {
+  background: rgba(54, 179, 126, 0.15);
+  color: #36B37E;
+}
+
+/* ── Dash placeholder ─────────────────────────────────────────────────────── */
+.dash {
+  color: var(--border);
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* ── Empty state ──────────────────────────────────────────────────────────── */
+.emptyCell {
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* ── Add section ──────────────────────────────────────────────────────────── */
+.addSection {
+  padding: 12px 0;
+  flex-shrink: 0;
+}
+
+.addBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: none;
+  background: var(--bg-overlay);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.addBtn:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.addBtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.addRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+
+.addColSelect {
+  font-size: 12px;
+  font-family: inherit;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-base);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.addInput {
+  flex: 1;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+}
+
+.addInput:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
+}
+
+.addConfirmBtn {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.addConfirmBtn:hover { opacity: 0.88; }
+
+.addCancelBtn {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.addCancelBtn:hover { color: var(--text-secondary); }
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .wrap { padding: 12px 12px 0; }
+  .colLabels, .colChecklist { display: none; }
+  .colCard   { width: 50%; }
+  .colList   { width: 25%; }
+  .colMembers { width: 15%; }
+  .colDue    { width: 10%; }
+}

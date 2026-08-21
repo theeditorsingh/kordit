@@ -10,7 +10,7 @@ import { useState, useEffect, use, Suspense, lazy } from 'react';
 import { ViewMode } from '@/types';
 
 const Board = lazy(() => import('@/components/Board'));
-const ListView = lazy(() => import('@/components/ListView'));
+const TableView = lazy(() => import('@/components/TableView'));
 const CalendarView = lazy(() => import('@/components/CalendarView'));
 const OnboardingTour = lazy(() => import('@/components/OnboardingTour'));
 
@@ -100,9 +100,9 @@ export default function BoardPage({ params }: { params: Promise<{ username: stri
             <Suspense fallback={<SkeletonBoard />}>
               <Board board={activeBoard} search={search} />
             </Suspense>
-          ) : view === 'list' ? (
+          ) : view === 'table' ? (
             <Suspense fallback={<SkeletonListView />}>
-              <ListView board={activeBoard} search={search} />
+              <TableView board={activeBoard} search={search} />
             </Suspense>
           ) : (
             <Suspense fallback={<SkeletonBoard />}>
