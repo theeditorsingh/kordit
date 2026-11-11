@@ -270,19 +270,42 @@
     border-bottom: none;
     box-shadow: 0 1px 0 var(--border-subtle);
   }
+  .nav.hasBoard {
+    height: 104px;
+    flex-wrap: wrap;
+    align-content: center;
+    row-gap: 6px;
+    padding-top: 6px;
+    padding-bottom: 7px;
+  }
   .hamburger {
     display: flex;
     border-radius: 50%;
   }
   .tabLabel { display: none; }
   .searchInput { width: 80px; }
-  .left { min-width: unset; gap: 8px; }
-  .right { min-width: unset; gap: 2px; }
-  .center { flex: none; }
+  .left { min-width: 0; gap: 8px; flex: 1; }
+  .right { min-width: 0; gap: 2px; flex-shrink: 0; }
+  .center { display: none; }
+  .hasBoard .center {
+    order: 3;
+    display: flex;
+    flex: 0 0 100%;
+    width: 100%;
+  }
   .desktopOnly { display: none !important; }
+  .profileWrap { margin-left: 0 !important; }
+  .userDropdown {
+    position: fixed !important;
+    top: 108px !important;
+    right: 8px !important;
+    margin-top: 0 !important;
+    width: min(240px, calc(100vw - 16px)) !important;
+  }
 
   /* M3 Segmented Button for view tabs on mobile */
   .viewTabs {
+    width: 100%;
     background: var(--m3-surface-container-high, var(--bg-overlay));
     border-radius: 9999px;
     padding: 4px;
@@ -290,6 +313,8 @@
     border: 1px solid var(--m3-outline-variant, var(--border));
   }
   .viewTab {
+    flex: 1;
+    justify-content: center;
     padding: 6px 14px;
     border-radius: 9999px;
     font-size: 12px;
@@ -308,8 +333,11 @@
 
 /* Mobile-only: hidden on desktop */
 .mobileOnly { display: none; }
+.mobileHide {}
+.profileWrap {}
 @media (max-width: 768px) {
   .mobileOnly { display: flex !important; }
+  .mobileHide { display: none !important; }
 }
 
 /* Desktop-only wrapper */
@@ -317,6 +345,7 @@
 
 @media (max-width: 480px) {
   .nav { padding: 0 8px; gap: 2px; }
+  .nav.hasBoard { padding: 6px 8px 7px; }
   .logoText { display: none; }
 }
 

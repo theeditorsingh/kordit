@@ -124,7 +124,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
 
   return (
     <>
-    <header className={styles.nav}>
+    <header className={`${styles.nav} ${activeBoard ? styles.hasBoard : ''}`}>
       <div className={styles.left}>
         {/* Hamburger for mobile */}
         <button
@@ -321,19 +321,19 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
               <Search size={18} />
             </button>
             {/* Share — icon-only on mobile (tabLabel hidden at ≤768px) */}
-            <button className="btn btn-primary btn-sm" onClick={() => setShowShareModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 8 }}>
+            <button className={`btn btn-primary btn-sm ${styles.mobileHide}`} onClick={() => setShowShareModal(true)} style={{ alignItems: 'center', gap: 6, marginLeft: 8 }}>
               <Share2 size={14} /> <span className={styles.tabLabel}>Share</span>
             </button>
           </>
         )}
 
-        <button className="btn btn-ghost btn-icon" onClick={toggleTheme} title="Toggle theme" style={{ marginLeft: 4 }}>
+        <button className={`btn btn-ghost btn-icon ${activeBoard ? styles.mobileHide : ''}`} onClick={toggleTheme} title="Toggle theme" style={{ marginLeft: 4 }}>
           {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
         </button>
 
         <NotificationBell />
 
-        <div style={{ position: 'relative', marginLeft: 8 }}>
+        <div className={styles.profileWrap} style={{ position: 'relative', marginLeft: 8 }}>
           <button
             className="btn btn-ghost btn-icon"
             onClick={() => setShowUserMenu(!showUserMenu)}
@@ -508,6 +508,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
                   { icon: <Copy size={20} />, label: 'Save as Template', action: async () => { setShowMore(false); if (activeBoard && await confirm('A copy of this board will be created with the same columns and no cards.', { title: 'Save as template', confirmLabel: 'Create copy', danger: false })) saveBoardAsTemplate(activeBoard.id); } },
                   { icon: <Sparkles size={20} />, label: 'AI Weekly Digest', action: () => { setShowMore(false); setShowDigest(true); } },
                   { icon: <Share2 size={20} />, label: 'Share Board', action: () => { setShowMore(false); setShowShareModal(true); } },
+                  { icon: theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />, label: theme === 'dark' ? 'Use Light Theme' : 'Use Dark Theme', action: () => { setShowMore(false); toggleTheme(); } },
                 ].map((item, i) => (
                   <button
                     key={i}

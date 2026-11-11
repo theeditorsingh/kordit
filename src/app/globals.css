@@ -199,12 +199,14 @@ html[data-appearance='classic'] .btn {
   padding: 6px 10px;
   font-size: 12px;
 }
+html[data-appearance='classic'] .btn-icon { padding: 6px; }
 html[data-appearance='classic'] .modal-overlay { backdrop-filter: none; }
 html[data-appearance='material'] .btn {
   padding: 9px 16px;
   font-weight: 600;
 }
 html[data-appearance='material'] .btn-sm { padding: 7px 13px; }
+html[data-appearance='material'] .btn-icon { padding: 8px; }
 html[data-appearance='material'] .modal-overlay { backdrop-filter: blur(8px); }
 html[data-appearance='material'] .modal-box { border-color: transparent; }
 

@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
+  provider = "postgresql"
 }
 
 // NextAuth Models
@@ -35,29 +35,30 @@ model Session {
 }
 
 model User {
-  id             String    @id @default(cuid())
-  name           String?
-  username       String?   @unique
-  password       String?
-  email          String?   @unique
-  emailVerified  DateTime?
-  image          String?
-  workspaceRole  String    @default("Member") // Owner, Admin, Member, Guest
-  accounts       Account[]
-  sessions       Session[]
+  id            String    @id @default(cuid())
+  name          String?
+  username      String?   @unique
+  password      String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  workspaceRole String    @default("Member") // Owner, Admin, Member, Guest
+  accounts      Account[]
+  sessions      Session[]
 
   // Kordit Relations
-  ownedBoards Board[]     @relation("BoardOwner")
-  memberships Member[]
-  activities  Activity[]
-  comments    Comment[]
-  auditLogs   AuditLog[]
-  notifications         Notification[] @relation("NotificationRecipient")
-  notificationActions   Notification[] @relation("NotificationActor")
+  ownedBoards            Board[]                 @relation("BoardOwner")
+  memberships            Member[]
+  activities             Activity[]
+  comments               Comment[]
+  auditLogs              AuditLog[]
+  notifications          Notification[]          @relation("NotificationRecipient")
+  notificationActions    Notification[]          @relation("NotificationActor")
   notificationPreference NotificationPreference?
-  ownedWorkspaces        Workspace[] @relation("WorkspaceOwner")
+  uiPreference           UiPreference?
+  ownedWorkspaces        Workspace[]             @relation("WorkspaceOwner")
   workspaceMemberships   WorkspaceMember[]
-  workspaceInvitesSent   WorkspaceInvite[] @relation("WorkspaceInviteSender")
+  workspaceInvitesSent   WorkspaceInvite[]       @relation("WorkspaceInviteSender")
 }
 
 model VerificationToken {
@@ -70,30 +71,29 @@ model VerificationToken {
 
 // Kordit Models
 
-
 model Board {
   id             String   @id @default(cuid())
   title          String
   slug           String
   color          String   @default("#0052CC")
   visibility     String   @default("Workspace") // Private, Workspace, Public
-  background     String   @default("")          // URL or gradient CSS
-  backgroundType String   @default("color")     // color, gradient, image
-  labelColors    Json     @default("[]")        // Custom label colours saved for reuse (hex strings)
+  background     String   @default("") // URL or gradient CSS
+  backgroundType String   @default("color") // color, gradient, image
+  labelColors    Json     @default("[]") // Custom label colours saved for reuse (hex strings)
   isArchived     Boolean  @default(false)
   isFavorite     Boolean  @default(false)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  ownerId    String
-  owner      User           @relation("BoardOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId String
+  owner   User   @relation("BoardOwner", fields: [ownerId], references: [id], onDelete: Cascade)
 
-  columns     Column[]
-  cards       Card[]
-  members     Member[]
-  activities  Activity[]
-  automations Automation[]
-  boardLabels BoardLabel[]
+  columns       Column[]
+  cards         Card[]
+  members       Member[]
+  activities    Activity[]
+  automations   Automation[]
+  boardLabels   BoardLabel[]
   notifications Notification[]
 
   workspaceId String?
@@ -128,17 +128,16 @@ model Card {
   description String    @default("")
   priority    String    @default("none") // none, urgent, high, medium, low
   dueDate     DateTime?
-  reminderAt  DateTime?                   // When to fire the reminder notification
-  completedAt DateTime?                   // Set when the card is ticked off; it then sits in its column's Completed section
+  reminderAt  DateTime? // When to fire the reminder notification
+  completedAt DateTime? // Set when the card is ticked off; it then sits in its column's Completed section
   order       Int       @default(0)
-  coverImage  String    @default("")       // URL of cover image
-  coverColor  String    @default("")       // Solid color cover
+  coverImage  String    @default("") // URL of cover image
+  coverColor  String    @default("") // Solid color cover
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-
-  boardId  String
-  board    Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  boardId String
+  board   Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
 
   columnId String
   column   Column @relation(fields: [columnId], references: [id], onDelete: Cascade)
@@ -148,8 +147,8 @@ model Card {
   checklist   Json @default("[]")
   assigneeIds Json @default("[]")
 
-  comments   Comment[]
-  activities Activity[]
+  comments      Comment[]
+  activities    Activity[]
   notifications Notification[]
 
   @@index([boardId])
@@ -157,10 +156,10 @@ model Card {
 }
 
 model Member {
-  id        String   @id @default(cuid())
-  role      String   @default("Member") // Admin, Member, Guest
-  isFavorite Boolean @default(false)     // This member starred the board (per user)
-  createdAt DateTime @default(now())
+  id         String   @id @default(cuid())
+  role       String   @default("Member") // Admin, Member, Guest
+  isFavorite Boolean  @default(false) // This member starred the board (per user)
+  createdAt  DateTime @default(now())
 
   boardId String
   board   Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
@@ -175,7 +174,7 @@ model Member {
 // Activity Feed
 model Activity {
   id        String   @id @default(cuid())
-  action    String   // card_created, card_moved, card_updated, card_deleted, member_added, column_created, etc.
+  action    String // card_created, card_moved, card_updated, card_deleted, member_added, column_created, etc.
   details   Json     @default("{}") // { cardTitle, fromColumn, toColumn, fieldChanged, ... }
   createdAt DateTime @default(now())
 
@@ -210,8 +209,8 @@ model Comment {
 // Audit Log
 model AuditLog {
   id        String   @id @default(cuid())
-  action    String   // invite_member, change_role, delete_board, delete_card, bulk_delete, etc.
-  target    String   // "board:<id>", "card:<id>", "user:<id>"
+  action    String // invite_member, change_role, delete_board, delete_card, bulk_delete, etc.
+  target    String // "board:<id>", "card:<id>", "user:<id>"
   details   Json     @default("{}")
   ipAddress String?
   createdAt DateTime @default(now())
@@ -237,15 +236,15 @@ model BoardLabel {
 
 // Automations
 model Automation {
-  id        String   @id @default(cuid())
-  name      String
-  isActive  Boolean  @default(true)
-  trigger   String   // card_moved_to, due_date_passed, checklist_completed, card_created
-  condition Json     @default("{}") // { columnId, priority, ... }
-  action    String   // move_card, set_priority, complete_checklist, set_due_date
-  actionConfig Json  @default("{}") // { targetColumnId, priority, ... }
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String   @id @default(cuid())
+  name         String
+  isActive     Boolean  @default(true)
+  trigger      String // card_moved_to, due_date_passed, checklist_completed, card_created
+  condition    Json     @default("{}") // { columnId, priority, ... }
+  action       String // move_card, set_priority, complete_checklist, set_due_date
+  actionConfig Json     @default("{}") // { targetColumnId, priority, ... }
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   boardId String
   board   Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
@@ -256,23 +255,23 @@ model Automation {
 // Persisted collaboration inbox
 model Notification {
   id        String   @id @default(cuid())
-  type      String   // assignment, comment, mention, invitation
+  type      String // assignment, comment, mention, invitation
   message   String
   isRead    Boolean  @default(false)
   metadata  Json     @default("{}")
   createdAt DateTime @default(now())
 
   userId String
-  user   User @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  user   User   @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
 
   actorId String?
-  actor   User? @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  actor   User?   @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
 
   boardId String?
-  board   Board? @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  board   Board?  @relation(fields: [boardId], references: [id], onDelete: Cascade)
 
   cardId String?
-  card   Card? @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  card   Card?   @relation(fields: [cardId], references: [id], onDelete: Cascade)
 
   @@index([userId, isRead, createdAt])
   @@index([boardId])
@@ -280,15 +279,25 @@ model Notification {
 }
 
 model NotificationPreference {
-  userId      String  @id
-  assignments Boolean @default(true)
-  comments    Boolean @default(true)
-  mentions    Boolean @default(true)
-  invitations Boolean @default(true)
-  dueSoon     Boolean @default(true)
-  browser     Boolean @default(true)
-  email       Boolean @default(false)
+  userId      String   @id
+  assignments Boolean  @default(true)
+  comments    Boolean  @default(true)
+  mentions    Boolean  @default(true)
+  invitations Boolean  @default(true)
+  dueSoon     Boolean  @default(true)
+  browser     Boolean  @default(true)
+  email       Boolean  @default(false)
   updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// User-scoped visual preferences that follow the account across devices.
+model UiPreference {
+  userId     String   @id
+  theme      String   @default("light")
+  appearance String   @default("kordit")
+  updatedAt  DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -303,7 +312,7 @@ model Workspace {
   updatedAt DateTime @updatedAt
 
   ownerId String
-  owner   User @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  owner   User   @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
 
   members WorkspaceMember[]
   invites WorkspaceInvite[]
@@ -321,26 +330,26 @@ model WorkspaceMember {
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   userId String
-  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([workspaceId, userId])
   @@index([userId])
 }
 
 model WorkspaceInvite {
-  id        String   @id @default(cuid())
-  email     String
-  role      String   @default("Member")
-  status    String   @default("Pending") // Pending, Accepted, Revoked
-  token     String   @unique @default(cuid())
-  createdAt DateTime @default(now())
+  id         String    @id @default(cuid())
+  email      String
+  role       String    @default("Member")
+  status     String    @default("Pending") // Pending, Accepted, Revoked
+  token      String    @unique @default(cuid())
+  createdAt  DateTime  @default(now())
   acceptedAt DateTime?
 
   workspaceId String
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   invitedById String
-  invitedBy   User @relation("WorkspaceInviteSender", fields: [invitedById], references: [id], onDelete: Cascade)
+  invitedBy   User   @relation("WorkspaceInviteSender", fields: [invitedById], references: [id], onDelete: Cascade)
 
   @@unique([workspaceId, email])
   @@index([email, status])
