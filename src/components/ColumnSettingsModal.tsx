@@ -25,13 +25,34 @@ const PRIORITY_OPTIONS: { value: Priority; label: string }[] = [
 ];
 
 export default function ColumnSettingsModal({ column, board, onClose }: Props) {
-  const { updateColumn, bulkMove, bulkDelete, deleteColumn } = useBoardContext();
+  const { updateColumn, updateBoard, bulkMove, bulkDelete, deleteColumn } = useBoardContext();
+  // Custom colours saved on this board (shared with the label colour list)
+  const savedColors = board.labelColors ?? [];
   const confirm = useConfirm();
   const settings = column.settings ?? {};
 
   const [title, setTitle] = useState(column.title);
   const [color, setColor] = useState(column.color);
-  const [showCustomColor, setShowCustomColor] = useState(!COL_COLORS.includes(column.color));
+  const [showCustomColor, setShowCustomColor] = useState(false);
+  const [customDraft, setCustomDraft] = useState('#1A73E8');
+
+  // Add the picked colour to the board's saved list and select it for this column
+  function addCustomColor() {
+    if (!isHexColor(customDraft)) return;
+    if (!COL_COLORS.includes(customDraft) && !savedColors.includes(customDraft)) {
+      updateBoard(board.id, { labelColors: [...savedColors, customDraft].slice(-30) });
+    }
+    setColor(customDraft);
+    setShowCustomColor(false);
+  }
+
+  // Only the swatch goes. Columns and labels already using the colour keep it.
+  function removeSavedColor(c: string) {
+    updateBoard(board.id, { labelColors: savedColors.filter((x) => x !== c) });
+  }
+
+  // A colour in use that is neither a preset nor saved (e.g. its swatch was removed) still shows as selected
+  const orphanColor = !COL_COLORS.includes(color) && !savedColors.includes(color) ? color : null;
   const [wipLimit, setWipLimit] = useState(column.wipLimit || 0);
   const [sortBy, setSortBy] = useState<ColumnSort>(settings.sortBy ?? 'manual');
   const [defaultPriority, setDefaultPriority] = useState<Priority>(settings.defaultPriority ?? 'none');
@@ -136,22 +157,60 @@ export default function ColumnSettingsModal({ column, board, onClose }: Props) {
                     key={c}
                     className={`${styles.swatch} ${color === c ? styles.swatchActive : ''}`}
                     style={{ background: c }}
-                    onClick={() => { setColor(c); setShowCustomColor(false); }}
+                    onClick={() => setColor(c)}
                     aria-label={`Colour ${c}`}
                     aria-pressed={color === c}
                   />
                 ))}
+                {/* Saved custom colours: click to use, × to remove from the list */}
+                {savedColors.map((c) => (
+                  <span key={c} className={styles.savedSwatch}>
+                    <button
+                      className={`${styles.swatch} ${color === c ? styles.swatchActive : ''}`}
+                      style={{ background: c }}
+                      onClick={() => setColor(c)}
+                      title={c}
+                      aria-label={`Saved colour ${c}`}
+                      aria-pressed={color === c}
+                    />
+                    <button
+                      className={styles.savedRemove}
+                      onClick={() => removeSavedColor(c)}
+                      title="Remove this saved colour"
+                      aria-label={`Remove saved colour ${c}`}
+                    >
+                      <X size={9} />
+                    </button>
+                  </span>
+                ))}
+                {orphanColor && (
+                  <button
+                    className={`${styles.swatch} ${styles.swatchActive}`}
+                    style={{ background: orphanColor }}
+                    title={orphanColor}
+                    aria-label={`Current colour ${orphanColor}`}
+                    aria-pressed
+                  />
+                )}
                 <button
                   className={`${styles.swatch} ${styles.swatchCustom} ${showCustomColor ? styles.swatchActive : ''}`}
-                  style={showCustomColor ? { background: color } : undefined}
-                  onClick={() => setShowCustomColor(true)}
-                  title="Custom colour"
-                  aria-label="Custom colour"
+                  onClick={() => setShowCustomColor(!showCustomColor)}
+                  title="Add a custom colour"
+                  aria-label="Add a custom colour"
+                  aria-expanded={showCustomColor}
                 >
-                  {!showCustomColor && '+'}
+                  +
                 </button>
               </div>
-              {showCustomColor && <ColorField label="Custom colour" value={color} onChange={setColor} />}
+              {showCustomColor && (
+                <div className={styles.customRow}>
+                  <ColorField label="New custom colour" value={customDraft} onChange={setCustomDraft} />
+                  <button className="btn btn-primary btn-sm" onClick={addCustomColor}>Add colour</button>
+                </div>
+              )}
+              <span className={styles.hint}>
+                Custom colours are saved for this board. Hover one and press × to remove it; anything already using it keeps the colour.
+              </span>
             </div>
             <label className={styles.field}>
               <span className={styles.label}>WIP limit</span>

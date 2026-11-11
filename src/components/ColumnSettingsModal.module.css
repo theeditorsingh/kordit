@@ -92,3 +92,28 @@
   .twoCols { flex-direction: column; }
   .footer { padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
 }
+
+/* Saved custom colours */
+.savedSwatch { position: relative; display: inline-flex; }
+.savedRemove {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  opacity: 0;
+}
+.savedSwatch:hover .savedRemove,
+.savedRemove:focus-visible { opacity: 1; }
+.savedRemove:hover { color: #FF5630; border-color: #FF5630; }
+@media (hover: none) { .savedRemove { opacity: 1; } }
+.customRow { display: flex; align-items: flex-end; gap: 8px; }
