@@ -11,7 +11,7 @@ const CHECK_INTERVAL = 60_000; // 60 seconds
 function getAllCards(boards: Board[]): (Card & { boardTitle: string; boardSlug: string })[] {
   const result: (Card & { boardTitle: string; boardSlug: string })[] = [];
   for (const board of boards) {
-    // Cards in a Done column are finished: no reminders or overdue alerts for them
+    // Completed cards are finished: no reminders or overdue alerts for them
     const done = getDoneCardIds(board);
     for (const cardId of Object.keys(board.cards)) {
       const card = board.cards[cardId];

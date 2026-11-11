@@ -9,8 +9,7 @@ import CardItem from './Card';
 import dynamic from 'next/dynamic';
 const CardModal = dynamic(() => import('./CardModal'), { ssr: false });
 import EmptyState from './EmptyState';
-import { Plus, MoreHorizontal, Trash2, AlignLeft, Calendar as CalendarIcon, Edit2, Settings, AlertCircle, Copy, Check, ChevronsRightLeft, ChevronsLeftRight } from 'lucide-react';
-import { isDoneColumn } from '@/utils/columns';
+import { Plus, MoreHorizontal, Trash2, AlignLeft, Calendar as CalendarIcon, Edit2, Settings, AlertCircle, Copy, Check, ChevronsRightLeft, ChevronsLeftRight, ChevronRight, CheckCircle2 } from 'lucide-react';
 import styles from './Column.module.css';
 
 interface Props {
@@ -34,7 +33,8 @@ function readCollapsed(): string[] {
 }
 
 export default function Column({ column, board, search, cardFilter, onModalOpenChange }: Props) {
-  const { dispatch, createCard, updateColumn, deleteColumn, moveCard, notifyError } = useBoardContext();
+  const { dispatch, createCard, updateColumn, deleteColumn, updateCard } = useBoardContext();
+  const [showCompleted, setShowCompleted] = useState(false);
   const [collapsed, setCollapsedState] = useState(() => typeof window !== 'undefined' && readCollapsed().includes(column.id));
 
   function setCollapsed(next: boolean) {
@@ -47,20 +47,11 @@ export default function Column({ column, board, search, cardFilter, onModalOpenC
     } catch { /* storage unavailable: still collapses for this visit */ }
   }
 
-  const isDone = isDoneColumn(column);
-
-  // The tick on a card: send it to the Done column, or back to the first column if it is already there
-  function toggleDone(card: CardType) {
-    const target = isDone
-      ? board.columns.find((c) => !isDoneColumn(c))
-      : board.columns.find((c) => isDoneColumn(c));
-    if (!target) {
-      notifyError(isDone ? 'There is no other column to move this card to.' : 'Add a column named "Done" to use this.');
-      return;
-    }
-    const sourceIndex = column.cardIds.indexOf(card.id);
-    if (sourceIndex === -1) return;
-    moveCard(board.id, card.id, column.id, target.id, sourceIndex, 0);
+  // The tick on a card: completed cards leave the list and sit in this column's
+  // "Completed" section (like Google Tasks). Ticking again there brings them back.
+  function setCompleted(card: CardType, completed: boolean) {
+    const completedAt = completed ? new Date().toISOString() : null;
+    updateCard(board.id, { ...card, completedAt }, { completedAt });
   }
   const confirm = useConfirm();
   const [addingCard, setAddingCard] = useState(false);
@@ -83,14 +74,19 @@ export default function Column({ column, board, search, cardFilter, onModalOpenC
   const [selectedMinute, setSelectedMinute] = useState(0);
   const [selectedPeriod, setSelectedPeriod] = useState<'AM'|'PM'>('AM');
 
-  const allCards = column.cardIds
-    .map((id) => board.cards[id])
-    .filter(Boolean)
-    .filter((c) => cardMatchesSearch(c, search) && (!cardFilter || cardFilter(c)));
-  
+  const columnCards = column.cardIds.map((id) => board.cards[id]).filter(Boolean);
+  const matches = (c: CardType) => cardMatchesSearch(c, search) && (!cardFilter || cardFilter(c));
+  // Open cards make up the list; completed ones go to the Completed section below it
+  const allCards = columnCards.filter((c) => !c.completedAt && matches(c));
+  const completedCards = columnCards
+    .filter((c) => c.completedAt && matches(c))
+    .sort((a, b) => (b.completedAt! > a.completedAt! ? 1 : -1)); // most recently completed first
+
   const cards = allCards.slice(0, displayLimit);
 
-  const isOverWip = (column.wipLimit || 0) > 0 && column.cardIds.length > (column.wipLimit || 0);
+  // Counts and the WIP limit only consider open cards
+  const activeCount = columnCards.filter((c) => !c.completedAt).length;
+  const isOverWip = (column.wipLimit || 0) > 0 && activeCount > (column.wipLimit || 0);
 
   function handleAddCard() {
     if (!cardTitle.trim()) return;
@@ -228,13 +224,13 @@ export default function Column({ column, board, search, cardFilter, onModalOpenC
               role="button"
               tabIndex={0}
               title={`Expand "${column.title}"`}
-              aria-label={`Expand column ${column.title}, ${column.cardIds.length} cards`}
+              aria-label={`Expand column ${column.title}, ${activeCount} cards`}
               onClick={() => setCollapsed(false)}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setCollapsed(false); } }}
             >
               <ChevronsLeftRight size={14} />
               <span className={styles.dot} style={{ background: column.color }} />
-              <span className={`${styles.count} ${isOverWip ? styles.countOver : ''}`}>{column.cardIds.length}</span>
+              <span className={`${styles.count} ${isOverWip ? styles.countOver : ''}`}>{activeCount}</span>
               <span className={styles.collapsedTitle}>{column.title}</span>
               <div style={{ display: 'none' }}>{provided.placeholder}</div>
             </div>
@@ -262,7 +258,7 @@ export default function Column({ column, board, search, cardFilter, onModalOpenC
             <span className={styles.title} onClick={() => setEditingTitle(true)} title="Click to rename">{column.title}</span>
           )}
           <span className={`${styles.count} ${isOverWip ? styles.countOver : ''}`}>
-            {column.cardIds.length}
+            {activeCount}
             {(column.wipLimit || 0) > 0 && ` / ${column.wipLimit}`}
           </span>
         </div>
@@ -301,7 +297,7 @@ export default function Column({ column, board, search, cardFilter, onModalOpenC
       {/* WIP Warning */}
       {isOverWip && (
         <div className={styles.wipWarning}>
-          <AlertCircle size={12} /> Over WIP limit ({column.cardIds.length}/{column.wipLimit})
+          <AlertCircle size={12} /> Over WIP limit ({activeCount}/{column.wipLimit})
         </div>
       )}
 
@@ -355,10 +351,10 @@ export default function Column({ column, board, search, cardFilter, onModalOpenC
             className={`${styles.cardList} ${snapshot.isDraggingOver ? styles.draggingOver : ''}`}
           >
             {cards.map((card, index) => (
-              <CardItem key={card.id} card={card} index={index} board={board} columnId={column.id} dragDisabled={!!search || !!cardFilter} isDone={isDone} onToggleDone={() => toggleDone(card)} onModalOpenChange={onModalOpenChange} />
+              <CardItem key={card.id} card={card} index={index} board={board} columnId={column.id} dragDisabled={!!search || !!cardFilter} onToggleDone={() => setCompleted(card, true)} onModalOpenChange={onModalOpenChange} />
             ))}
             {provided.placeholder}
-            {cards.length === 0 && !addingCard && (
+            {cards.length === 0 && completedCards.length === 0 && !addingCard && (
               <EmptyState
                 variant="no-cards"
                 action={{ label: '+ Add a card', onClick: () => setAddingCard(true) }}
@@ -371,6 +367,37 @@ export default function Column({ column, board, search, cardFilter, onModalOpenC
               >
                 Show {Math.min(50, allCards.length - displayLimit)} more...
               </button>
+            )}
+
+            {/* Completed cards, folded away by default */}
+            {completedCards.length > 0 && (
+              <div className={styles.completedSection}>
+                <button
+                  className={styles.completedToggle}
+                  onClick={() => setShowCompleted(!showCompleted)}
+                  aria-expanded={showCompleted}
+                >
+                  <ChevronRight size={14} style={{ transform: showCompleted ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }} />
+                  Completed ({completedCards.length})
+                </button>
+                {showCompleted && completedCards.map((card) => (
+                  <div
+                    key={card.id}
+                    className={styles.completedCard}
+                    onClick={() => { setOpeningCardId(card.id); onModalOpenChange?.(true); }}
+                  >
+                    <button
+                      className={styles.completedTick}
+                      onClick={(e) => { e.stopPropagation(); setCompleted(card, false); }}
+                      title="Mark as not completed"
+                      aria-label={`Mark "${card.title}" as not completed`}
+                    >
+                      <CheckCircle2 size={15} />
+                    </button>
+                    <span className={styles.completedTitle}>{card.title}</span>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         )}
@@ -473,7 +500,7 @@ export default function Column({ column, board, search, cardFilter, onModalOpenC
             </button>
           </div>
         </div>
-      ) : cards.length > 0 ? (
+      ) : cards.length > 0 || completedCards.length > 0 ? (
         <button className={styles.addBtn} onClick={() => setAddingCard(true)}>
           <Plus size={14}/> Add a card
         </button>

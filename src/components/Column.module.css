@@ -470,3 +470,63 @@
 @media (max-width: 768px) {
   .column.collapsedColumn { width: 52px; scroll-snap-align: none; }
 }
+
+/* ─── Completed section at the bottom of a column ─── */
+.completedSection {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.completedToggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 4px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.completedToggle:hover { background: var(--bg-hover); color: var(--text-primary); }
+.completedCard {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.completedCard:hover { background: var(--bg-hover); }
+.completedTick {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin-top: -1px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: #36B37E;
+  cursor: pointer;
+}
+.completedTick:hover { color: var(--text-muted); }
+.completedTitle {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+  word-break: break-word;
+}

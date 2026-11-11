@@ -94,14 +94,26 @@ export default function Board({ board, search, cardFilter }: Props) {
       return;
     }
 
-    moveCard(
-      board.id,
-      draggableId,
-      source.droppableId,
-      destination.droppableId,
-      source.index,
-      destination.index
-    );
+    // The board only shows cards that are not completed, so the positions reported by the
+    // drag are positions among those. Translate them to positions in the full column order.
+    const srcCol = board.columns.find((c) => c.id === source.droppableId);
+    const dstCol = board.columns.find((c) => c.id === destination.droppableId);
+    if (!srcCol || !dstCol) return;
+    const sourceIndex = srcCol.cardIds.indexOf(draggableId);
+    if (sourceIndex === -1) return;
+
+    const dstIds = dstCol.cardIds.filter((id) => id !== draggableId);
+    const visible = dstIds.filter((id) => board.cards[id] && !board.cards[id].completedAt);
+    let destIndex: number;
+    if (destination.index < visible.length) {
+      destIndex = dstIds.indexOf(visible[destination.index]);
+    } else if (visible.length > 0) {
+      destIndex = dstIds.indexOf(visible[visible.length - 1]) + 1;
+    } else {
+      destIndex = 0;
+    }
+
+    moveCard(board.id, draggableId, source.droppableId, destination.droppableId, sourceIndex, destIndex);
   }
 
   function handleAddCol() {

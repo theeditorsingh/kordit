@@ -503,6 +503,7 @@ function formatPrismaBoards(prismaBoards: any[]): Board[] {
         coverColor: card.coverColor || '',
 
         reminderAt: card.reminderAt ? new Date(card.reminderAt).toISOString() : null,
+        completedAt: card.completedAt ? new Date(card.completedAt).toISOString() : null,
       };
 
       if (columnCardIds[card.columnId]) {
@@ -755,6 +756,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
       coverColor: '',
 
       reminderAt: null,
+      completedAt: null,
     };
     dispatch({ type: 'ADD_CARD', boardId, columnId, card: tempCard });
 
@@ -777,6 +779,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
         coverColor: realCard.coverColor || '',
 
         reminderAt: (realCard as any).reminderAt ? new Date((realCard as any).reminderAt).toISOString() : null,
+        completedAt: null,
       };
 
       dispatch({ type: 'REPLACE_CARD_ID', boardId, columnId, oldId: tempId, newCard: formattedCard });
@@ -868,6 +871,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
         coverColor: card.coverColor,
 
         reminderAt: card.reminderAt,
+        completedAt: card.completedAt,
       });
     } catch (e) {
       reportFailure("Couldn't save the card.", e);

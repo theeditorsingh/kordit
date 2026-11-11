@@ -13,7 +13,7 @@ import { useSwipeDown } from '@/hooks/useSwipeDown';
 // Loaded on first open so the modal code stays out of the initial board bundle
 const CardModal = dynamic(() => import('./CardModal'), { ssr: false });
 
-interface Props { card: Card; index: number; board: Board; columnId: string; dragDisabled?: boolean; /** The card sits in the board's Done column */ isDone?: boolean; onToggleDone?: () => void; onModalOpenChange?: (open: boolean) => void; }
+interface Props { card: Card; index: number; board: Board; columnId: string; dragDisabled?: boolean; onToggleDone?: () => void; onModalOpenChange?: (open: boolean) => void; }
 
 const PRIORITY_LABELS: Record<string, string> = { none: 'None', urgent: 'Urgent', high: 'High', medium: 'Medium', low: 'Low' };
 
@@ -38,7 +38,7 @@ function formatDate(date: string) {
 }
 
 
-export default function CardItem({ card, index, board, columnId, dragDisabled, isDone, onToggleDone, onModalOpenChange }: Props) {
+export default function CardItem({ card, index, board, columnId, dragDisabled, onToggleDone, onModalOpenChange }: Props) {
   const [open, setOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number } | null>(null);
   const [showBottomSheet, setShowBottomSheet] = useState(false);
@@ -132,7 +132,7 @@ export default function CardItem({ card, index, board, columnId, dragDisabled, i
                 )}
                 <div className={styles.metaRight}>
                   {card.dueDate && (
-                    <span className={`${styles.due} ${isDone ? '' : getDueDateClass(card.dueDate)}`}>
+                    <span className={`${styles.due} ${getDueDateClass(card.dueDate)}`}>
                       <Calendar size={11}/> {formatDate(card.dueDate)}
                     </span>
                   )}
@@ -144,13 +144,12 @@ export default function CardItem({ card, index, board, columnId, dragDisabled, i
             <div className={styles.titleRow}>
               {onToggleDone && (
                 <button
-                  className={`${styles.doneBtn} ${isDone ? styles.doneBtnChecked : ''}`}
+                  className={styles.doneBtn}
                   onClick={(e) => { e.stopPropagation(); onToggleDone(); }}
-                  title={isDone ? 'Mark as not done' : 'Mark as done'}
-                  aria-label={isDone ? 'Mark as not done' : 'Mark as done'}
-                  aria-pressed={!!isDone}
+                  title="Mark completed"
+                  aria-label={`Mark "${card.title}" completed`}
                 >
-                  {isDone ? <CheckCircle2 size={15} /> : <Circle size={15} />}
+                  <Circle size={15} />
                 </button>
               )}
               <div className={styles.title}>{card.title}</div>

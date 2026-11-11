@@ -412,6 +412,9 @@ export async function updateCardAction(boardId: string, cardId: string, updates:
   if (updates.reminderAt !== undefined) {
     data.reminderAt = updates.reminderAt ? new Date(updates.reminderAt) : null;
   }
+  if (updates.completedAt !== undefined) {
+    data.completedAt = updates.completedAt ? new Date(updates.completedAt) : null;
+  }
 
   const jsonFields = ['labels', 'checklist', 'assigneeIds'];
   for (const key of jsonFields) {
@@ -592,6 +595,7 @@ export async function applyBoardOpsAction(boardId: string, ops: BoardOp[]) {
         priority: PRIORITIES.includes(card.priority) ? card.priority : 'none',
         dueDate: card.dueDate ? new Date(card.dueDate) : null,
         reminderAt: card.reminderAt ? new Date(card.reminderAt) : null,
+        completedAt: card.completedAt ? new Date(card.completedAt) : null,
         coverImage: String(card.coverImage ?? ''),
         coverColor: String(card.coverColor ?? ''),
         labels: (Array.isArray(card.labels) ? card.labels : []) as any,

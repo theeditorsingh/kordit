@@ -116,6 +116,7 @@ model Card {
   priority    String    @default("none") // none, urgent, high, medium, low
   dueDate     DateTime?
   reminderAt  DateTime?                   // When to fire the reminder notification
+  completedAt DateTime?                   // Set when the card is ticked off; it then sits in its column's Completed section
   order       Int       @default(0)
   coverImage  String    @default("")       // URL of cover image
   coverColor  String    @default("")       // Solid color cover

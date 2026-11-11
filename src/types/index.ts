@@ -37,6 +37,8 @@ export interface Card {
   coverColor?: string;
 
   reminderAt?: string | null;
+  /** When the card was ticked off. Completed cards show in their column's Completed section. */
+  completedAt?: string | null;
 }
 
 export interface Column {
