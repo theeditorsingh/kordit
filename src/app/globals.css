@@ -40,6 +40,26 @@
   --glass-border: rgba(223,225,230,0.9);
 }
 
+/* Optional visual density/style presets. They layer on top of light/dark mode. */
+html[data-appearance='classic'] {
+  --accent: #0079bf;
+  --accent-hover: #026aa7;
+  --accent-subtle: rgba(0, 121, 191, 0.12);
+}
+html[data-appearance='classic'] .btn,
+html[data-appearance='classic'] .input,
+html[data-appearance='classic'] .modal-box { border-radius: 6px; }
+html[data-appearance='classic'] .btn { min-height: 30px; }
+
+html[data-appearance='material'] {
+  --accent: #1a73e8;
+  --accent-hover: #1765cc;
+  --accent-subtle: rgba(26, 115, 232, 0.11);
+}
+html[data-appearance='material'] .btn,
+html[data-appearance='material'] .input { border-radius: 999px; }
+html[data-appearance='material'] .modal-box { border-radius: 24px; }
+
 /* ─── DARK THEME ─── */
 [data-theme="dark"] {
   color-scheme: dark;

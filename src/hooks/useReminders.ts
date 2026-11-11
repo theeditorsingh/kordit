@@ -81,6 +81,7 @@ export function useReminders() {
 
   const checkAndFire = useCallback(() => {
     if (typeof window === 'undefined') return;
+    if (localStorage.getItem('kordit-browser-notifications') === 'false') return;
     if (!('Notification' in window)) return;
     if (Notification.permission !== 'granted') return;
 
@@ -104,7 +105,7 @@ export function useReminders() {
       }
 
       // Check overdue (fire once per card per day)
-      if (card.dueDate) {
+      if (card.dueDate && localStorage.getItem('kordit-due-soon-notifications') !== 'false') {
         const due = new Date(card.dueDate);
         if (due < now) {
           const overdueKey = `overdue-${card.id}-${now.toDateString()}`;

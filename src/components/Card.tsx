@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 import { Board, Card } from '@/types';
 
@@ -44,6 +44,17 @@ export default function CardItem({ card, index, board, columnId, dragDisabled, o
   const [showBottomSheet, setShowBottomSheet] = useState(false);
   const { deleteCard, toggleCardSelection, state } = useBoardContext();
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get('card');
+    if (requested === card.id) {
+      const timer = window.setTimeout(() => {
+        setOpen(true);
+        onModalOpenChange?.(true);
+      }, 0);
+      return () => window.clearTimeout(timer);
+    }
+  }, [card.id, onModalOpenChange]);
 
   // Swipe-down to dismiss the long-press bottom sheet
   const cardSheetSwipe = useSwipeDown({ onDismiss: () => setShowBottomSheet(false) });
@@ -306,6 +317,11 @@ export default function CardItem({ card, index, board, columnId, dragDisabled, o
           <CardModal card={card} board={board} columnId={columnId} onClose={() => {
             setOpen(false);
             onModalOpenChange?.(false);
+            const url = new URL(window.location.href);
+            if (url.searchParams.get('card') === card.id) {
+              url.searchParams.delete('card');
+              window.history.replaceState(window.history.state, '', url);
+            }
           }} />
         )}
     </>

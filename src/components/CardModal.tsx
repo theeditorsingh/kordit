@@ -8,10 +8,11 @@ import ColorField from './ColorField';
 import { useConfirm } from './ConfirmDialog';
 import {
   X, Plus, Trash2, Check, Calendar, Tag, Users, AlignLeft, List,
-  Image, Link2, AlertTriangle, Sparkles, Loader2, Bell, CheckCircle2
+  Image, Link2, AlertTriangle, Sparkles, Loader2, Bell, CheckCircle2, MoveRight, Copy
 } from 'lucide-react';
 import { getInitials } from '@/utils/storage';
 import styles from './CardModal.module.css';
+import { copyCardAcrossBoardsAction, moveCardAcrossBoardsAction } from '@/actions/boardActions';
 
 interface Props { card: Card; board: Board; columnId: string; onClose: () => void; }
 
@@ -48,7 +49,7 @@ function toDatetimeLocal(dateStr: string): string {
 }
 
 export default function CardModal({ card, board, columnId, onClose }: Props) {
-  const { dispatch, deleteCard: deleteCardFn, updateCard, updateBoard, notifyError } = useBoardContext();
+  const { state: boardState, dispatch, deleteCard: deleteCardFn, updateCard, updateBoard, notifyError } = useBoardContext();
   const confirm = useConfirm();
   // Custom label colours saved on this board
   const savedColors = board.labelColors ?? [];
@@ -81,6 +82,10 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
   const [aiDateReasoning, setAiDateReasoning] = useState<string | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
   const [suggestedSubtasks, setSuggestedSubtasks] = useState<string[]>([]);
+  const [targetBoardId, setTargetBoardId] = useState(board.id);
+  const [targetColumnId, setTargetColumnId] = useState(columnId);
+  const [transferBusy, setTransferBusy] = useState<'move' | 'copy' | null>(null);
+  const [transferMessage, setTransferMessage] = useState('');
 
   // Pull-to-close state
   const [dragY, setDragY] = useState(0);
@@ -190,6 +195,33 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
     if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
     savedTimerRef.current = setTimeout(() => setSaveStatus('idle'), 1800);
     onClose();
+  }
+
+  async function transferCard(kind: 'move' | 'copy') {
+    const targetBoard = boardState.boards.find((item) => item.id === targetBoardId);
+    if (!targetBoard || !targetColumnId) return;
+    setTransferBusy(kind);
+    setTransferMessage('');
+    try {
+      const original = originalRef.current;
+      const patch: Partial<Card> = {};
+      (Object.keys(data) as (keyof Card)[]).forEach((key) => {
+        if (JSON.stringify(data[key]) !== JSON.stringify(original[key])) (patch as Record<string, unknown>)[key] = data[key];
+      });
+      if (Object.keys(patch).length) await updateCard(board.id, { ...(board.cards[card.id] ?? card), ...patch }, patch);
+      if (kind === 'move') {
+        await moveCardAcrossBoardsAction(card.id, targetBoardId, targetColumnId);
+        onClose();
+        if (targetBoard.id !== board.id && targetBoard.ownerUsername) window.location.assign(`/${targetBoard.ownerUsername}/${targetBoard.slug}`);
+      } else {
+        await copyCardAcrossBoardsAction(card.id, targetBoardId, targetColumnId);
+        setTransferMessage(`Copied to ${targetBoard.title}`);
+      }
+    } catch (error) {
+      setTransferMessage(error instanceof Error ? error.message : `Couldn’t ${kind} the card`);
+    } finally {
+      setTransferBusy(null);
+    }
   }
 
   function deleteCard() {
@@ -869,6 +901,34 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
                 </select>
               </div>
             )}
+
+            <div className={styles.section}>
+              <div className={styles.sectionLabel}><MoveRight size={14} /> Move or copy</div>
+              <select
+                className="input"
+                style={{ width: '100%', marginBottom: 8 }}
+                value={targetBoardId}
+                onChange={(event) => {
+                  const nextBoard = boardState.boards.find((item) => item.id === event.target.value);
+                  setTargetBoardId(event.target.value);
+                  setTargetColumnId(nextBoard?.columns[0]?.id ?? '');
+                }}
+              >
+                {boardState.boards.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
+              </select>
+              <select className="input" style={{ width: '100%', marginBottom: 8 }} value={targetColumnId} onChange={(event) => setTargetColumnId(event.target.value)}>
+                {boardState.boards.find((item) => item.id === targetBoardId)?.columns.map((column) => <option key={column.id} value={column.id}>{column.title}</option>)}
+              </select>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="btn btn-ghost btn-sm" disabled={!!transferBusy || !targetColumnId} onClick={() => transferCard('move')}>
+                  {transferBusy === 'move' ? <Loader2 size={13} className={styles.spin} /> : <MoveRight size={13} />} Move
+                </button>
+                <button className="btn btn-ghost btn-sm" disabled={!!transferBusy || !targetColumnId} onClick={() => transferCard('copy')}>
+                  {transferBusy === 'copy' ? <Loader2 size={13} className={styles.spin} /> : <Copy size={13} />} Copy
+                </button>
+              </div>
+              {transferMessage && <p style={{ margin: '7px 0 0', fontSize: 11, color: 'var(--text-muted)' }}>{transferMessage}</p>}
+            </div>
 
 
           </div>

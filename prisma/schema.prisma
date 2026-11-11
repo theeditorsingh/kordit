@@ -52,6 +52,12 @@ model User {
   activities  Activity[]
   comments    Comment[]
   auditLogs   AuditLog[]
+  notifications         Notification[] @relation("NotificationRecipient")
+  notificationActions   Notification[] @relation("NotificationActor")
+  notificationPreference NotificationPreference?
+  ownedWorkspaces        Workspace[] @relation("WorkspaceOwner")
+  workspaceMemberships   WorkspaceMember[]
+  workspaceInvitesSent   WorkspaceInvite[] @relation("WorkspaceInviteSender")
 }
 
 model VerificationToken {
@@ -88,8 +94,13 @@ model Board {
   activities  Activity[]
   automations Automation[]
   boardLabels BoardLabel[]
+  notifications Notification[]
+
+  workspaceId String?
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
 
   @@unique([ownerId, slug])
+  @@index([workspaceId])
 }
 
 model Column {
@@ -139,6 +150,7 @@ model Card {
 
   comments   Comment[]
   activities Activity[]
+  notifications Notification[]
 
   @@index([boardId])
   @@index([columnId, order])
@@ -239,4 +251,97 @@ model Automation {
   board   Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
 
   @@index([boardId, trigger])
+}
+
+// Persisted collaboration inbox
+model Notification {
+  id        String   @id @default(cuid())
+  type      String   // assignment, comment, mention, invitation
+  message   String
+  isRead    Boolean  @default(false)
+  metadata  Json     @default("{}")
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
+
+  actorId String?
+  actor   User? @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  boardId String?
+  board   Board? @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  cardId String?
+  card   Card? @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead, createdAt])
+  @@index([boardId])
+  @@index([cardId])
+}
+
+model NotificationPreference {
+  userId      String  @id
+  assignments Boolean @default(true)
+  comments    Boolean @default(true)
+  mentions    Boolean @default(true)
+  invitations Boolean @default(true)
+  dueSoon     Boolean @default(true)
+  browser     Boolean @default(true)
+  email       Boolean @default(false)
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Workspace-level team directory. Boards remain independently permissioned;
+// workspace membership is the source for centralized team administration.
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ownerId String
+  owner   User @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  members WorkspaceMember[]
+  invites WorkspaceInvite[]
+  boards  Board[]
+
+  @@index([ownerId])
+}
+
+model WorkspaceMember {
+  id        String   @id @default(cuid())
+  role      String   @default("Member") // Owner, Admin, Member
+  createdAt DateTime @default(now())
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+}
+
+model WorkspaceInvite {
+  id        String   @id @default(cuid())
+  email     String
+  role      String   @default("Member")
+  status    String   @default("Pending") // Pending, Accepted, Revoked
+  token     String   @unique @default(cuid())
+  createdAt DateTime @default(now())
+  acceptedAt DateTime?
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  invitedById String
+  invitedBy   User @relation("WorkspaceInviteSender", fields: [invitedById], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, email])
+  @@index([email, status])
 }

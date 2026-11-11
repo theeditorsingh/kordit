@@ -5,12 +5,13 @@ import { useSession } from 'next-auth/react';
 import { signIn, signOut } from 'next-auth/react';
 import {
   X, User, Lock, Trash2, Camera, Check, AlertCircle, Loader2,
-  ShieldCheck, Calendar, LayoutGrid, MessageSquare, LogOut, ChevronRight, Eye, EyeOff, Mail, KeyRound
+  ShieldCheck, Calendar, LayoutGrid, MessageSquare, LogOut, ChevronRight, Eye, EyeOff, Mail, KeyRound, SlidersHorizontal
 } from 'lucide-react';
 import { updateProfileAction, changePasswordAction, deleteAccountAction, getCurrentUserAction } from '@/actions/userActions';
 import styles from './ProfileModal.module.css';
+import PreferencesSettings from './PreferencesSettings';
 
-type Tab = 'profile' | 'security' | 'danger';
+type Tab = 'profile' | 'preferences' | 'security' | 'danger';
 
 interface UserData {
   id: string;
@@ -221,6 +222,7 @@ export default function ProfileModal({ onClose, initialTab = 'profile' }: { onCl
 
             {[
               { id: 'profile' as Tab, icon: <User size={15} />, label: 'Profile' },
+              { id: 'preferences' as Tab, icon: <SlidersHorizontal size={15} />, label: 'Preferences' },
               { id: 'security' as Tab, icon: <Lock size={15} />, label: 'Security' },
               { id: 'danger' as Tab, icon: <Trash2 size={15} />, label: 'Danger Zone' },
             ].map((t) => (
@@ -370,6 +372,8 @@ export default function ProfileModal({ onClose, initialTab = 'profile' }: { onCl
                     </button>
                   </div>
                 )}
+
+                {tab === 'preferences' && <div className={styles.section}><PreferencesSettings /></div>}
 
                 {/* ── SECURITY TAB ── */}
                 {tab === 'security' && (

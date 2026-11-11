@@ -8,6 +8,7 @@ export default function NotificationPermissionBanner() {
 
   useEffect(() => {
     if (typeof window === 'undefined' || !('Notification' in window)) return;
+    if (localStorage.getItem('kordit-browser-notifications') === 'false') return;
     // Only show if permission is 'default' (not yet asked) and user has set a reminder
     const hasReminder = localStorage.getItem('kordit-has-reminder');
     if (Notification.permission === 'default' && hasReminder === 'true') {

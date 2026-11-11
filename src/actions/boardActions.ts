@@ -9,6 +9,7 @@ import { memberInclude } from "@/lib/boardQuery";
 import type { BoardOp } from "@/utils/boardOps";
 import { isValidBackground, isHexColor } from "@/utils/boardBackground";
 import { sanitizeColumnSettings } from "@/utils/columnSettings";
+import { createNotification, createNotifications, mentionedUsernames } from "@/lib/notifications";
 
 function getResend() {
   return new Resend(process.env.RESEND_API_KEY);
@@ -85,13 +86,23 @@ export async function createBoardAction(title: string, customColumns?: { title: 
         { title: 'Done', order: 3, color: '#36B37E' },
       ];
 
+  const workspaceMembership = await prisma.workspaceMember.findFirst({
+    where: { userId: user.id },
+    select: { workspaceId: true, workspace: { select: { members: { select: { userId: true, role: true } } } } },
+    orderBy: { createdAt: 'asc' },
+  });
+  const initialMembers = workspaceMembership
+    ? workspaceMembership.workspace.members.map((member) => ({ userId: member.userId, role: member.role === 'Owner' ? 'Admin' : member.role }))
+    : [{ userId: user.id, role: 'Admin' }];
+
   const board = await prisma.board.create({
     data: {
       title: trimmedTitle,
       slug,
       ownerId: user.id,
+      workspaceId: workspaceMembership?.workspaceId,
       columns: { create: columnsToCreate },
-      members: { create: [{ userId: user.id, role: 'Admin' }] }
+      members: { create: initialMembers }
     },
     include: {
       columns: true,
@@ -341,7 +352,10 @@ export async function createCardAction(boardId: string, columnId: string, title:
 export async function moveCardAction(cardId: string, sourceColId: string, destColId: string, newOrder: number) {
   const user = await getAuthUser();
 
-  const card = await prisma.card.findUnique({ where: { id: cardId } });
+  const card = await prisma.card.findUnique({
+    where: { id: cardId },
+    include: { board: { select: { title: true } } },
+  });
   if (!card) throw new Error("Card not found");
   await verifyBoardAccess(card.boardId, user.id);
 
@@ -425,7 +439,10 @@ export async function updateCardAction(boardId: string, cardId: string, updates:
   const user = await getAuthUser();
   await verifyBoardAccess(boardId, user.id);
 
-  const card = await prisma.card.findUnique({ where: { id: cardId } });
+  const card = await prisma.card.findUnique({
+    where: { id: cardId },
+    include: { board: { select: { title: true } } },
+  });
   if (card?.boardId !== boardId) throw new Error("Unauthorized");
 
   const data: Record<string, any> = {};
@@ -452,6 +469,22 @@ export async function updateCardAction(boardId: string, cardId: string, updates:
 
   if (Object.keys(data).length > 0) {
     await prisma.card.update({ where: { id: cardId }, data });
+
+    if (Array.isArray(updates.assigneeIds)) {
+      const previous = Array.isArray(card.assigneeIds) ? card.assigneeIds.filter((id): id is string => typeof id === 'string') : [];
+      const added = updates.assigneeIds.filter((id: unknown): id is string => typeof id === 'string' && !previous.includes(id));
+      if (added.length) {
+        const actor = user.name || user.email || 'A teammate';
+        await createNotifications(added.map((userId) => ({
+          userId,
+          actorId: user.id,
+          boardId,
+          cardId,
+          type: 'assignment',
+          message: `${actor} assigned you to “${card.title}” on ${card.board.title}`,
+        })));
+      }
+    }
 
     const changedFields = Object.keys(data);
     await logActivity(boardId, user.id, 'card_updated', { cardId, fields: changedFields }, cardId);
@@ -576,6 +609,68 @@ export async function bulkCopyCardsAction(boardId: string, cardIds: string[], ta
   if (newCardsData.length > 0) {
     await prisma.card.createMany({ data: newCardsData });
   }
+}
+
+export async function moveCardAcrossBoardsAction(cardId: string, targetBoardId: string, targetColumnId: string) {
+  const user = await getAuthUser();
+  const card = await prisma.card.findUnique({ where: { id: cardId } });
+  if (!card) throw new Error('Card not found');
+  await verifyBoardAccess(card.boardId, user.id);
+  await verifyBoardAccess(targetBoardId, user.id);
+  const targetColumn = await prisma.column.findUnique({ where: { id: targetColumnId } });
+  if (!targetColumn || targetColumn.boardId !== targetBoardId) throw new Error('Invalid destination column');
+
+  const [last, targetMembers] = await Promise.all([
+    prisma.card.aggregate({ where: { columnId: targetColumnId }, _max: { order: true } }),
+    prisma.member.findMany({ where: { boardId: targetBoardId }, select: { userId: true } }),
+  ]);
+  const allowed = new Set(targetMembers.map((member) => member.userId));
+  const assigneeIds = Array.isArray(card.assigneeIds) ? card.assigneeIds.filter((id): id is string => typeof id === 'string' && allowed.has(id)) : [];
+  const oldBoardId = card.boardId;
+  await prisma.card.update({
+    where: { id: cardId },
+    data: { boardId: targetBoardId, columnId: targetColumnId, assigneeIds, order: (last._max.order ?? -1) + 1 },
+  });
+  await logActivity(oldBoardId, user.id, 'card_moved_out', { cardTitle: card.title, targetBoardId });
+  await logActivity(targetBoardId, user.id, 'card_moved_in', { cardTitle: card.title, sourceBoardId: oldBoardId }, cardId);
+  revalidatePath('/');
+}
+
+export async function copyCardAcrossBoardsAction(cardId: string, targetBoardId: string, targetColumnId: string) {
+  const user = await getAuthUser();
+  const card = await prisma.card.findUnique({ where: { id: cardId } });
+  if (!card) throw new Error('Card not found');
+  await verifyBoardAccess(card.boardId, user.id);
+  await verifyBoardAccess(targetBoardId, user.id);
+  const targetColumn = await prisma.column.findUnique({ where: { id: targetColumnId } });
+  if (!targetColumn || targetColumn.boardId !== targetBoardId) throw new Error('Invalid destination column');
+
+  const [last, targetMembers] = await Promise.all([
+    prisma.card.aggregate({ where: { columnId: targetColumnId }, _max: { order: true } }),
+    prisma.member.findMany({ where: { boardId: targetBoardId }, select: { userId: true } }),
+  ]);
+  const allowed = new Set(targetMembers.map((member) => member.userId));
+  const assigneeIds = Array.isArray(card.assigneeIds) ? card.assigneeIds.filter((id): id is string => typeof id === 'string' && allowed.has(id)) : [];
+  const copy = await prisma.card.create({
+    data: {
+      title: `${card.title} (copy)`,
+      description: card.description,
+      priority: card.priority,
+      dueDate: card.dueDate,
+      reminderAt: card.reminderAt,
+      coverImage: card.coverImage,
+      coverColor: card.coverColor,
+      labels: card.labels as any,
+      checklist: card.checklist as any,
+      assigneeIds,
+      boardId: targetBoardId,
+      columnId: targetColumnId,
+      order: (last._max.order ?? -1) + 1,
+    },
+  });
+  await logActivity(targetBoardId, user.id, 'card_copied_in', { cardTitle: card.title, sourceBoardId: card.boardId }, copy.id);
+  revalidatePath('/');
+  return copy.id;
 }
 
 // ── Undo / Redo ─────────────────────────────────────────────────────────────
@@ -742,6 +837,14 @@ export async function inviteMemberAction(boardId: string, email: string, role: '
     throw new Error("Failed to send invite email.");
   }
 
+  await createNotification({
+    userId: invitedUser.id,
+    actorId: authUser.id,
+    boardId,
+    type: 'invitation',
+    message: `${authUser.name || authUser.email || 'A teammate'} invited you to “${board.title}”`,
+  });
+
   revalidatePath('/');
 }
 
@@ -780,6 +883,31 @@ export async function addCommentAction(boardId: string, cardId: string, content:
     data: { cardId, userId: user.id, content },
     include: { user: { select: { name: true, username: true, image: true } } }
   });
+
+  const actor = user.name || user.email || 'A teammate';
+  const assigneeIds = Array.isArray(card.assigneeIds)
+    ? card.assigneeIds.filter((id): id is string => typeof id === 'string')
+    : [];
+  const usernames = mentionedUsernames(content);
+  const mentionedMembers = usernames.length
+    ? await prisma.member.findMany({
+        where: { boardId, user: { username: { in: usernames, mode: 'insensitive' } } },
+        select: { userId: true },
+      })
+    : [];
+  const mentionedIds = new Set(mentionedMembers.map((member) => member.userId));
+  const recipients = new Set([...assigneeIds, ...mentionedIds]);
+  recipients.delete(user.id);
+  await createNotifications([...recipients].map((userId) => ({
+    userId,
+    actorId: user.id,
+    boardId,
+    cardId,
+    type: mentionedIds.has(userId) ? 'mention' : 'comment',
+    message: mentionedIds.has(userId)
+      ? `${actor} mentioned you on “${card.title}”`
+      : `${actor} commented on “${card.title}”: ${content.slice(0, 90)}`,
+  })));
 
   await logActivity(boardId, user.id, 'comment_added', { cardId, preview: content.substring(0, 50) }, cardId);
   revalidatePath('/');

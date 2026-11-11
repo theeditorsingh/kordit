@@ -5,6 +5,7 @@ import EmailProvider from "next-auth/providers/email";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { getPasswordResetEmailHtml, getSignInEmailHtml } from "@/lib/emailTemplates";
+import { getOrCreateWorkspace } from "@/lib/workspace";
 
 import { Resend } from "resend";
 
@@ -87,6 +88,17 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt",
   },
   callbacks: {
+    async signIn({ user }) {
+      if (user.id) {
+        try {
+          await getOrCreateWorkspace({ id: user.id, name: user.name, email: user.email });
+        } catch (error) {
+          // Workspace setup must not lock someone out of their account.
+          console.error('Workspace setup failed during sign-in', error);
+        }
+      }
+      return true;
+    },
     async jwt({ token, user, account, trigger, session }) {
       // Remember when the user last proved ownership of their inbox.
       // Used to allow setting a new password without the old one.

@@ -5,7 +5,7 @@ import { useBoardContext } from '@/context/BoardContext';
 import { useTheme } from '@/context/ThemeContext';
 import {
   Sun, Moon, Search, LayoutGrid, Table2, Calendar, X, Share2, User, LogOut,
-  Zap, Palette, Save, Copy, Sparkles, Undo2, Redo2, Menu, MoreHorizontal, Settings, ListFilter, ChevronDown
+  Zap, Palette, Save, Copy, Sparkles, Undo2, Redo2, Menu, MoreHorizontal, Settings, ListFilter, ChevronDown, BarChart3, Users
 } from 'lucide-react';
 
 import AutomationPanel from './AutomationPanel';
@@ -22,6 +22,9 @@ import NotificationPermissionBanner from './NotificationPermissionBanner';
 import { useReminders } from '@/hooks/useReminders';
 import { useSwipeDown } from '@/hooks/useSwipeDown';
 import { useConfirm } from './ConfirmDialog';
+import NotificationBell from './NotificationBell';
+import AnalyticsModal from './AnalyticsModal';
+import TeamModal from './TeamModal';
 
 interface Props {
   view: ViewMode;
@@ -52,7 +55,9 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
   const [showMore, setShowMore] = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
-  const [profileTab, setProfileTab] = useState<'profile'|'security'|'danger'>('profile');
+  const [profileTab, setProfileTab] = useState<'profile'|'preferences'|'security'|'danger'>('profile');
+  const [showAnalytics, setShowAnalytics] = useState(false);
+  const [showTeam, setShowTeam] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Swipe-down to dismiss the More sheet
@@ -326,6 +331,8 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
           {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
         </button>
 
+        <NotificationBell />
+
         <div style={{ position: 'relative', marginLeft: 8 }}>
           <button
             className="btn btn-ghost btn-icon"
@@ -397,6 +404,18 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
                   Profile {'&'} Settings
                 </button>
                 <button
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: 12, background: 'none', border: 'none', borderRadius: 12, color: 'var(--text-secondary)', fontSize: 14, fontWeight: 500, cursor: 'pointer', textAlign: 'left', minHeight: 44 }}
+                  onClick={() => { setShowUserMenu(false); setShowAnalytics(true); }}
+                >
+                  <BarChart3 size={16} /> Analytics
+                </button>
+                <button
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: 12, background: 'none', border: 'none', borderRadius: 12, color: 'var(--text-secondary)', fontSize: 14, fontWeight: 500, cursor: 'pointer', textAlign: 'left', minHeight: 44 }}
+                  onClick={() => { setShowUserMenu(false); setShowTeam(true); }}
+                >
+                  <Users size={16} /> Team workspace
+                </button>
+                <button
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -464,6 +483,8 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
           initialTab={profileTab}
         />
       )}
+      {showAnalytics && <AnalyticsModal onClose={() => setShowAnalytics(false)} />}
+      {showTeam && <TeamModal onClose={() => setShowTeam(false)} />}
       {/* Mobile More Actions Bottom Sheet */}
       {showMore && (
         <>

@@ -1,139 +1,133 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
-import { Bell, X, Calendar, AlertTriangle, Clock } from 'lucide-react';
-import { useBoardContext } from '@/context/BoardContext';
-import { getReminderItems, ReminderItem } from '@/hooks/useReminders';
+
+import { useCallback, useEffect, useState } from 'react';
+import { Bell, CalendarClock, Check, MessageSquare, UserPlus, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import styles from './NotificationBell.module.css';
 
+type InboxNotification = {
+  id: string;
+  type: 'assignment' | 'comment' | 'mention' | 'invitation';
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+  cardId?: string | null;
+  board?: { title: string; slug: string; owner: { username: string | null } } | null;
+};
+
+type DueSoon = {
+  id: string;
+  title: string;
+  dueDate: string;
+  board: { title: string; slug: string; owner: { username: string | null } };
+};
+
+function timeAgo(iso: string) {
+  const seconds = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
+  if (seconds < 60) return 'just now';
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+  return `${Math.floor(seconds / 86400)}d ago`;
+}
+
+function dueLabel(iso: string) {
+  const date = new Date(iso);
+  const today = new Date();
+  const day = Math.floor((date.setHours(0, 0, 0, 0) - today.setHours(0, 0, 0, 0)) / 86400000);
+  if (day < 0) return `${Math.abs(day)}d overdue`;
+  if (day === 0) return 'Today';
+  if (day === 1) return 'Tomorrow';
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
 export default function NotificationBell() {
-  const { state } = useBoardContext();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [items, setItems] = useState<ReminderItem[]>([]);
-  const panelRef = useRef<HTMLDivElement>(null);
+  const [notifications, setNotifications] = useState<InboxNotification[]>([]);
+  const [dueSoon, setDueSoon] = useState<DueSoon[]>([]);
 
-  // Recompute reminders when boards change or panel opens
+  const load = useCallback(async () => {
+    const response = await fetch('/api/notifications', { cache: 'no-store' });
+    if (!response.ok) return;
+    const data = await response.json();
+    setNotifications(Array.isArray(data.notifications) ? data.notifications : []);
+    setDueSoon(Array.isArray(data.dueSoon) ? data.dueSoon : []);
+  }, []);
+
   useEffect(() => {
-    setItems(getReminderItems(state.boards));
-  }, [state.boards, open]);
+    const initial = window.setTimeout(load, 0);
+    const timer = window.setInterval(load, 30000);
+    return () => { window.clearTimeout(initial); window.clearInterval(timer); };
+  }, [load]);
 
-  const overdue = items.filter(i => i.type === 'overdue');
-  const dueToday = items.filter(i => i.type === 'due-today');
-  const dueTomorrow = items.filter(i => i.type === 'due-tomorrow');
-  const totalCount = items.length;
+  const unread = notifications.filter((notification) => !notification.isRead).length;
+  const badge = unread + dueSoon.length;
 
-  function formatDate(date: string) {
-    return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  async function markRead(id?: string) {
+    await fetch('/api/notifications', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(id ? { id } : { all: true }),
+    });
+    setNotifications((items) => items.map((item) => !id || item.id === id ? { ...item, isRead: true } : item));
+  }
+
+  function openBoard(board: InboxNotification['board'] | DueSoon['board'], cardId?: string | null) {
+    if (!board?.owner.username) return;
+    const suffix = cardId ? `?card=${encodeURIComponent(cardId)}` : '';
+    setOpen(false);
+    router.push(`/${board.owner.username}/${board.slug}${suffix}`);
   }
 
   return (
     <div style={{ position: 'relative' }}>
-      <button
-        className="btn btn-ghost btn-icon btn-sm"
-        onClick={() => setOpen(!open)}
-        title="Notifications"
-        style={{ position: 'relative' }}
-      >
+      <button className="btn btn-ghost btn-icon" onClick={() => { const next = !open; setOpen(next); if (next) load(); }} aria-label={`Notifications${badge ? ` (${badge})` : ''}`}>
         <Bell size={16} />
-        {totalCount > 0 && (
-          <span className={styles.badge}>
-            {totalCount > 9 ? '9+' : totalCount}
-          </span>
-        )}
+        {badge > 0 && <span className={styles.badge}>{badge > 9 ? '9+' : badge}</span>}
       </button>
 
       {open && (
         <>
           <div style={{ position: 'fixed', inset: 0, zIndex: 90 }} onClick={() => setOpen(false)} />
-          <div className={styles.panel} ref={panelRef}>
-            <div className={styles.header}>
-              <span className={styles.headerTitle}>
-                <Bell size={14} /> Notifications
-              </span>
-              <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setOpen(false)}>
-                <X size={14} />
-              </button>
-            </div>
-
+          <section className={styles.panel} aria-label="Notifications">
+            <header className={styles.header}>
+              <span className={styles.headerTitle}><Bell size={14} /> Notifications</span>
+              <div style={{ display: 'flex', gap: 4 }}>
+                {unread > 0 && <button className="btn btn-ghost btn-sm" onClick={() => markRead()}><Check size={13} /> Read all</button>}
+                <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setOpen(false)} aria-label="Close notifications"><X size={14} /></button>
+              </div>
+            </header>
             <div className={styles.body}>
-              {totalCount === 0 ? (
-                <div className={styles.empty}>
-                  <Bell size={24} style={{ color: 'var(--text-muted)', opacity: 0.4 }} />
-                  <p>All caught up! No upcoming tasks.</p>
+              {dueSoon.length > 0 && (
+                <div className={styles.group}>
+                  <div className={`${styles.groupLabel} ${styles.groupToday}`}><CalendarClock size={12} /> Assigned to you · due soon</div>
+                  {dueSoon.map((card) => (
+                    <button key={card.id} className={styles.item} style={{ width: '100%', border: 0, background: 'transparent', textAlign: 'left' }} onClick={() => openBoard(card.board, card.id)}>
+                      <div className={styles.itemTitle}>{card.title}</div>
+                      <div className={styles.itemMeta}><span className={styles.itemBoard}>{card.board.title}</span><span className={styles.itemDate}>{dueLabel(card.dueDate)}</span></div>
+                    </button>
+                  ))}
                 </div>
-              ) : (
-                <>
-                  {overdue.length > 0 && (
-                    <div className={styles.group}>
-                      <div className={`${styles.groupLabel} ${styles.groupOverdue}`}>
-                        <AlertTriangle size={12} /> Overdue ({overdue.length})
-                      </div>
-                      {overdue.map(item => (
-                        <a
-                          key={item.card.id}
-                          className={styles.item}
-                          href={`/${item.boardSlug}`}
-                          onClick={() => setOpen(false)}
-                        >
-                          <div className={styles.itemTitle}>{item.card.title}</div>
-                          <div className={styles.itemMeta}>
-                            <span className={styles.itemBoard}>{item.boardTitle}</span>
-                            <span className={styles.itemDate}>
-                              <Calendar size={10} /> {formatDate(item.card.dueDate!)}
-                            </span>
-                          </div>
-                        </a>
-                      ))}
-                    </div>
-                  )}
-
-                  {dueToday.length > 0 && (
-                    <div className={styles.group}>
-                      <div className={`${styles.groupLabel} ${styles.groupToday}`}>
-                        <Clock size={12} /> Due Today ({dueToday.length})
-                      </div>
-                      {dueToday.map(item => (
-                        <a
-                          key={item.card.id}
-                          className={styles.item}
-                          href={`/${item.boardSlug}`}
-                          onClick={() => setOpen(false)}
-                        >
-                          <div className={styles.itemTitle}>{item.card.title}</div>
-                          <div className={styles.itemMeta}>
-                            <span className={styles.itemBoard}>{item.boardTitle}</span>
-                          </div>
-                        </a>
-                      ))}
-                    </div>
-                  )}
-
-                  {dueTomorrow.length > 0 && (
-                    <div className={styles.group}>
-                      <div className={`${styles.groupLabel} ${styles.groupTomorrow}`}>
-                        <Calendar size={12} /> Due Tomorrow ({dueTomorrow.length})
-                      </div>
-                      {dueTomorrow.map(item => (
-                        <a
-                          key={item.card.id}
-                          className={styles.item}
-                          href={`/${item.boardSlug}`}
-                          onClick={() => setOpen(false)}
-                        >
-                          <div className={styles.itemTitle}>{item.card.title}</div>
-                          <div className={styles.itemMeta}>
-                            <span className={styles.itemBoard}>{item.boardTitle}</span>
-                            <span className={styles.itemDate}>
-                              <Calendar size={10} /> {formatDate(item.card.dueDate!)}
-                            </span>
-                          </div>
-                        </a>
-                      ))}
-                    </div>
-                  )}
-                </>
               )}
+
+              {notifications.map((notification) => (
+                <button
+                  key={notification.id}
+                  className={styles.item}
+                  style={{ width: '100%', border: 0, textAlign: 'left', background: notification.isRead ? 'transparent' : 'var(--accent-subtle)' }}
+                  onClick={async () => { if (!notification.isRead) await markRead(notification.id); openBoard(notification.board, notification.cardId); }}
+                >
+                  <div className={styles.itemTitle} style={{ whiteSpace: 'normal', display: 'flex', gap: 8 }}>
+                    {notification.type === 'invitation' ? <UserPlus size={14} /> : <MessageSquare size={14} />}
+                    <span>{notification.message}</span>
+                  </div>
+                  <div className={styles.itemMeta}>{timeAgo(notification.createdAt)}</div>
+                </button>
+              ))}
+
+              {!dueSoon.length && !notifications.length && <div className={styles.empty}><Bell size={24} /><p>You’re all caught up.</p></div>}
             </div>
-          </div>
+          </section>
         </>
       )}
     </div>
