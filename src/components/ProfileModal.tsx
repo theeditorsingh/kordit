@@ -135,7 +135,7 @@ export default function ProfileModal({ onClose, initialTab = 'profile' }: { onCl
     startReset(async () => {
       try {
         // Just send the magic link email — do NOT clear password yet
-        // Password is only cleared when user clicks the link and lands on /?reset=true
+        // The old password stays valid; the server lets a new one be set without it for 15 minutes after the magic-link sign-in
         if (userData?.email) {
           const res = await signIn('email', { 
             email: userData.email, 

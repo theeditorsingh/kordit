@@ -50,6 +50,7 @@ type Action =
   | { type: 'ARCHIVE_BOARD'; boardId: string }
   | { type: 'SYNC_BOARDS'; boards: Board[] }
   | { type: 'REPLACE_CARD_ID'; boardId: string; columnId: string; oldId: string; newCard: Card }
+  | { type: 'REPLACE_COLUMN_ID'; boardId: string; oldId: string; newId: string }
   | { type: 'UNDO' }
   | { type: 'REDO' };
 
@@ -179,6 +180,16 @@ function boardReducer(state: AppState, action: Action): AppState {
             cards: newCards,
           };
         }),
+      };
+
+    case 'REPLACE_COLUMN_ID':
+      return {
+        ...state,
+        boards: state.boards.map((b) =>
+          b.id === action.boardId
+            ? { ...b, columns: b.columns.map((c) => c.id === action.oldId ? { ...c, id: action.newId } : c) }
+            : b
+        ),
       };
 
     case 'UPDATE_CARD':
@@ -402,7 +413,8 @@ interface BoardContextType {
   deleteColumn: (boardId: string, columnId: string) => Promise<void>;
   moveCard: (boardId: string, cardId: string, sourceColId: string, destColId: string, sourceIndex: number, destIndex: number) => Promise<void>;
   deleteCard: (boardId: string, columnId: string, cardId: string) => Promise<void>;
-  updateCard: (boardId: string, card: Card) => Promise<void>;
+  /** `patch` limits what is sent to the server to the fields that changed */
+  updateCard: (boardId: string, card: Card, patch?: Partial<Card>) => Promise<void>;
   moveColumn: (boardId: string, sourceIndex: number, destIndex: number) => Promise<void>;
   updateColumn: (boardId: string, columnId: string, updates: Partial<Column>) => Promise<void>;
   updateBoard: (boardId: string, updates: Partial<Board>) => Promise<void>;
@@ -449,8 +461,6 @@ function formatPrismaBoards(prismaBoards: any[]): Board[] {
         coverColor: card.coverColor || '',
         timeSpent: card.timeSpent || 0,
         timerStarted: card.timerStarted ? new Date(card.timerStarted).toISOString() : null,
-        isRecurring: card.isRecurring || false,
-        recurringRule: card.recurringRule || '',
         blockedBy: Array.isArray(card.blockedBy) ? card.blockedBy : [],
         reminderAt: card.reminderAt ? new Date(card.reminderAt).toISOString() : null,
       };
@@ -471,7 +481,6 @@ function formatPrismaBoards(prismaBoards: any[]): Board[] {
       backgroundType: pb.backgroundType || 'color',
       isArchived: pb.isArchived || false,
       isFavorite: pb.isFavorite || false,
-      categoryId: pb.categoryId || null,
       columns: pb.columns.map((col: any) => ({
         id: col.id,
         title: col.title,
@@ -555,46 +564,75 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
     }
   }, [session?.user?.id]);
 
+  // Ids of the boards this user can see; the realtime subscription is scoped to them
+  const boardIdsKey = state.boards.map((b) => b.id).sort().join(',');
+
   useEffect(() => {
+    const userId = session?.user?.id;
     document.addEventListener('visibilitychange', fetchAndSync);
-    
+
+    // Several rows usually change together (e.g. a reorder), so collapse them into one refetch
+    let syncTimer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleSync = () => {
+      if (syncTimer) clearTimeout(syncTimer);
+      syncTimer = setTimeout(fetchAndSync, 400);
+    };
+    const cleanup = () => {
+      if (syncTimer) clearTimeout(syncTimer);
+      document.removeEventListener('visibilitychange', fetchAndSync);
+    };
+
     // Try Supabase Realtime first
-    if (supabase && session?.user?.id) {
-      const channel = supabase
-        .channel('board-changes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'Card' }, () => {
-          fetchAndSync();
-        })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'Column' }, () => {
-          fetchAndSync();
-        })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'Board' }, () => {
-          fetchAndSync();
-        })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'Member' }, () => {
-          fetchAndSync();
-        })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'Activity' }, () => {
-          fetchAndSync();
-        })
-        .subscribe();
+    if (supabase && userId) {
+      const client = supabase;
+      const ids = boardIdsKey ? boardIdsKey.split(',') : [];
+      // Realtime `in` filters accept at most 100 values; beyond that listen unfiltered
+      const scoped = ids.length > 0 && ids.length <= 100;
+      const idList = ids.join(',');
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let channel: any = client.channel(`board-changes-${userId}`);
+      // Inserts and updates are limited to this user's boards. Deletes cannot be
+      // filtered by Realtime, so they are listened to per table without a filter.
+      const listen = (table: string, filter: string | null, withDeletes: boolean) => {
+        for (const event of ['INSERT', 'UPDATE']) {
+          channel = channel.on(
+            'postgres_changes',
+            { event, schema: 'public', table, ...(filter ? { filter } : {}) },
+            scheduleSync
+          );
+        }
+        if (withDeletes) {
+          channel = channel.on('postgres_changes', { event: 'DELETE', schema: 'public', table }, scheduleSync);
+        }
+      };
+
+      if (ids.length > 0) {
+        listen('Card', scoped ? `boardId=in.(${idList})` : null, true);
+        listen('Column', scoped ? `boardId=in.(${idList})` : null, true);
+        listen('Board', scoped ? `id=in.(${idList})` : null, true);
+        if (scoped) listen('Member', `boardId=in.(${idList})`, false);
+      }
+      // Being added to (or removed from) a board, including ones not loaded yet
+      listen('Member', scoped || ids.length === 0 ? `userId=eq.${userId}` : null, true);
+      channel.subscribe();
 
       return () => {
-        supabase!.removeChannel(channel);
-        document.removeEventListener('visibilitychange', fetchAndSync);
+        client.removeChannel(channel);
+        cleanup();
       };
-    } else if (session?.user?.id) {
+    } else if (userId) {
       // Fallback Polling if Supabase environment variables are missing
       console.warn("Supabase Realtime not configured. Falling back to 5s polling.");
       const intervalId = setInterval(fetchAndSync, 5000);
       return () => {
         clearInterval(intervalId);
-        document.removeEventListener('visibilitychange', fetchAndSync);
+        cleanup();
       };
     }
-    
-    return () => document.removeEventListener('visibilitychange', fetchAndSync);
-  }, [session?.user?.id, fetchAndSync]);
+
+    return cleanup;
+  }, [session?.user?.id, fetchAndSync, boardIdsKey]);
 
   // ── Board Actions ─────────────────────────────────────────────────────────
 
@@ -645,8 +683,6 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
       coverColor: '',
       timeSpent: 0,
       timerStarted: null,
-      isRecurring: false,
-      recurringRule: '',
       blockedBy: [],
       reminderAt: null,
     };
@@ -671,13 +707,12 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
         coverColor: realCard.coverColor || '',
         timeSpent: realCard.timeSpent || 0,
         timerStarted: realCard.timerStarted ? new Date(realCard.timerStarted).toISOString() : null,
-        isRecurring: realCard.isRecurring || false,
-        recurringRule: realCard.recurringRule || '',
         blockedBy: (Array.isArray(realCard.blockedBy) ? realCard.blockedBy : []) as any,
         reminderAt: (realCard as any).reminderAt ? new Date((realCard as any).reminderAt).toISOString() : null,
       };
 
       dispatch({ type: 'REPLACE_CARD_ID', boardId, columnId, oldId: tempId, newCard: formattedCard });
+      return realCard.id;
     } catch (e) {
       console.error("Failed to create card on server", e);
       fetchAndSync();
@@ -693,9 +728,12 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
     dispatch({ type: 'ADD_COLUMN', boardId, column: { id: tempId, title, cardIds: [], color: '#0052CC', wipLimit: 0 } });
     pendingOpsRef.current += 1;
     try {
-      await createColumnAction(boardId, title);
+      const realColumn = await createColumnAction(boardId, title);
+      // Swap the temporary id for the real one so cards can be added straight away
+      dispatch({ type: 'REPLACE_COLUMN_ID', boardId, oldId: tempId, newId: realColumn.id });
     } catch (e) {
       console.error('Failed to create column', e);
+      fetchAndSync();
     } finally {
       pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1);
       lastOpFinishedRef.current = Date.now();
@@ -730,11 +768,11 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
     }
   }
 
-  async function handleUpdateCard(boardId: string, card: Card) {
+  async function handleUpdateCard(boardId: string, card: Card, patch?: Partial<Card>) {
     dispatch({ type: 'UPDATE_CARD', boardId, card });
     pendingOpsRef.current += 1;
     try {
-      await updateCardAction(boardId, card.id, {
+      await updateCardAction(boardId, card.id, patch ?? {
         title: card.title,
         description: card.description,
         priority: card.priority,
@@ -746,8 +784,6 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
         coverColor: card.coverColor,
         timeSpent: card.timeSpent,
         timerStarted: card.timerStarted,
-        isRecurring: card.isRecurring,
-        recurringRule: card.recurringRule,
         blockedBy: card.blockedBy,
         reminderAt: card.reminderAt,
       });

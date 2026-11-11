@@ -3,14 +3,17 @@ import { useState, useRef, useCallback } from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 import { Board, Card } from '@/types';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Calendar, CheckSquare, AlertTriangle, Repeat, Edit2, Trash2, CheckCircle2, AlignLeft } from 'lucide-react';
+import { Calendar, CheckSquare, AlertTriangle, Edit2, Trash2, CheckCircle2, AlignLeft } from 'lucide-react';
 import { getInitials } from '@/utils/storage';
-import CardModal from './CardModal';
+import dynamic from 'next/dynamic';
 import { useBoardContext } from '@/context/BoardContext';
 import styles from './Card.module.css';
 import { useSwipeDown } from '@/hooks/useSwipeDown';
 
-interface Props { card: Card; index: number; board: Board; columnId: string; onModalOpenChange?: (open: boolean) => void; }
+// Loaded on first open so the modal code stays out of the initial board bundle
+const CardModal = dynamic(() => import('./CardModal'), { ssr: false });
+
+interface Props { card: Card; index: number; board: Board; columnId: string; dragDisabled?: boolean; onModalOpenChange?: (open: boolean) => void; }
 
 const PRIORITY_LABELS: Record<string, string> = { none: 'None', urgent: 'Urgent', high: 'High', medium: 'Medium', low: 'Low' };
 
@@ -42,7 +45,7 @@ const contextMenuVariants = {
   exit: { opacity: 0, scale: 0.92, y: -4, transition: { duration: 0.1 } },
 };
 
-export default function CardItem({ card, index, board, columnId, onModalOpenChange }: Props) {
+export default function CardItem({ card, index, board, columnId, dragDisabled, onModalOpenChange }: Props) {
   const [open, setOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number } | null>(null);
   const [showBottomSheet, setShowBottomSheet] = useState(false);
@@ -69,7 +72,7 @@ export default function CardItem({ card, index, board, columnId, onModalOpenChan
 
   return (
     <>
-      <Draggable draggableId={card.id} index={index}>
+      <Draggable draggableId={card.id} index={index} isDragDisabled={dragDisabled}>
         {(provided, snapshot) => (
           <div
             ref={provided.innerRef}
@@ -148,18 +151,11 @@ export default function CardItem({ card, index, board, columnId, onModalOpenChan
             <div className={styles.title}>{card.title}</div>
 
             {/* Indicators row */}
-            {(hasBlockers || card.isRecurring) && (
+            {hasBlockers && (
               <div className={styles.indicators}>
-                {hasBlockers && (
-                  <span className={styles.blockerBadge}>
-                    <AlertTriangle size={10} /> Blocked
-                  </span>
-                )}
-                {card.isRecurring && (
-                  <span className={styles.recurBadge}>
-                    <Repeat size={10} />
-                  </span>
-                )}
+                <span className={styles.blockerBadge}>
+                  <AlertTriangle size={10} /> Blocked
+                </span>
               </div>
             )}
 

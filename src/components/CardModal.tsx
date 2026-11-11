@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import CommentSection from './CommentSection';
 import {
   X, Plus, Trash2, Check, Calendar, Tag, Users, AlignLeft, List,
-  Image, Link2, Repeat, AlertTriangle, Sparkles, Loader2, Bell, CheckCircle2
+  Image, Link2, AlertTriangle, Sparkles, Loader2, Bell, CheckCircle2
 } from 'lucide-react';
 import { getInitials } from '@/utils/storage';
 import styles from './CardModal.module.css';
@@ -44,13 +44,14 @@ function toDatetimeLocal(dateStr: string): string {
 export default function CardModal({ card, board, columnId, onClose }: Props) {
   const { dispatch, deleteCard: deleteCardFn, updateCard } = useBoardContext();
   const [data, setData] = useState<Card>({ ...card });
+  // Snapshot of the card as it was when the modal opened, used to work out what changed
+  const originalRef = useRef<Card>(card);
   const [newCheckItem, setNewCheckItem] = useState('');
   const [newLabelName, setNewLabelName] = useState('');
   const [newLabelColor, setNewLabelColor] = useState(LABEL_COLORS[0]);
   const [showLabelForm, setShowLabelForm] = useState(false);
   const [showCoverPicker, setShowCoverPicker] = useState(false);
   const [showDependencies, setShowDependencies] = useState(false);
-  const [showRecurring, setShowRecurring] = useState(false);
 
   // Board-level label library
   const [boardLabels, setBoardLabels] = useState<BoardLabel[]>([]);
@@ -159,7 +160,19 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
 
   function save() {
     setSaveStatus('saving');
-    updateCard(board.id, data);
+    // Send only the fields edited here, applied on top of the latest version of the card,
+    // so a collaborator's change to another field is not overwritten.
+    const original = originalRef.current;
+    const patch: Partial<Card> = {};
+    (Object.keys(data) as (keyof Card)[]).forEach((key) => {
+      if (JSON.stringify(data[key]) !== JSON.stringify(original[key])) {
+        (patch as Record<string, unknown>)[key] = data[key];
+      }
+    });
+    if (Object.keys(patch).length > 0) {
+      const latest = board.cards[card.id] ?? card;
+      updateCard(board.id, { ...latest, ...patch }, patch);
+    }
     setSaveStatus('saved');
     if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
     savedTimerRef.current = setTimeout(() => setSaveStatus('idle'), 1800);
@@ -513,12 +526,6 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
               >
                 <Link2 size={13} /> Dependencies
               </button>
-              <button
-                className={`${styles.quickBtn} ${showRecurring ? styles.quickActive : ''}`}
-                onClick={() => setShowRecurring(!showRecurring)}
-              >
-                <Repeat size={13} /> Recurring
-              </button>
             </div>
 
             {/* Cover Picker */}
@@ -812,36 +819,6 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
                     <option key={c.id} value={c.id}>{c.title}</option>
                   ))}
                 </select>
-              </div>
-            )}
-
-            {/* Recurring */}
-            {showRecurring && (
-              <div className={styles.section}>
-                <div className={styles.sectionLabel}><Repeat size={14} /> Recurring Task</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={data.isRecurring || false}
-                      onChange={(e) => setData(d => ({ ...d, isRecurring: e.target.checked }))}
-                    />
-                    Enable recurring
-                  </label>
-                </div>
-                {data.isRecurring && (
-                  <select
-                    className="input"
-                    style={{ fontSize: 12, marginTop: 6 }}
-                    value={data.recurringRule || 'daily'}
-                    onChange={(e) => setData(d => ({ ...d, recurringRule: e.target.value }))}
-                  >
-                    <option value="daily">Daily</option>
-                    <option value="weekly">Weekly</option>
-                    <option value="biweekly">Every 2 Weeks</option>
-                    <option value="monthly">Monthly</option>
-                  </select>
-                )}
               </div>
             )}
           </div>

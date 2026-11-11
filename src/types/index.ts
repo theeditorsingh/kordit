@@ -37,8 +37,6 @@ export interface Card {
   coverColor?: string;
   timeSpent?: number;
   timerStarted?: string | null;
-  isRecurring?: boolean;
-  recurringRule?: string;
   blockedBy?: string[];
   reminderAt?: string | null;
 }
@@ -67,7 +65,6 @@ export interface Board {
   backgroundType?: 'color' | 'gradient' | 'image';
   isArchived?: boolean;
   isFavorite?: boolean;
-  categoryId?: string | null;
 }
 
 export interface Activity {
@@ -105,12 +102,6 @@ export interface Automation {
 export type AutomationTrigger = 'card_moved_to' | 'due_date_passed' | 'checklist_completed' | 'card_created';
 export type AutomationAction = 'move_card' | 'set_priority' | 'complete_checklist' | 'set_due_date';
 
-export interface BoardCategory {
-  id: string;
-  name: string;
-  color: string;
-  order: number;
-}
 
 export interface AppState {
   boards: Board[];

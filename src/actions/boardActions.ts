@@ -5,6 +5,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { Resend } from "resend";
+import { memberInclude } from "@/lib/boardQuery";
 
 function getResend() {
   return new Resend(process.env.RESEND_API_KEY);
@@ -35,6 +36,17 @@ async function verifyBoardAccess(boardId: string, userId: string, requiredRole?:
   if (requiredRole && member.role !== requiredRole) throw new Error(`Requires ${requiredRole} role`);
   return member;
 }
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+const VISIBILITIES = ['Private', 'Workspace', 'Public'];
 
 async function logActivity(boardId: string, userId: string, action: string, details: Record<string, any> = {}, cardId?: string) {
   await prisma.activity.create({
@@ -80,7 +92,7 @@ export async function createBoardAction(title: string, customColumns?: { title: 
     },
     include: {
       columns: true,
-      members: { include: { user: true } },
+      members: memberInclude,
     }
   });
 
@@ -99,9 +111,18 @@ export async function deleteBoardAction(boardId: string) {
 
 export async function updateBoardAction(boardId: string, updates: Record<string, any>) {
   const user = await getAuthUser();
-  await verifyBoardAccess(boardId, user.id);
+  // Who can see the board is an admin decision; everything else any member may change
+  await verifyBoardAccess(boardId, user.id, updates.visibility !== undefined ? 'Admin' : undefined);
+  if (updates.visibility !== undefined && !VISIBILITIES.includes(updates.visibility)) {
+    throw new Error("Invalid visibility");
+  }
+  if (updates.title !== undefined) {
+    const title = typeof updates.title === 'string' ? updates.title.trim() : '';
+    if (!title || title.length > 200) throw new Error("Board title must be 1-200 characters");
+    updates = { ...updates, title };
+  }
 
-  const allowedFields = ['title', 'color', 'background', 'backgroundType', 'visibility', 'categoryId'];
+  const allowedFields = ['title', 'color', 'background', 'backgroundType', 'visibility'];
   const data: Record<string, any> = {};
   for (const key of allowedFields) {
     if (updates[key] !== undefined) data[key] = updates[key];
@@ -178,7 +199,7 @@ export async function saveBoardAsTemplateAction(boardId: string) {
       },
       members: { create: [{ userId: user.id, role: 'Admin' }] }
     },
-    include: { columns: true, members: { include: { user: true } } }
+    include: { columns: true, members: memberInclude }
   });
 
   revalidatePath('/');
@@ -289,6 +310,14 @@ export async function moveCardAction(cardId: string, sourceColId: string, destCo
   if (!card) throw new Error("Card not found");
   await verifyBoardAccess(card.boardId, user.id);
 
+  // Trust the database, not the client, for where the card currently is,
+  // and make sure the destination column is on the same board.
+  sourceColId = card.columnId;
+  if (destColId !== sourceColId) {
+    const destColumn = await prisma.column.findUnique({ where: { id: destColId } });
+    if (destColumn?.boardId !== card.boardId) throw new Error("Unauthorized");
+  }
+
   // Move the card to its new column/position first
   if (sourceColId === destColId) {
     // Reorder within the same column
@@ -362,7 +391,7 @@ export async function updateCardAction(boardId: string, cardId: string, updates:
   if (card?.boardId !== boardId) throw new Error("Unauthorized");
 
   const data: Record<string, any> = {};
-  const directFields = ['title', 'description', 'priority', 'coverImage', 'coverColor', 'timeSpent', 'isRecurring', 'recurringRule'];
+  const directFields = ['title', 'description', 'priority', 'coverImage', 'coverColor', 'timeSpent'];
   for (const key of directFields) {
     if (updates[key] !== undefined) data[key] = updates[key];
   }
@@ -511,6 +540,12 @@ export async function inviteMemberAction(boardId: string, email: string, role: '
   const board = await prisma.board.findUnique({ where: { id: boardId } });
   if (!board) throw new Error("Board not found");
 
+  email = typeof email === 'string' ? email.trim().toLowerCase() : '';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
+    throw new Error("Please enter a valid email address");
+  }
+  if (role !== 'Admin' && role !== 'Member') throw new Error("Invalid role");
+
   let invitedUser = await prisma.user.findUnique({ where: { email } });
 
   if (!invitedUser) {
@@ -542,7 +577,7 @@ export async function inviteMemberAction(boardId: string, email: string, role: '
       from: "magiclink@theeditorsingh.com",
       to: email,
       subject: `You have been invited to join the board "${board.title}"`,
-      html: `<p>${authUser.name || authUser.email} has invited you to collaborate on the board <strong>${board.title}</strong> in Kordit.</p>
+      html: `<p>${escapeHtml(authUser.name || authUser.email || 'Someone')} has invited you to collaborate on the board <strong>${escapeHtml(board.title)}</strong> in Kordit.</p>
              <p>Click the link below to sign in or create an account to access the board:</p>
              <p><a href="${inviteLink}"><strong>Join Board</strong></a></p>
              <p>If you don't have an account, one has been reserved for you. Just sign in with this email!</p>`,
@@ -678,6 +713,9 @@ async function runAutomations(boardId: string, triggerType: string, context: Rec
       switch (auto.action) {
         case 'move_card': {
           if (actionConfig.targetColumnId && context.cardId) {
+            // Only move within this board
+            const target = await prisma.column.findUnique({ where: { id: actionConfig.targetColumnId } });
+            if (target?.boardId !== boardId) break;
             await prisma.card.update({
               where: { id: context.cardId },
               data: { columnId: actionConfig.targetColumnId }
@@ -725,24 +763,6 @@ async function runAutomations(boardId: string, triggerType: string, context: Rec
   }
 }
 
-// ── Board Category Actions ──────────────────────────────────────────────────
-
-export async function createBoardCategoryAction(name: string, color: string = '#0052CC') {
-  const user = await getAuthUser();
-  const category = await prisma.boardCategory.create({
-    data: { name, color, userId: user.id }
-  });
-  return category;
-}
-
-export async function deleteBoardCategoryAction(categoryId: string) {
-  const user = await getAuthUser();
-  const category = await prisma.boardCategory.findUnique({ where: { id: categoryId } });
-  if (category?.userId !== user.id) throw new Error("Unauthorized");
-
-  await prisma.boardCategory.delete({ where: { id: categoryId } });
-  revalidatePath('/');
-}
 
 // ── Board Label Library Actions ─────────────────────────────────────────────
 

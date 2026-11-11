@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
+import { boardInclude } from "@/lib/boardQuery";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -15,12 +16,7 @@ export async function GET() {
       members: { some: { userId: session.user.id } },
       isArchived: false,
     },
-    include: {
-      columns: { orderBy: { order: 'asc' } },
-      cards: { orderBy: { order: 'asc' } },
-      members: { include: { user: true } },
-      owner: { select: { username: true } },
-    },
+    include: boardInclude,
     orderBy: { createdAt: 'asc' }
   });
 

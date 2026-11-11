@@ -87,7 +87,13 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt",
   },
   callbacks: {
-    async jwt({ token, user, trigger, session }) {
+    async jwt({ token, user, account, trigger, session }) {
+      // Remember when the user last proved ownership of their inbox.
+      // Used to allow setting a new password without the old one.
+      if (account) {
+        token.emailAuthAt = account.provider === "email" ? Date.now() : null;
+      }
+
       if (trigger === "update" && session?.username) {
         token.username = session.username;
       }
@@ -104,6 +110,7 @@ export const authOptions: NextAuthOptions = {
       if (session.user && token) {
         session.user.id = (token.id || token.sub) as string;
         session.user.username = token.username as string | null;
+        session.user.emailAuthAt = (token.emailAuthAt as number | null) ?? null;
       }
       return session;
     },

@@ -6,6 +6,13 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 
+// How long after a magic-link sign-in the current password may be skipped
+const EMAIL_REAUTH_WINDOW_MS = 15 * 60 * 1000;
+
+function hasRecentEmailAuth(user: { emailAuthAt?: number | null }) {
+  return !!user.emailAuthAt && Date.now() - user.emailAuthAt < EMAIL_REAUTH_WINDOW_MS;
+}
+
 async function getAuthUser() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
@@ -58,8 +65,9 @@ export async function changePasswordAction(currentPassword: string, newPassword:
   const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
   if (!dbUser) throw new Error("User not found");
 
-  // If the account has a password, verify the current one first
-  if (dbUser.password) {
+  // If the account has a password, verify the current one first,
+  // unless the user just signed in through a magic link (password reset).
+  if (dbUser.password && !hasRecentEmailAuth(user)) {
     const valid = await bcrypt.compare(currentPassword, dbUser.password);
     if (!valid) throw new Error("Current password is incorrect");
   }
@@ -100,12 +108,6 @@ export async function getCurrentUserAction() {
   if (!dbUser) return null;
   // Return hasPassword flag (never expose actual hash to client)
   const { password, ...rest } = dbUser;
-  return { ...rest, hasPassword: !!password };
-}
-
-// Called when user arrives via magic link with ?reset=true
-// At this point they've proven identity, so it's safe to clear the password
-export async function clearPasswordForResetAction() {
-  const user = await getAuthUser();
-  await prisma.user.update({ where: { id: user.id }, data: { password: null } });
+  // A fresh magic-link sign-in counts as "no password to confirm" for the UI
+  return { ...rest, hasPassword: !!password && !hasRecentEmailAuth(user) };
 }

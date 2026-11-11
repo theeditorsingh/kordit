@@ -38,6 +38,9 @@ export async function POST(req: Request) {
     const updateData: { username: string; password?: string } = { username: trimmedUsername };
 
     if (password && typeof password === "string") {
+      if (password.length < 8) {
+        return new NextResponse("Password must be at least 8 characters", { status: 400 });
+      }
       const hashedPassword = await bcrypt.hash(password, 10);
       updateData.password = hashedPassword;
     }

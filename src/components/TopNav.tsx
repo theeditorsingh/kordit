@@ -1,10 +1,8 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { signOut } from 'next-auth/react';
 import { useBoardContext } from '@/context/BoardContext';
-import { useUndoRedo } from '@/hooks/useUndoRedo';
 import { useTheme } from '@/context/ThemeContext';
-import { clearPasswordForResetAction } from '@/actions/userActions';
 import {
   Sun, Moon, Search, LayoutGrid, List, Calendar, X, Share2, User, LogOut,
   Zap, Palette, Save, Copy, Sparkles, Undo2, Redo2, Menu, MoreHorizontal, Settings
@@ -71,13 +69,33 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
       setProfileTab('security');
       setShowProfile(true);
       
-      // Clear old password in the background (user proved identity via magic link)
-      clearPasswordForResetAction().catch(console.error);
+      // The server decides whether the current password may be skipped
+      // (only right after a magic-link sign-in). Nothing is cleared here.
     }
   }, []);
 
-  // Activate keyboard shortcuts
-  useUndoRedo();
+  // Undo/Redo keyboard shortcuts (inlined from useUndoRedo)
+  const handleUndoRedoKey = useCallback(
+    (e: KeyboardEvent) => {
+      // Leave Ctrl+Z alone while typing so the browser's own text undo works
+      const el = e.target as HTMLElement | null;
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)) return;
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        if (e.shiftKey) {
+          e.preventDefault();
+          redo();
+        } else {
+          e.preventDefault();
+          undo();
+        }
+      }
+    },
+    [undo, redo]
+  );
+  useEffect(() => {
+    window.addEventListener('keydown', handleUndoRedoKey);
+    return () => window.removeEventListener('keydown', handleUndoRedoKey);
+  }, [handleUndoRedoKey]);
 
   // Start reminder checker
   useReminders();

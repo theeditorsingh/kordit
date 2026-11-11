@@ -17,7 +17,7 @@ import styles from './Sidebar.module.css';
 export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: boolean; onClose?: () => void }) {
   const { data: session } = useSession();
   const router = useRouter();
-  const { state, activeBoard, dispatch, createBoard, deleteBoard: contextDeleteBoard, toggleFavorite, archiveBoard } = useBoardContext();
+  const { state, activeBoard, dispatch, createBoard, deleteBoard: contextDeleteBoard, toggleFavorite, archiveBoard, updateBoard } = useBoardContext();
   const [newBoardTitle, setNewBoardTitle] = useState('');
   const [adding, setAdding] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
@@ -55,8 +55,10 @@ export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: bool
   }
 
   function saveEdit(id: string) {
-    if (editTitle.trim()) {
-      dispatch({ type: 'UPDATE_BOARD_TITLE', boardId: id, title: editTitle.trim() });
+    const title = editTitle.trim();
+    const current = state.boards.find((b) => b.id === id)?.title;
+    if (title && title !== current) {
+      updateBoard(id, { title });
     }
     setEditingId(null);
   }

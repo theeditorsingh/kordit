@@ -273,7 +273,7 @@ export default function Column({ column, board, search, onModalOpenChange }: Pro
             className={`${styles.cardList} ${snapshot.isDraggingOver ? styles.draggingOver : ''}`}
           >
             {cards.map((card, index) => (
-              <CardItem key={card.id} card={card} index={index} board={board} columnId={column.id} onModalOpenChange={onModalOpenChange} />
+              <CardItem key={card.id} card={card} index={index} board={board} columnId={column.id} dragDisabled={!!search} onModalOpenChange={onModalOpenChange} />
             ))}
             {provided.placeholder}
             {cards.length === 0 && !addingCard && (
