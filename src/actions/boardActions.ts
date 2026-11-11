@@ -7,7 +7,8 @@ import { revalidatePath } from "next/cache";
 import { Resend } from "resend";
 import { memberInclude } from "@/lib/boardQuery";
 import type { BoardOp } from "@/utils/boardOps";
-import { isValidBackground } from "@/utils/boardBackground";
+import { isValidBackground, isHexColor } from "@/utils/boardBackground";
+import { sanitizeColumnSettings } from "@/utils/columnSettings";
 
 function getResend() {
   return new Resend(process.env.RESEND_API_KEY);
@@ -129,7 +130,15 @@ export async function updateBoardAction(boardId: string, updates: Record<string,
     if (!isValidBackground(updates.backgroundType, updates.background)) throw new Error("Invalid background");
   }
 
-  const allowedFields = ['title', 'color', 'background', 'backgroundType', 'visibility'];
+  // Saved label colours: a short list of hex codes
+  if (updates.labelColors !== undefined) {
+    const colors = updates.labelColors;
+    if (!Array.isArray(colors) || colors.length > 30 || !colors.every((c: unknown) => typeof c === 'string' && isHexColor(c))) {
+      throw new Error("Invalid colours");
+    }
+  }
+
+  const allowedFields = ['title', 'color', 'background', 'backgroundType', 'visibility', 'labelColors'];
   const data: Record<string, any> = {};
   for (const key of allowedFields) {
     if (updates[key] !== undefined) data[key] = updates[key];
@@ -197,12 +206,14 @@ export async function saveBoardAsTemplateAction(boardId: string) {
       ownerId: user.id,
       background: board.background,
       backgroundType: board.backgroundType,
+      labelColors: board.labelColors as any,
       columns: {
         create: board.columns.map((col, idx) => ({
           title: col.title,
           color: col.color,
           icon: col.icon,
           wipLimit: col.wipLimit,
+          settings: col.settings as any,
           order: idx,
         }))
       },
@@ -258,11 +269,19 @@ export async function updateColumnAction(boardId: string, columnId: string, upda
   const column = await prisma.column.findUnique({ where: { id: columnId } });
   if (column?.boardId !== boardId) throw new Error("Unauthorized");
 
-  const allowedFields = ['title', 'color', 'icon', 'wipLimit'];
   const data: Record<string, any> = {};
-  for (const key of allowedFields) {
-    if (updates[key] !== undefined) data[key] = updates[key];
+  if (updates.title !== undefined) {
+    const title = typeof updates.title === 'string' ? updates.title.trim() : '';
+    if (!title || title.length > 100) throw new Error("Column title must be 1-100 characters");
+    data.title = title;
   }
+  if (updates.color !== undefined) {
+    if (typeof updates.color !== 'string' || !isHexColor(updates.color)) throw new Error("Invalid colour");
+    data.color = updates.color;
+  }
+  if (updates.icon !== undefined) data.icon = String(updates.icon).slice(0, 32);
+  if (updates.wipLimit !== undefined) data.wipLimit = Math.max(0, Math.floor(Number(updates.wipLimit) || 0));
+  if (updates.settings !== undefined) data.settings = sanitizeColumnSettings(updates.settings);
 
   if (Object.keys(data).length > 0) {
     await prisma.column.update({ where: { id: columnId }, data });
@@ -291,6 +310,11 @@ export async function createCardAction(boardId: string, columnId: string, title:
   const trimmedTitle = title?.trim();
   if (!trimmedTitle || trimmedTitle.length > 500) throw new Error("Card title must be 1-500 characters");
 
+  const column = await prisma.column.findUnique({ where: { id: columnId } });
+  if (column?.boardId !== boardId) throw new Error("Unauthorized");
+  // The column can give its new cards a starting priority and label
+  const colSettings = sanitizeColumnSettings(column.settings);
+
   const lastCard = await prisma.card.findFirst({
     where: { columnId },
     orderBy: { order: 'desc' }
@@ -304,6 +328,8 @@ export async function createCardAction(boardId: string, columnId: string, title:
       columnId,
       order: lastCard ? lastCard.order + 1 : 0,
       dueDate: dueDate ? new Date(dueDate) : null,
+      ...(colSettings.defaultPriority ? { priority: colSettings.defaultPriority } : {}),
+      ...(colSettings.defaultLabel ? { labels: [colSettings.defaultLabel] as any } : {}),
     }
   });
 
@@ -322,9 +348,12 @@ export async function moveCardAction(cardId: string, sourceColId: string, destCo
   // Trust the database, not the client, for where the card currently is,
   // and make sure the destination column is on the same board.
   sourceColId = card.columnId;
+  let completeOnArrival = false;
   if (destColId !== sourceColId) {
     const destColumn = await prisma.column.findUnique({ where: { id: destColId } });
     if (destColumn?.boardId !== card.boardId) throw new Error("Unauthorized");
+    // Column setting: cards moved here are marked completed
+    completeOnArrival = !!sanitizeColumnSettings(destColumn.settings).autoComplete && !card.completedAt;
   }
 
   // Move the card to its new column/position first
@@ -350,7 +379,7 @@ export async function moveCardAction(cardId: string, sourceColId: string, destCo
     // Move across columns — update column assignment
     await prisma.card.update({
       where: { id: cardId },
-      data: { columnId: destColId }
+      data: { columnId: destColId, ...(completeOnArrival ? { completedAt: new Date() } : {}) }
     });
 
     // Reorder source column (close the gap)
@@ -486,6 +515,14 @@ export async function bulkMoveCardsAction(boardId: string, cardIds: string[], ta
   });
   const sourceColIds = [...new Set(cardsToMove.map(c => c.columnId))];
 
+  // Column setting: cards moved here are marked completed
+  if (sanitizeColumnSettings(targetCol.settings).autoComplete) {
+    await prisma.card.updateMany({
+      where: { id: { in: cardIds }, boardId, completedAt: null, NOT: { columnId: targetColId } },
+      data: { completedAt: new Date() }
+    });
+  }
+
   await prisma.card.updateMany({
     where: { id: { in: cardIds }, boardId },
     data: { columnId: targetColId }
@@ -574,6 +611,7 @@ export async function applyBoardOpsAction(boardId: string, ops: BoardOp[]) {
         color: String(col.color ?? '#0052CC').slice(0, 32),
         icon: String(col.icon ?? '').slice(0, 32),
         wipLimit: Math.max(0, Math.floor(Number(col.wipLimit) || 0)),
+        settings: sanitizeColumnSettings(col.settings) as any,
       };
       if (existing) await tx.column.update({ where: { id: col.id }, data });
       else await tx.column.create({ data: { id: col.id, boardId, order: Math.max(0, Number(op.index) || 0), ...data } });
@@ -904,3 +942,10 @@ export async function upsertBoardLabelAction(boardId: string, name: string, colo
   });
 }
 
+export async function deleteBoardLabelAction(boardId: string, labelId: string) {
+  const user = await getAuthUser();
+  await verifyBoardAccess(boardId, user.id);
+  // Only the entry in the board's label list goes. Cards keep their own copy of
+  // the label, so nothing already on a card changes.
+  await prisma.boardLabel.deleteMany({ where: { id: labelId, boardId } });
+}

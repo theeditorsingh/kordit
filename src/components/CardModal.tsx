@@ -4,6 +4,8 @@ import { Board, Card, ChecklistItem, Label, Priority } from '@/types';
 import { useBoardContext } from '@/context/BoardContext';
 
 import CommentSection from './CommentSection';
+import ColorField from './ColorField';
+import { useConfirm } from './ConfirmDialog';
 import {
   X, Plus, Trash2, Check, Calendar, Tag, Users, AlignLeft, List,
   Image, Link2, AlertTriangle, Sparkles, Loader2, Bell, CheckCircle2
@@ -14,7 +16,11 @@ import styles from './CardModal.module.css';
 interface Props { card: Card; board: Board; columnId: string; onClose: () => void; }
 
 const PRIORITIES: Priority[] = ['none', 'urgent', 'high', 'medium', 'low'];
-const LABEL_COLORS = ['#0052CC','#36B37E','#FF5630','#FF991F','#6554C0','#00B8D9','#FF7452','#FFC400'];
+// Two rows of ten: strong colours on top, softer versions underneath
+const LABEL_COLORS = [
+  '#C00000', '#FF5630', '#FF991F', '#FFC400', '#7AB648', '#36B37E', '#00B8D9', '#0052CC', '#172B4D', '#6554C0',
+  '#E774BB', '#FF7452', '#F5CD47', '#B3D334', '#57D9A3', '#79E2F2', '#4C9AFF', '#8777D9', '#8993A4', '#42526E',
+];
 const COVER_COLORS = ['#0052CC','#36B37E','#FF5630','#FF991F','#6554C0','#00B8D9','#FF7452','#FFC400','#172B4D','#091E42'];
 
 // Board-level label (from DB)
@@ -42,7 +48,12 @@ function toDatetimeLocal(dateStr: string): string {
 }
 
 export default function CardModal({ card, board, columnId, onClose }: Props) {
-  const { dispatch, deleteCard: deleteCardFn, updateCard } = useBoardContext();
+  const { dispatch, deleteCard: deleteCardFn, updateCard, updateBoard, notifyError } = useBoardContext();
+  const confirm = useConfirm();
+  // Custom label colours saved on this board
+  const savedColors = board.labelColors ?? [];
+  const [showMoreColors, setShowMoreColors] = useState(false);
+  const [customColor, setCustomColor] = useState('#1A73E8');
   const [data, setData] = useState<Card>({ ...card });
   // Snapshot of the card as it was when the modal opened, used to work out what changed
   const originalRef = useRef<Card>(card);
@@ -257,6 +268,35 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
     setLabelFilter('');
     setShowLabelForm(false);
     setLabelDropdownOpen(false);
+  }
+
+  // Remove a label from the board's list. Cards keep their own copy, so this card
+  // and every other card that already has the label are left exactly as they are.
+  async function removeBoardLabel(label: BoardLabel) {
+    const ok = await confirm(`Remove "${label.name}" from the label list? Cards that already use it keep it.`, { title: 'Remove label', confirmLabel: 'Remove' });
+    if (!ok) return;
+    try {
+      const res = await fetch(`/api/boards/${board.id}/labels?id=${encodeURIComponent(label.id)}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Request failed');
+      setBoardLabels((prev) => prev.filter((l) => l.id !== label.id));
+      setRecentLabels((prev) => prev.filter((l) => l.id !== label.id));
+    } catch {
+      notifyError("Couldn't remove the label.");
+    }
+  }
+
+  // "More colours": use the picked colour now and keep it in the board's saved list
+  function applyCustomColor() {
+    setNewLabelColor(customColor);
+    if (!LABEL_COLORS.includes(customColor) && !savedColors.includes(customColor)) {
+      updateBoard(board.id, { labelColors: [...savedColors, customColor].slice(-30) });
+    }
+    setShowMoreColors(false);
+  }
+
+  // Only the swatch goes; labels already using that colour are untouched
+  function removeSavedColor(color: string) {
+    updateBoard(board.id, { labelColors: savedColors.filter((c) => c !== color) });
   }
 
   function removeLabel(id: string) {
@@ -602,14 +642,23 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
                           <>
                             <div className={styles.labelDropdownGroup}>Recently used</div>
                             {filteredRecentLabels.map(l => (
-                              <button
-                                key={l.id}
-                                className={styles.labelOption}
-                                onMouseDown={(e) => { e.preventDefault(); selectOrCreateLabel(l.name, l.color); }}
-                              >
-                                <span className={styles.labelOptionDot} style={{ background: l.color }} />
-                                <span className={styles.labelOptionName}>{l.name}</span>
-                              </button>
+                              <div key={l.id} className={styles.labelOptionRow}>
+                                <button
+                                  className={styles.labelOption}
+                                  onMouseDown={(e) => { e.preventDefault(); selectOrCreateLabel(l.name, l.color); }}
+                                >
+                                  <span className={styles.labelOptionDot} style={{ background: l.color }} />
+                                  <span className={styles.labelOptionName}>{l.name}</span>
+                                </button>
+                                <button
+                                  className={styles.labelOptionRemove}
+                                  onMouseDown={(e) => { e.preventDefault(); removeBoardLabel(l); }}
+                                  title="Remove from label list"
+                                  aria-label={`Remove label ${l.name} from the list`}
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                              </div>
                             ))}
                             {filteredBoardLabels.filter(l => !filteredRecentLabels.some(r => r.id === l.id)).length > 0 && (
                               <div className={styles.labelDropdownDivider} />
@@ -619,14 +668,23 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
 
                         {/* All board labels (excluding recently used) */}
                         {filteredBoardLabels.filter(l => !filteredRecentLabels.some(r => r.id === l.id)).map(l => (
-                          <button
-                            key={l.id}
-                            className={styles.labelOption}
-                            onMouseDown={(e) => { e.preventDefault(); selectOrCreateLabel(l.name, l.color); }}
-                          >
-                            <span className={styles.labelOptionDot} style={{ background: l.color }} />
-                            <span className={styles.labelOptionName}>{l.name}</span>
-                          </button>
+                          <div key={l.id} className={styles.labelOptionRow}>
+                            <button
+                              className={styles.labelOption}
+                              onMouseDown={(e) => { e.preventDefault(); selectOrCreateLabel(l.name, l.color); }}
+                            >
+                              <span className={styles.labelOptionDot} style={{ background: l.color }} />
+                              <span className={styles.labelOptionName}>{l.name}</span>
+                            </button>
+                            <button
+                              className={styles.labelOptionRemove}
+                              onMouseDown={(e) => { e.preventDefault(); removeBoardLabel(l); }}
+                              title="Remove from label list"
+                              aria-label={`Remove label ${l.name} from the list`}
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
                         ))}
 
                         {/* Create new option */}
@@ -658,9 +716,48 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
                         className={`${styles.colorDot} ${newLabelColor === c ? styles.colorActive : ''}`}
                         style={{ background: c }}
                         onClick={() => setNewLabelColor(c)}
+                        aria-label={`Colour ${c}`}
                       />
                     ))}
                   </div>
+
+                  {/* Custom colours saved on this board */}
+                  {savedColors.length > 0 && (
+                    <>
+                      <div className={styles.colorGroupLabel}>Saved colours</div>
+                      <div className={styles.colorPicker}>
+                        {savedColors.map((c) => (
+                          <span key={c} className={styles.savedColor}>
+                            <button
+                              className={`${styles.colorDot} ${newLabelColor === c ? styles.colorActive : ''}`}
+                              style={{ background: c }}
+                              onClick={() => setNewLabelColor(c)}
+                              aria-label={`Saved colour ${c}`}
+                              title={c}
+                            />
+                            <button
+                              className={styles.savedColorRemove}
+                              onClick={() => removeSavedColor(c)}
+                              title="Remove saved colour"
+                              aria-label={`Remove saved colour ${c}`}
+                            >
+                              <X size={8} />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    </>
+                  )}
+
+                  <button className={styles.moreColorsBtn} onClick={() => setShowMoreColors(!showMoreColors)} aria-expanded={showMoreColors}>
+                    <span className={styles.moreColorsSwatch} /> More colours…
+                  </button>
+                  {showMoreColors && (
+                    <div className={styles.moreColors}>
+                      <ColorField label="Custom colour" value={customColor} onChange={setCustomColor} />
+                      <button className="btn btn-primary btn-sm" onClick={applyCustomColor}>Use &amp; save</button>
+                    </div>
+                  )}
                   <button
                     className="btn btn-primary btn-sm"
                     onClick={() => selectOrCreateLabel(newLabelName, newLabelColor)}

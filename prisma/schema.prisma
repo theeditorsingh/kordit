@@ -73,6 +73,7 @@ model Board {
   visibility     String   @default("Workspace") // Private, Workspace, Public
   background     String   @default("")          // URL or gradient CSS
   backgroundType String   @default("color")     // color, gradient, image
+  labelColors    Json     @default("[]")        // Custom label colours saved for reuse (hex strings)
   isArchived     Boolean  @default(false)
   isFavorite     Boolean  @default(false)
   createdAt      DateTime @default(now())
@@ -98,6 +99,7 @@ model Column {
   icon      String   @default("")
   order     Int      @default(0)
   wipLimit  Int      @default(0) // 0 = no limit
+  settings  Json     @default("{}") // sortBy, defaultPriority, defaultLabel, autoComplete
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

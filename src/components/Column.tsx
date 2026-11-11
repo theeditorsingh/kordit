@@ -5,6 +5,8 @@ import { Board, Card as CardType, Column as ColumnType } from '@/types';
 import { useBoardContext } from '@/context/BoardContext';
 import { useConfirm } from './ConfirmDialog';
 import { cardMatchesSearch } from '@/utils/search';
+import { SORT_OPTIONS, sortCards } from '@/utils/columnSettings';
+import ColumnSettingsModal from './ColumnSettingsModal';
 import CardItem from './Card';
 import dynamic from 'next/dynamic';
 const CardModal = dynamic(() => import('./CardModal'), { ssr: false });
@@ -64,7 +66,6 @@ export default function Column({ column, board, search, cardFilter, onModalOpenC
   const [showSettings, setShowSettings] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleValue, setTitleValue] = useState(column.title);
-  const [wipValue, setWipValue] = useState(column.wipLimit || 0);
   const [displayLimit, setDisplayLimit] = useState(50);
 
   // Time picker state
@@ -77,7 +78,8 @@ export default function Column({ column, board, search, cardFilter, onModalOpenC
   const columnCards = column.cardIds.map((id) => board.cards[id]).filter(Boolean);
   const matches = (c: CardType) => cardMatchesSearch(c, search) && (!cardFilter || cardFilter(c));
   // Open cards make up the list; completed ones go to the Completed section below it
-  const allCards = columnCards.filter((c) => !c.completedAt && matches(c));
+  const sortBy = column.settings?.sortBy ?? 'manual';
+  const allCards = sortCards(columnCards.filter((c) => !c.completedAt && matches(c)), sortBy);
   const completedCards = columnCards
     .filter((c) => c.completedAt && matches(c))
     .sort((a, b) => (b.completedAt! > a.completedAt! ? 1 : -1)); // most recently completed first
@@ -200,16 +202,6 @@ export default function Column({ column, board, search, cardFilter, onModalOpenC
     setEditingTitle(false);
   }
 
-  function saveWipLimit() {
-    updateColumn(board.id, column.id, { wipLimit: wipValue });
-    setShowSettings(false);
-  }
-
-  function saveColumnColor(color: string) {
-    updateColumn(board.id, column.id, { color });
-  }
-
-  const COL_COLORS = ['#0052CC','#36B37E','#FF5630','#FF991F','#6554C0','#00B8D9','#172B4D'];
 
   // Folded: a narrow strip with the name and count. Cards can still be dropped on it.
   if (collapsed) {
@@ -273,7 +265,7 @@ export default function Column({ column, board, search, cardFilter, onModalOpenC
           </button>
           {showMenu && (
             <div className={styles.menu}>
-              <button className={styles.menuItem} onClick={() => { setShowSettings(true); setShowMenu(false); }}>
+              <button className={styles.menuItem} onClick={() => { setShowSettings(true); setShowMenu(false); onModalOpenChange?.(true); }}>
                 <Settings size={13}/> Column Settings
               </button>
               <button className={styles.menuItem} onClick={() => { setEditingTitle(true); setShowMenu(false); }}>
@@ -301,46 +293,17 @@ export default function Column({ column, board, search, cardFilter, onModalOpenC
         </div>
       )}
 
-      {/* Column Settings Panel */}
+      {/* Tells people why the order isn't the one they dragged */}
+      {sortBy !== 'manual' && (
+        <div className={styles.sortNote}>{SORT_OPTIONS.find((o) => o.value === sortBy)?.note}</div>
+      )}
+
       {showSettings && (
-        <div className={styles.settingsPanel}>
-          <div className={styles.settingsTitle}>Column Settings</div>
-
-          <div className={styles.settingsRow}>
-            <label className={styles.settingsLabel}>WIP Limit</label>
-            <input
-              type="number"
-              className="input"
-              style={{ width: 70, fontSize: 12 }}
-              value={wipValue}
-              onChange={(e) => setWipValue(parseInt(e.target.value) || 0)}
-              min={0}
-            />
-            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>0 = no limit</span>
-          </div>
-
-          <div className={styles.settingsRow}>
-            <label className={styles.settingsLabel}>Color</label>
-            <div style={{ display: 'flex', gap: 4 }}>
-              {COL_COLORS.map(c => (
-                <button
-                  key={c}
-                  style={{
-                    width: 20, height: 20, borderRadius: '50%', background: c,
-                    border: column.color === c ? '2px solid var(--text-primary)' : '2px solid transparent',
-                    cursor: 'pointer',
-                  }}
-                  onClick={() => saveColumnColor(c)}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-            <button className="btn btn-primary btn-sm" onClick={saveWipLimit}>Save</button>
-            <button className="btn btn-ghost btn-sm" onClick={() => setShowSettings(false)}>Close</button>
-          </div>
-        </div>
+        <ColumnSettingsModal
+          column={column}
+          board={board}
+          onClose={() => { setShowSettings(false); onModalOpenChange?.(false); }}
+        />
       )}
 
       <Droppable droppableId={column.id}>

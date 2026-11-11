@@ -600,3 +600,48 @@
   100% { opacity: 1; transform: scale(1); }
 }
 
+
+/* ─── Label list: remove button, saved colours, more colours ─── */
+.labelOptionRow { display: flex; align-items: center; }
+.labelOptionRow .labelOption { flex: 1; min-width: 0; }
+.labelOptionRemove {
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; margin-right: 4px;
+  border: none; border-radius: 6px; background: none;
+  color: var(--text-muted); cursor: pointer; opacity: 0;
+}
+.labelOptionRow:hover .labelOptionRemove,
+.labelOptionRemove:focus-visible { opacity: 1; }
+.labelOptionRemove:hover { background: rgba(255, 86, 48, 0.12); color: #FF5630; }
+@media (hover: none) { .labelOptionRemove { opacity: 1; } }
+
+.colorGroupLabel {
+  font-size: 11px; font-weight: 600; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.4px;
+}
+.savedColor { position: relative; display: inline-flex; }
+.savedColorRemove {
+  position: absolute; top: -5px; right: -5px;
+  width: 14px; height: 14px; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border); border-radius: 50%;
+  background: var(--bg-surface); color: var(--text-secondary);
+  cursor: pointer; opacity: 0;
+}
+.savedColor:hover .savedColorRemove,
+.savedColorRemove:focus-visible { opacity: 1; }
+.savedColorRemove:hover { color: #FF5630; border-color: #FF5630; }
+@media (hover: none) { .savedColorRemove { opacity: 1; } }
+
+.moreColorsBtn {
+  display: inline-flex; align-items: center; gap: 8px; align-self: flex-start;
+  padding: 4px 8px; border: none; border-radius: 6px; background: none;
+  color: var(--text-secondary); font: inherit; font-size: 12px; cursor: pointer;
+}
+.moreColorsBtn:hover { background: var(--bg-hover); color: var(--text-primary); }
+.moreColorsSwatch {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: conic-gradient(#FF5630, #FFC400, #36B37E, #00B8D9, #0052CC, #6554C0, #FF5630);
+}
+.moreColors { display: flex; align-items: flex-end; gap: 8px; }

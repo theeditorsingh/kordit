@@ -1,0 +1,42 @@
+.colorField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+.fieldLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.colorRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.colorInput {
+  width: 34px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.hexInput {
+  min-width: 0;
+  width: 100%;
+  font-size: 12px;
+  padding: 6px 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  text-transform: uppercase;
+}
+.hexInput[aria-invalid="true"] { border-color: #FF5630; }
+
+@media (max-width: 768px) {
+  .colorInput { width: 40px; height: 38px; }
+}

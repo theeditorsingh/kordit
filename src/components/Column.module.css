@@ -530,3 +530,9 @@
   color: var(--text-secondary);
   word-break: break-word;
 }
+
+.sortNote {
+  padding: 0 14px 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+}

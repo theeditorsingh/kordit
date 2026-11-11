@@ -7,6 +7,7 @@ import {
   BackgroundType, DEFAULT_GRADIENT, PRESET_COLORS, PRESET_GRADIENTS,
   buildGradient, isHexColor, isValidBackground, parseGradient,
 } from '@/utils/boardBackground';
+import ColorField from './ColorField';
 import styles from './BoardBackgroundPicker.module.css';
 
 interface Props {
@@ -30,43 +31,6 @@ const DIRECTIONS = [
   { angle: 270, label: 'Right to left' },
   { angle: 315, label: 'Bottom-right to top-left' },
 ];
-
-/** A native colour picker paired with a hex text box */
-function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (hex: string) => void }) {
-  // While typing, show what was typed (it may not be a full hex yet); otherwise show the value
-  const [draft, setDraft] = useState<string | null>(null);
-  const text = draft ?? value;
-
-  return (
-    <label className={styles.colorField}>
-      <span className={styles.fieldLabel}>{label}</span>
-      <span className={styles.colorRow}>
-        <input
-          type="color"
-          className={styles.colorInput}
-          value={value}
-          onChange={(e) => onChange(e.target.value.toUpperCase())}
-          aria-label={`${label} colour picker`}
-        />
-        <input
-          className={`input ${styles.hexInput}`}
-          value={text}
-          maxLength={7}
-          spellCheck={false}
-          aria-label={`${label} hex code`}
-          aria-invalid={!isHexColor(text)}
-          onChange={(e) => {
-            let next = e.target.value.trim();
-            if (next && !next.startsWith('#')) next = `#${next}`;
-            setDraft(next);
-            if (isHexColor(next)) onChange(next.toUpperCase());
-          }}
-          onBlur={() => setDraft(null)}
-        />
-      </span>
-    </label>
-  );
-}
 
 const POPOVER_WIDTH = 296;
 

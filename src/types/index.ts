@@ -41,6 +41,20 @@ export interface Card {
   completedAt?: string | null;
 }
 
+export type ColumnSort = 'manual' | 'dueDate' | 'priority' | 'newest';
+
+/** Per-column options from the Column settings dialog */
+export interface ColumnSettings {
+  /** How the column orders its cards. Missing = manual (drag to arrange). */
+  sortBy?: ColumnSort;
+  /** Priority given to cards created in this column */
+  defaultPriority?: Priority;
+  /** Label given to cards created in this column */
+  defaultLabel?: Label | null;
+  /** Cards moved into this column are marked completed */
+  autoComplete?: boolean;
+}
+
 export interface Column {
   id: string;
   title: string;
@@ -48,6 +62,7 @@ export interface Column {
   color: string;
   icon?: string;
   wipLimit?: number;
+  settings?: ColumnSettings;
 }
 
 export interface Board {
@@ -65,6 +80,8 @@ export interface Board {
   backgroundType?: 'color' | 'gradient' | 'image';
   isArchived?: boolean;
   isFavorite?: boolean;
+  /** Custom label colours saved on this board for reuse */
+  labelColors?: string[];
 }
 
 export interface Activity {

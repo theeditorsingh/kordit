@@ -18,7 +18,7 @@ export type BoardOp =
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
 function columnMeta(col: Column): Omit<Column, 'cardIds'> {
-  return { id: col.id, title: col.title, color: col.color, icon: col.icon ?? '', wipLimit: col.wipLimit ?? 0 };
+  return { id: col.id, title: col.title, color: col.color, icon: col.icon ?? '', wipLimit: col.wipLimit ?? 0, settings: col.settings ?? {} };
 }
 
 /** Operations that turn `from` into `to` (columns and cards only). */

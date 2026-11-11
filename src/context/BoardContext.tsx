@@ -45,7 +45,7 @@ type Action =
   | { type: 'ADD_CARD'; boardId: string; columnId: string; card: Card }
   | { type: 'UPDATE_CARD'; boardId: string; card: Card }
   | { type: 'DELETE_CARD'; boardId: string; columnId: string; cardId: string }
-  | { type: 'MOVE_CARD'; boardId: string; sourceColId: string; destColId: string; sourceIndex: number; destIndex: number }
+  | { type: 'MOVE_CARD'; boardId: string; sourceColId: string; destColId: string; sourceIndex: number; destIndex: number; completedAt?: string }
   | { type: 'ADD_MEMBER'; boardId: string; member: Member }
   | { type: 'REMOVE_MEMBER'; boardId: string; memberId: string }
   | { type: 'UPDATE_BOARD_VISIBILITY'; boardId: string; visibility: 'Private' | 'Workspace' | 'Public' }
@@ -53,7 +53,7 @@ type Action =
   | { type: 'TOGGLE_CARD_SELECTION'; cardId: string }
   | { type: 'CLEAR_SELECTION' }
   | { type: 'BULK_DELETE'; boardId: string; cardIds: string[] }
-  | { type: 'BULK_MOVE'; boardId: string; cardIds: string[]; targetColId: string }
+  | { type: 'BULK_MOVE'; boardId: string; cardIds: string[]; targetColId: string; completedAt?: string }
   | { type: 'BULK_COPY'; boardId: string; newCards: Card[]; targetColId: string }
   | { type: 'TOGGLE_FAVORITE'; boardId: string }
   | { type: 'ARCHIVE_BOARD'; boardId: string }
@@ -254,7 +254,12 @@ function boardReducer(state: AppState, action: Action): AppState {
           const dstCol = cols.find((c) => c.id === action.destColId)!;
           const [removed] = srcCol.cardIds.splice(action.sourceIndex, 1);
           dstCol.cardIds.splice(action.destIndex, 0, removed);
-          return { ...b, columns: cols };
+          // The destination column may mark arriving cards completed
+          const moved = b.cards[removed];
+          const cards = action.completedAt && moved && !moved.completedAt
+            ? { ...b.cards, [removed]: { ...moved, completedAt: action.completedAt } }
+            : b.cards;
+          return { ...b, columns: cols, cards };
         }),
       };
 
@@ -329,11 +334,24 @@ function boardReducer(state: AppState, action: Action): AppState {
         selectedCardIds: [],
         boards: state.boards.map((b) => {
           if (b.id !== action.boardId) return b;
+          const target = b.columns.find((c) => c.id === action.targetColId);
+          let cards = b.cards;
+          if (action.completedAt) {
+            cards = { ...b.cards };
+            for (const id of action.cardIds) {
+              const card = cards[id];
+              if (card && !card.completedAt && !target?.cardIds.includes(id)) {
+                cards[id] = { ...card, completedAt: action.completedAt };
+              }
+            }
+          }
           return {
             ...b,
+            cards,
             columns: b.columns.map((c) => {
               if (c.id === action.targetColId) {
-                return { ...c, cardIds: [...c.cardIds, ...action.cardIds] };
+                // Cards already in the target stay where they are
+                return { ...c, cardIds: [...c.cardIds, ...action.cardIds.filter((id) => !c.cardIds.includes(id))] };
               } else {
                 return { ...c, cardIds: c.cardIds.filter((id) => !action.cardIds.includes(id)) };
               }
@@ -520,6 +538,7 @@ function formatPrismaBoards(prismaBoards: any[]): Board[] {
       ownerUsername: pb.owner?.username ?? null,
       background: pb.background || '',
       backgroundType: pb.backgroundType || 'color',
+      labelColors: Array.isArray(pb.labelColors) ? pb.labelColors : [],
       isArchived: pb.isArchived || false,
       isFavorite: pb.isFavorite || false,
       columns: pb.columns.map((col: any) => ({
@@ -528,6 +547,7 @@ function formatPrismaBoards(prismaBoards: any[]): Board[] {
         color: col.color,
         icon: col.icon || '',
         wipLimit: col.wipLimit || 0,
+        settings: col.settings && typeof col.settings === 'object' ? col.settings : {},
         cardIds: columnCardIds[col.id] || []
       })),
       cards: cardsObj,
@@ -742,12 +762,14 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
 
   async function createCard(boardId: string, columnId: string, title: string, description?: string, dueDate?: string | null) {
     const tempId = crypto.randomUUID();
+    // Start from the column's defaults (the server applies the same ones), otherwise no priority
+    const colSettings = state.boards.find((b) => b.id === boardId)?.columns.find((c) => c.id === columnId)?.settings;
     const tempCard: Card = {
       id: tempId,
       title,
       description: description || '',
-      priority: 'medium',
-      labels: [],
+      priority: colSettings?.defaultPriority ?? 'none',
+      labels: colSettings?.defaultLabel ? [colSettings.defaultLabel] : [],
       checklist: [],
       dueDate: dueDate || null,
       assigneeIds: [],
@@ -812,7 +834,9 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
   }
 
   async function moveCard(boardId: string, cardId: string, sourceColId: string, destColId: string, sourceIndex: number, destIndex: number) {
-    dispatch({ type: 'MOVE_CARD', boardId, sourceColId, destColId, sourceIndex, destIndex });
+    const destSettings = state.boards.find((b) => b.id === boardId)?.columns.find((c) => c.id === destColId)?.settings;
+    const completedAt = sourceColId !== destColId && destSettings?.autoComplete ? new Date().toISOString() : undefined;
+    dispatch({ type: 'MOVE_CARD', boardId, sourceColId, destColId, sourceIndex, destIndex, completedAt });
     pendingOpsRef.current += 1;
     try {
       await moveCardAction(cardId, sourceColId, destColId, destIndex);
@@ -1011,7 +1035,8 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
   }
 
   async function bulkMove(boardId: string, cardIds: string[], targetColId: string) {
-    dispatch({ type: 'BULK_MOVE', boardId, cardIds, targetColId });
+    const targetSettings = state.boards.find((b) => b.id === boardId)?.columns.find((c) => c.id === targetColId)?.settings;
+    dispatch({ type: 'BULK_MOVE', boardId, cardIds, targetColId, completedAt: targetSettings?.autoComplete ? new Date().toISOString() : undefined });
     pendingOpsRef.current += 1;
     try {
       await bulkMoveCardsAction(boardId, cardIds, targetColId);

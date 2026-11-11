@@ -111,32 +111,21 @@ export default function CardItem({ card, index, board, columnId, dragDisabled, o
               />
             )}
 
-            {/* Labels */}
-            {card.labels.length > 0 && (
-              <div className={styles.labels}>
-                {card.labels.map((l) => (
-                  <span key={l.id} className="card-chip" style={{ background: l.color, fontSize: 10, padding: '2px 6px' }}>
-                    {l.name}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {/* Top metadata row: priority pill + due date */}
-            {(card.priority !== 'none' || card.dueDate) && (
-              <div className={styles.metaRow}>
+            {/* Top row: labels on the left, priority badge on the right */}
+            {(card.labels.length > 0 || card.priority !== 'none') && (
+              <div className={styles.topRow}>
+                <div className={styles.labels}>
+                  {card.labels.map((l) => (
+                    <span key={l.id} className={`card-chip ${styles.labelChip}`} style={{ background: l.color }} title={l.name}>
+                      {l.name}
+                    </span>
+                  ))}
+                </div>
                 {card.priority !== 'none' && (
-                  <span className={`badge badge-${card.priority}`} style={{ fontSize: 10, padding: '2px 7px', lineHeight: 1.2 }}>
+                  <span className={`badge badge-${card.priority} ${styles.priorityBadge}`}>
                     {PRIORITY_LABELS[card.priority] || card.priority}
                   </span>
                 )}
-                <div className={styles.metaRight}>
-                  {card.dueDate && (
-                    <span className={`${styles.due} ${getDueDateClass(card.dueDate)}`}>
-                      <Calendar size={11}/> {formatDate(card.dueDate)}
-                    </span>
-                  )}
-                </div>
               </div>
             )}
 
@@ -157,9 +146,14 @@ export default function CardItem({ card, index, board, columnId, dragDisabled, o
 
 
             {/* Footer: checklist + time on left, avatars on right */}
-            {(totalItems > 0 || assignees.length > 0 || card.description) && (
+            {(totalItems > 0 || assignees.length > 0 || card.description || card.dueDate) && (
               <div className={styles.footer}>
                 <div className={styles.footerLeft}>
+                  {card.dueDate && (
+                    <span className={`${styles.due} ${getDueDateClass(card.dueDate)}`}>
+                      <Calendar size={11}/> {formatDate(card.dueDate)}
+                    </span>
+                  )}
                   {card.description && (
                     <span className={styles.descBadge} title="This card has a description">
                       <AlignLeft size={11} />

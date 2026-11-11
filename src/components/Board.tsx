@@ -104,8 +104,13 @@ export default function Board({ board, search, cardFilter }: Props) {
 
     const dstIds = dstCol.cardIds.filter((id) => id !== draggableId);
     const visible = dstIds.filter((id) => board.cards[id] && !board.cards[id].completedAt);
+    // A sorted column decides its own order: nothing to do for a move inside it,
+    // and a card arriving from elsewhere just joins the end.
+    const destSorted = !!dstCol.settings?.sortBy && dstCol.settings.sortBy !== 'manual';
+    if (destSorted && srcCol.id === dstCol.id) return;
+
     let destIndex: number;
-    if (destination.index < visible.length) {
+    if (!destSorted && destination.index < visible.length) {
       destIndex = dstIds.indexOf(visible[destination.index]);
     } else if (visible.length > 0) {
       destIndex = dstIds.indexOf(visible[visible.length - 1]) + 1;
