@@ -1,13 +1,14 @@
 .column {
-  width: 272px;
+  width: var(--ui-column-width);
   flex-shrink: 0;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  background: var(--ui-column-bg);
+  border: 1px solid var(--ui-column-border);
+  border-radius: var(--ui-column-radius);
+  box-shadow: var(--ui-column-shadow);
   display: flex;
   flex-direction: column;
   max-height: calc(100vh - 100px);
-  max-height: calc(100dvh - 100px);
+  max-height: calc(100dvh - var(--ui-nav-height) - 48px);
   transition: box-shadow 0.15s, border-color 0.15s;
 }
 
@@ -23,13 +24,13 @@
 
 .header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 12px 8px;
+  padding: var(--ui-column-header-padding);
   flex-shrink: 0;
   position: sticky;
   top: 0;
   z-index: 2;
-  background: var(--bg-surface);
-  border-radius: 12px 12px 0 0;
+  background: var(--ui-column-bg);
+  border-radius: var(--ui-column-radius) var(--ui-column-radius) 0 0;
 }
 
 .headerLeft { display: flex; align-items: center; gap: 8px; }
@@ -104,7 +105,7 @@
   padding: 4px 8px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--ui-column-card-gap);
   min-height: 48px;
   transition: background 0.15s;
   border-radius: 4px;
@@ -140,7 +141,7 @@
   background: none; border: none; cursor: pointer;
   transition: all 0.15s; font-family: inherit;
   border-top: 1px solid var(--border-subtle);
-  border-radius: 0 0 12px 12px;
+  border-radius: 0 0 var(--ui-column-radius) var(--ui-column-radius);
   flex-shrink: 0;
 }
 .addBtn:hover { color: var(--accent); background: var(--accent-subtle); }
@@ -389,7 +390,7 @@
 
   .cardList {
     padding: 6px 10px;
-    gap: 10px;
+    gap: var(--ui-column-card-gap);
   }
 
   .addBtn {

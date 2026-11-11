@@ -1,5 +1,5 @@
 .sidebar {
-  width: 240px;
+  width: var(--ui-sidebar-width);
   flex-shrink: 0;
   background: var(--bg-surface);
   border-right: 1px solid var(--border);
@@ -40,7 +40,7 @@
 
 
 .section {
-  padding: 12px 8px;
+  padding: var(--ui-sidebar-section-padding) 8px;
   border-bottom: 1px solid var(--border-subtle);
 }
 
@@ -67,8 +67,8 @@
   align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 10px 12px;
-  border-radius: 6px;
+  padding: var(--ui-sidebar-item-padding) 12px;
+  border-radius: var(--ui-control-radius);
   font-size: 14px;
   font-weight: 500;
   color: var(--text-secondary);
@@ -135,7 +135,7 @@
 
 .addBoardBtn {
   display: flex; align-items: center; gap: 6px;
-  width: 100%; padding: 7px 8px; border-radius: 6px;
+  width: 100%; padding: 7px 8px; border-radius: var(--ui-control-radius);
   font-size: 13px; font-weight: 500; color: var(--text-muted);
   background: none; border: none; cursor: pointer;
   transition: all 0.15s; font-family: inherit; margin-top: 4px;
@@ -159,7 +159,7 @@
   gap: 8px;
   width: 100%;
   padding: 8px 10px;
-  border-radius: 6px;
+  border-radius: var(--ui-control-radius);
   font-size: 13px;
   font-weight: 500;
   color: var(--text-muted);

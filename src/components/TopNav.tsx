@@ -358,7 +358,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
                   marginTop: '8px',
                   background: 'var(--bg-surface)',
                   border: '1px solid var(--border-subtle)',
-                  borderRadius: '16px',
+                  borderRadius: 'var(--ui-modal-radius)',
                   width: '220px',
                   boxShadow: 'var(--shadow-lg)',
                   zIndex: 100,
@@ -380,7 +380,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
                     padding: '12px',
                     background: 'none',
                     border: 'none',
-                    borderRadius: '12px',
+                    borderRadius: 'var(--ui-control-radius)',
                     color: 'var(--text-secondary)',
                     fontSize: '14px',
                     fontWeight: 500,
@@ -404,13 +404,13 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
                   Profile {'&'} Settings
                 </button>
                 <button
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: 12, background: 'none', border: 'none', borderRadius: 12, color: 'var(--text-secondary)', fontSize: 14, fontWeight: 500, cursor: 'pointer', textAlign: 'left', minHeight: 44 }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: 12, background: 'none', border: 'none', borderRadius: 'var(--ui-control-radius)', color: 'var(--text-secondary)', fontSize: 14, fontWeight: 500, cursor: 'pointer', textAlign: 'left', minHeight: 44 }}
                   onClick={() => { setShowUserMenu(false); setShowAnalytics(true); }}
                 >
                   <BarChart3 size={16} /> Analytics
                 </button>
                 <button
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: 12, background: 'none', border: 'none', borderRadius: 12, color: 'var(--text-secondary)', fontSize: 14, fontWeight: 500, cursor: 'pointer', textAlign: 'left', minHeight: 44 }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: 12, background: 'none', border: 'none', borderRadius: 'var(--ui-control-radius)', color: 'var(--text-secondary)', fontSize: 14, fontWeight: 500, cursor: 'pointer', textAlign: 'left', minHeight: 44 }}
                   onClick={() => { setShowUserMenu(false); setShowTeam(true); }}
                 >
                   <Users size={16} /> Team workspace
@@ -424,7 +424,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
                     padding: '12px',
                     background: 'none',
                     border: 'none',
-                    borderRadius: '12px',
+                    borderRadius: 'var(--ui-control-radius)',
                     color: 'var(--text-secondary)',
                     fontSize: '14px',
                     fontWeight: 500,

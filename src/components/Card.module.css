@@ -1,13 +1,18 @@
 .card {
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 10px;
+  background: var(--ui-card-bg);
+  border: 1px solid var(--ui-card-border);
+  border-radius: var(--ui-card-radius);
+  padding: var(--ui-card-padding);
+  box-shadow: var(--ui-card-shadow);
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s, transform 0.15s;
   position: relative;
   overflow: hidden;
   flex-shrink: 0;
+}
+.card:hover {
+  box-shadow: var(--ui-card-hover-shadow);
+  transform: translateY(-1px);
 }
 .card.dragging {
   box-shadow: var(--shadow-lg) !important;
@@ -25,9 +30,9 @@
 
 /* Cover */
 .cardCover {
-  height: 48px;
-  margin: -10px -10px 8px -10px;
-  border-radius: 8px 8px 0 0;
+  height: var(--ui-card-cover-height);
+  margin: calc(0px - var(--ui-card-padding)) calc(0px - var(--ui-card-padding)) 8px;
+  border-radius: var(--ui-card-radius) var(--ui-card-radius) 0 0;
 }
 
 .topRow { display: flex; align-items: flex-start; gap: 6px; margin-bottom: 6px; }
@@ -75,7 +80,7 @@
 .doneBtnChecked { color: #36B37E; }
 
 .title {
-  font-size: 13px; font-weight: 500; color: var(--text-primary);
+  font-size: var(--ui-card-title-size); font-weight: 500; color: var(--text-primary);
   line-height: 1.4; word-break: break-word;
 }
 

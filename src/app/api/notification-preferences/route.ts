@@ -20,8 +20,13 @@ async function userId() {
 export async function GET() {
   const id = await userId();
   if (!id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const preferences = await prisma.notificationPreference.findUnique({ where: { userId: id } });
-  return NextResponse.json(preferences ?? defaults);
+  try {
+    const preferences = await prisma.notificationPreference.findUnique({ where: { userId: id } });
+    return NextResponse.json(preferences ?? defaults);
+  } catch (error) {
+    console.error('Unable to load notification preferences', error);
+    return NextResponse.json({ error: 'Notification settings are temporarily unavailable' }, { status: 503 });
+  }
 }
 
 export async function PUT(request: NextRequest) {
@@ -33,10 +38,15 @@ export async function PUT(request: NextRequest) {
       .filter((key) => typeof input[key] === 'boolean')
       .map((key) => [key, input[key]]),
   );
-  const preferences = await prisma.notificationPreference.upsert({
-    where: { userId: id },
-    create: { userId: id, ...defaults, ...data },
-    update: data,
-  });
-  return NextResponse.json(preferences);
+  try {
+    const preferences = await prisma.notificationPreference.upsert({
+      where: { userId: id },
+      create: { userId: id, ...defaults, ...data },
+      update: data,
+    });
+    return NextResponse.json(preferences);
+  } catch (error) {
+    console.error('Unable to save notification preferences', error);
+    return NextResponse.json({ error: 'Notification settings could not be saved' }, { status: 503 });
+  }
 }
