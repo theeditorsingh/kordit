@@ -6,12 +6,21 @@ import {
   deleteCardAction, bulkDeleteCardsAction, bulkMoveCardsAction, bulkCopyCardsAction,
   deleteBoardAction, inviteMemberAction, removeMemberAction, updateCardAction, moveColumnAction,
   updateColumnAction, deleteColumnAction, updateBoardAction, toggleBoardFavoriteAction,
-  archiveBoardAction, saveBoardAsTemplateAction
+  archiveBoardAction, saveBoardAsTemplateAction, applyBoardOpsAction
 } from '@/actions/boardActions';
+import { applyOps, diffBoards, remapCardId, remapColumnId } from '@/utils/boardOps';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { supabase } from '@/lib/supabase';
 import UndoRedoToast from '@/components/UndoRedoToast';
+import { getMemberColor } from '@/utils/storage';
+
+// Small stable hash so each member keeps the same avatar colour everywhere
+function hashId(id: string): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return h;
+}
 
 const UNDO_STACK_MAX = 30;
 
@@ -54,11 +63,29 @@ type Action =
   | { type: 'UNDO' }
   | { type: 'REDO' };
 
+// One undoable step: the affected board just before and just after the action.
+// Undo applies the difference after→before on top of the *current* board, so
+// changes made since (including by collaborators) are kept.
+interface HistoryEntry {
+  boardId: string;
+  before: Board;
+  after: Board;
+}
+
 // Extended state shape including undo/redo stacks
 interface FullState {
   present: AppState;
-  past: AppState[];
-  future: AppState[];
+  past: HistoryEntry[];
+  future: HistoryEntry[];
+}
+
+function applyEntry(present: AppState, entry: HistoryEntry, direction: 'undo' | 'redo'): AppState {
+  const ops = direction === 'undo' ? diffBoards(entry.after, entry.before) : diffBoards(entry.before, entry.after);
+  return {
+    ...present,
+    selectedCardIds: [],
+    boards: present.boards.map((b) => (b.id === entry.boardId ? applyOps(b, ops) : b)),
+  };
 }
 
 // Pure reducer for AppState (no undo stacks)
@@ -370,34 +397,47 @@ function boardReducer(state: AppState, action: Action): AppState {
 // Wrapper reducer that manages undo/redo stacks
 function reducer(full: FullState, action: Action): FullState {
   if (action.type === 'UNDO') {
-    if (full.past.length === 0) return full;
-    const previous = full.past[full.past.length - 1];
+    const entry = full.past[full.past.length - 1];
+    if (!entry) return full;
     return {
-      present: previous,
+      present: applyEntry(full.present, entry, 'undo'),
       past: full.past.slice(0, -1),
-      future: [full.present, ...full.future].slice(0, UNDO_STACK_MAX),
+      future: [entry, ...full.future].slice(0, UNDO_STACK_MAX),
     };
   }
   if (action.type === 'REDO') {
-    if (full.future.length === 0) return full;
-    const next = full.future[0];
+    const entry = full.future[0];
+    if (!entry) return full;
     return {
-      present: next,
-      past: [...full.past, full.present].slice(-UNDO_STACK_MAX),
+      present: applyEntry(full.present, entry, 'redo'),
+      past: [...full.past, entry].slice(-UNDO_STACK_MAX),
       future: full.future.slice(1),
     };
   }
-  if (action.type === 'SYNC_BOARDS') {
-    // Sync should not push to undo stack
-    return { ...full, present: boardReducer(full.present, action) };
-  }
+
   const nextPresent = boardReducer(full.present, action);
-  if (UNDOABLE_ACTIONS.has(action.type)) {
-    return {
-      present: nextPresent,
-      past: [...full.past, full.present].slice(-UNDO_STACK_MAX),
-      future: [],
-    };
+
+  // A temporary id was swapped for the real one: keep the history pointing at the real id
+  if (action.type === 'REPLACE_CARD_ID' || action.type === 'REPLACE_COLUMN_ID') {
+    const remap = (b: Board) =>
+      action.type === 'REPLACE_CARD_ID'
+        ? remapCardId(b, action.oldId, action.newCard.id)
+        : remapColumnId(b, action.oldId, action.newId);
+    const fix = (e: HistoryEntry): HistoryEntry =>
+      e.boardId === action.boardId ? { ...e, before: remap(e.before), after: remap(e.after) } : e;
+    return { present: nextPresent, past: full.past.map(fix), future: full.future.map(fix) };
+  }
+
+  if (UNDOABLE_ACTIONS.has(action.type) && 'boardId' in action) {
+    const before = full.present.boards.find((b) => b.id === action.boardId);
+    const after = nextPresent.boards.find((b) => b.id === action.boardId);
+    if (before && after && before !== after) {
+      return {
+        present: nextPresent,
+        past: [...full.past, { boardId: action.boardId, before, after }].slice(-UNDO_STACK_MAX),
+        future: [],
+      };
+    }
   }
   return { ...full, present: nextPresent };
 }
@@ -433,6 +473,8 @@ interface BoardContextType {
   redo: () => void;
   canUndo: boolean;
   canRedo: boolean;
+  /** Show a short error message at the bottom of the screen */
+  notifyError: (message: string) => void;
 }
 
 const BoardContext = createContext<BoardContextType | null>(null);
@@ -492,7 +534,7 @@ function formatPrismaBoards(prismaBoards: any[]): Board[] {
         id: m.userId,
         name: m.user?.name || m.user?.username || 'Unknown',
         role: m.role as any,
-        color: '#0052CC',
+        color: getMemberColor(hashId(String(m.userId))),
         status: 'joined' as const,
       })),
       createdAt: pb.createdAt ? new Date(pb.createdAt).toISOString() : new Date().toISOString()
@@ -503,7 +545,9 @@ function formatPrismaBoards(prismaBoards: any[]): Board[] {
 export function BoardProvider({ children, initialBoards = [] }: { children: React.ReactNode, initialBoards?: any[] }) {
   const router = useRouter();
   const { data: session } = useSession();
-  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; kind: 'info' | 'error' } | null>(null);
+  const dismissToast = useCallback(() => setToast(null), []);
+  const notifyError = useCallback((message: string) => setToast({ message, kind: 'error' }), []);
 
   const [full, dispatch] = useReducer(reducer, undefined, () => ({
     present: {
@@ -520,15 +564,19 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
   const canRedo = full.future.length > 0;
 
   function undo() {
-    if (!canUndo) return;
+    const entry = full.past[full.past.length - 1];
+    if (!entry) return;
     dispatch({ type: 'UNDO' });
-    setToastMsg('Action undone ↩');
+    setToast({ message: 'Action undone ↩', kind: 'info' });
+    persistHistoryStep(entry.boardId, diffBoards(entry.after, entry.before), 'undo');
   }
 
   function redo() {
-    if (!canRedo) return;
+    const entry = full.future[0];
+    if (!entry) return;
     dispatch({ type: 'REDO' });
-    setToastMsg('Action redone ↪');
+    setToast({ message: 'Action redone ↪', kind: 'info' });
+    persistHistoryStep(entry.boardId, diffBoards(entry.before, entry.after), 'redo');
   }
 
   const activeBoard = state.boards.find((b) => b.id === state.activeBoardId) ?? null;
@@ -632,6 +680,28 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
     return cleanup;
   }, [session?.user?.id, fetchAndSync, boardIdsKey]);
 
+  // Tell the user a change did not save, then reload from the server once the
+  // post-mutation cooldown has passed so the screen stops showing the unsaved change.
+  function reportFailure(message: string, error: unknown) {
+    console.error(message, error);
+    notifyError(`${message} Your change was not saved.`);
+    setTimeout(() => { fetchAndSync(); }, SYNC_COOLDOWN_MS + 300);
+  }
+
+  // Save the result of an undo/redo on the server
+  async function persistHistoryStep(boardId: string, ops: ReturnType<typeof diffBoards>, kind: 'undo' | 'redo') {
+    if (ops.length === 0) return;
+    pendingOpsRef.current += 1;
+    try {
+      await applyBoardOpsAction(boardId, ops);
+    } catch (e) {
+      reportFailure(kind === 'undo' ? "Couldn't undo that." : "Couldn't redo that.", e);
+    } finally {
+      pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1);
+      lastOpFinishedRef.current = Date.now();
+    }
+  }
+
   // ── Board Actions ─────────────────────────────────────────────────────────
 
   async function createBoard(title: string, customColumns?: { title: string, color: string }[]) {
@@ -643,7 +713,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
         router.push(`/${session.user.username}/${formatted.slug}`);
       }
     } catch (e) {
-      console.error("Failed to create board", e);
+      reportFailure("Couldn't create the board.", e);
     }
   }
 
@@ -661,7 +731,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
         }
       }
     } catch (e) {
-      console.error("Failed to delete board", e);
+      reportFailure("Couldn't delete the board.", e);
     }
   }
 
@@ -708,7 +778,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
       dispatch({ type: 'REPLACE_CARD_ID', boardId, columnId, oldId: tempId, newCard: formattedCard });
       return realCard.id;
     } catch (e) {
-      console.error("Failed to create card on server", e);
+      reportFailure("Couldn't add the card.", e);
       fetchAndSync();
     } finally {
       pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1);
@@ -726,7 +796,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
       // Swap the temporary id for the real one so cards can be added straight away
       dispatch({ type: 'REPLACE_COLUMN_ID', boardId, oldId: tempId, newId: realColumn.id });
     } catch (e) {
-      console.error('Failed to create column', e);
+      reportFailure("Couldn't add the column.", e);
       fetchAndSync();
     } finally {
       pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1);
@@ -740,7 +810,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
     try {
       await moveCardAction(cardId, sourceColId, destColId, destIndex);
     } catch (e) {
-      console.error('Failed to move card', e);
+      reportFailure("Couldn't move the card.", e);
       fetchAndSync();
     } finally {
       pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1);
@@ -754,7 +824,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
     try {
       await deleteCardAction(boardId, cardId);
     } catch (e) {
-      console.error('Failed to delete card', e);
+      reportFailure("Couldn't delete the card.", e);
       fetchAndSync();
     } finally {
       pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1);
@@ -780,7 +850,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
         reminderAt: card.reminderAt,
       });
     } catch (e) {
-      console.error("Failed to update card", e);
+      reportFailure("Couldn't save the card.", e);
       fetchAndSync();
     } finally {
       pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1);
@@ -799,7 +869,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
       cols.splice(destIndex, 0, removed);
       await moveColumnAction(boardId, cols.map((c, i) => ({ id: c.id, order: i })));
     } catch (e) {
-      console.error('Failed to move column', e);
+      reportFailure("Couldn't move the column.", e);
       fetchAndSync();
     } finally {
       pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1);
@@ -813,7 +883,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
     try {
       await deleteColumnAction(boardId, columnId);
     } catch (e) {
-      console.error('Failed to delete column', e);
+      reportFailure("Couldn't delete the column.", e);
       fetchAndSync();
     } finally {
       pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1);
@@ -827,7 +897,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
     try {
       await updateColumnAction(boardId, columnId, updates);
     } catch (e) {
-      console.error("Failed to update column", e);
+      reportFailure("Couldn't save the column.", e);
       fetchAndSync();
     } finally {
       pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1);
@@ -841,7 +911,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
     try {
       await updateBoardAction(boardId, updates);
     } catch (e) {
-      console.error("Failed to update board", e);
+      reportFailure("Couldn't save the board.", e);
       fetchAndSync();
     } finally {
       pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1);
@@ -855,7 +925,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
     try {
       await toggleBoardFavoriteAction(boardId);
     } catch (e) {
-      console.error("Failed to toggle favorite", e);
+      reportFailure("Couldn't update the favourite.", e);
       fetchAndSync();
     } finally {
       pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1);
@@ -878,7 +948,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
         }
       }
     } catch (e) {
-      console.error("Failed to archive board", e);
+      reportFailure("Couldn't archive the board.", e);
       fetchAndSync();
     } finally {
       pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1);
@@ -890,7 +960,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
     try {
       await saveBoardAsTemplateAction(boardId);
     } catch (e) {
-      console.error("Failed to save board as template", e);
+      reportFailure("Couldn't copy the board.", e);
     }
   }
 
@@ -908,7 +978,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
     try {
       await bulkDeleteCardsAction(boardId, cardIds);
     } catch (e) {
-      console.error("Failed bulk delete", e);
+      reportFailure("Couldn't delete the selected cards.", e);
       fetchAndSync();
     } finally {
       pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1);
@@ -922,7 +992,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
     try {
       await bulkMoveCardsAction(boardId, cardIds, targetColId);
     } catch (e) {
-      console.error("Failed bulk move", e);
+      reportFailure("Couldn't move the selected cards.", e);
       fetchAndSync();
     } finally {
       pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1);
@@ -942,7 +1012,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
     try {
       await bulkCopyCardsAction(boardId, cardIds, targetColId);
     } catch (e) {
-      console.error("Failed bulk copy", e);
+      reportFailure("Couldn't copy the selected cards.", e);
       fetchAndSync();
     } finally {
       pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1);
@@ -957,7 +1027,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
     try {
       await inviteMemberAction(boardId, name, role);
     } catch (error) {
-      console.error("Failed to invite member", error);
+      reportFailure("Couldn't send the invite. Check the email address.", error);
       fetchAndSync();
     } finally {
       pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1);
@@ -971,7 +1041,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
     try {
       await removeMemberAction(boardId, memberId);
     } catch (error) {
-      console.error("Failed to remove member", error);
+      reportFailure("Couldn't remove the member.", error);
       fetchAndSync();
     } finally {
       pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1);
@@ -992,10 +1062,10 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
       saveBoardAsTemplate: handleSaveBoardAsTemplate,
       addMember, removeMember, setActiveBoardId,
       toggleCardSelection, clearSelection, bulkDelete, bulkMove, bulkCopy,
-      undo, redo, canUndo, canRedo,
+      undo, redo, canUndo, canRedo, notifyError,
     }}>
       {children}
-      <UndoRedoToast message={toastMsg} onDismiss={() => setToastMsg(null)} />
+      <UndoRedoToast message={toast?.message ?? null} kind={toast?.kind} onDismiss={dismissToast} />
     </BoardContext.Provider>
   );
 }

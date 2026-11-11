@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { signOut, useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useBoardContext } from '@/context/BoardContext';
+import { useConfirm } from './ConfirmDialog';
 import {
   Plus, Trash2, ChevronDown, ChevronLeft, ChevronRight, LayoutGrid, Users, Edit2, Check, X,
   LayoutTemplate, LogOut, Star, Archive, Activity, Zap
@@ -18,6 +19,7 @@ export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: bool
   const { data: session } = useSession();
   const router = useRouter();
   const { state, activeBoard, dispatch, createBoard, deleteBoard: contextDeleteBoard, toggleFavorite, archiveBoard, updateBoard } = useBoardContext();
+  const confirm = useConfirm();
   const [newBoardTitle, setNewBoardTitle] = useState('');
   const [adding, setAdding] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
@@ -63,14 +65,15 @@ export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: bool
     setEditingId(null);
   }
 
-  function deleteBoard(id: string) {
-    if (confirm('Delete this board and all its cards?')) {
+  async function deleteBoard(id: string) {
+    const title = state.boards.find((b) => b.id === id)?.title ?? 'this board';
+    if (await confirm(`Delete "${title}" and all its cards? This cannot be undone.`, { title: 'Delete board' })) {
       contextDeleteBoard(id);
     }
   }
 
-  function handleArchive(id: string) {
-    if (confirm('Archive this board? It will be hidden from the sidebar.')) {
+  async function handleArchive(id: string) {
+    if (await confirm('Archive this board? It will be hidden from the sidebar. You can restore it from Archived Boards.', { title: 'Archive board', confirmLabel: 'Archive', danger: false })) {
       archiveBoard(id);
     }
   }
@@ -149,16 +152,16 @@ export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: bool
                     {!collapsed && board.isFavorite && <Star size={11} style={{ color: '#FFC400', fill: '#FFC400', flexShrink: 0 }} />}
                     {!collapsed && (
                       <span className={styles.boardActions}>
-                        <span className={styles.actionBtn} onClick={(e) => { e.stopPropagation(); toggleFavorite(board.id); }} title={board.isFavorite ? 'Unfavorite' : 'Favorite'}>
+                        <span className={styles.actionBtn} role="button" tabIndex={0} aria-label={board.isFavorite ? 'Remove from favourites' : 'Add to favourites'} title={board.isFavorite ? 'Unfavorite' : 'Favorite'} onClick={(e) => { e.stopPropagation(); toggleFavorite(board.id); }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); toggleFavorite(board.id); } }}>
                           <Star size={12} style={board.isFavorite ? { color: '#FFC400', fill: '#FFC400' } : {}} />
                         </span>
-                        <span className={styles.actionBtn} onClick={(e) => { e.stopPropagation(); startEdit(board.id, board.title); }}>
+                        <span className={styles.actionBtn} role="button" tabIndex={0} aria-label="Rename board" title="Rename board" onClick={(e) => { e.stopPropagation(); startEdit(board.id, board.title); }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); startEdit(board.id, board.title); } }}>
                           <Edit2 size={12}/>
                         </span>
-                        <span className={styles.actionBtn} onClick={(e) => { e.stopPropagation(); handleArchive(board.id); }} title="Archive">
+                        <span className={styles.actionBtn} role="button" tabIndex={0} aria-label="Archive board" title="Archive board" onClick={(e) => { e.stopPropagation(); handleArchive(board.id); }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); handleArchive(board.id); } }}>
                           <Archive size={12}/>
                         </span>
-                        <span className={styles.actionBtn} onClick={(e) => { e.stopPropagation(); deleteBoard(board.id); }}>
+                        <span className={styles.actionBtn} role="button" tabIndex={0} aria-label="Delete board" title="Delete board" onClick={(e) => { e.stopPropagation(); deleteBoard(board.id); }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); deleteBoard(board.id); } }}>
                           <Trash2 size={12}/>
                         </span>
                       </span>

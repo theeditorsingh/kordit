@@ -30,22 +30,15 @@ export const metadata: Metadata = {
 
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { prisma } from "@/lib/prisma";
-import { boardInclude } from "@/lib/boardQuery";
+import { loadBoardsForUser } from "@/lib/loadBoards";
+import { ConfirmProvider } from "@/components/ConfirmDialog";
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSession(authOptions);
   let initialBoards: any[] = [];
 
   if (session?.user?.id) {
-    initialBoards = await prisma.board.findMany({
-      where: {
-        members: { some: { userId: session.user.id } },
-        isArchived: false,
-      },
-      include: boardInclude,
-      orderBy: { createdAt: 'asc' }
-    });
+    initialBoards = await loadBoardsForUser(session.user.id);
   }
 
   return (
@@ -57,15 +50,22 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('kordit_theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.setAttribute('data-theme',t);}catch(e){}})();`,
+          }}
+        />
       </head>
       <body suppressHydrationWarning>
         <AuthProvider>
           <ThemeProvider>
-            <BoardProvider initialBoards={initialBoards}>
-              <TopProgressBar />
-              <OfflineBanner />
-              {children}
-            </BoardProvider>
+            <ConfirmProvider>
+              <BoardProvider initialBoards={initialBoards}>
+                <TopProgressBar />
+                <OfflineBanner />
+                {children}
+              </BoardProvider>
+            </ConfirmProvider>
           </ThemeProvider>
         </AuthProvider>
         {/* Register Service Worker */}

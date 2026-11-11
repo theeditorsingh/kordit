@@ -9,6 +9,7 @@ import dynamic from 'next/dynamic';
 import { useBoardContext } from '@/context/BoardContext';
 import styles from './Card.module.css';
 import { useSwipeDown } from '@/hooks/useSwipeDown';
+import { useConfirm } from './ConfirmDialog';
 
 // Loaded on first open so the modal code stays out of the initial board bundle
 const CardModal = dynamic(() => import('./CardModal'), { ssr: false });
@@ -43,6 +44,7 @@ export default function CardItem({ card, index, board, columnId, dragDisabled, o
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number } | null>(null);
   const [showBottomSheet, setShowBottomSheet] = useState(false);
   const { deleteCard, toggleCardSelection, state } = useBoardContext();
+  const confirm = useConfirm();
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Swipe-down to dismiss the long-press bottom sheet
@@ -218,10 +220,10 @@ export default function CardItem({ card, index, board, columnId, dragDisabled, o
               </button>
               <button
                 style={{ padding: '8px 12px', textAlign: 'left', fontSize: '13px', background: 'none', border: 'none', cursor: 'pointer', color: '#ff5630', borderRadius: '4px' }}
-                onClick={(e) => {
+                onClick={async (e) => {
                   e.stopPropagation();
                   setContextMenu(null);
-                  if (confirm('Delete this card?')) {
+                  if (await confirm(`Delete "${card.title}"?`, { title: 'Delete card' })) {
                      deleteCard(board.id, columnId, card.id);
                   }
                 }}
@@ -279,9 +281,9 @@ export default function CardItem({ card, index, board, columnId, dragDisabled, o
                 {isSelected ? 'Deselect' : 'Select'}
               </button>
               <button
-                onClick={() => {
+                onClick={async () => {
                   setShowBottomSheet(false);
-                  if (confirm('Delete this card?')) {
+                  if (await confirm(`Delete "${card.title}"?`, { title: 'Delete card' })) {
                     deleteCard(board.id, columnId, card.id);
                   }
                 }}

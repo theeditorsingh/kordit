@@ -20,6 +20,14 @@
   transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
+.error {
+  border-color: #FF5630;
+  color: #FF5630;
+  white-space: normal;
+  max-width: calc(100vw - 32px);
+  font-size: 13px;
+}
+
 .show {
   opacity: 1;
   transform: translateX(-50%) translateY(0);

@@ -60,13 +60,13 @@ const defaults = {
   'no-members': { title: 'No members yet', description: 'Invite teammates to collaborate on this board.' },
 };
 
-export default function EmptyState({ variant, title, action }: EmptyStateProps) {
+export default function EmptyState({ variant, title, description, action }: EmptyStateProps) {
   const d = defaults[variant];
   return (
     <div className={styles.root}>
       <div className={styles.illustration}>{illustrations[variant]}</div>
       <h3 className={styles.title}>{title || d.title}</h3>
-      <p className={styles.desc}>{d.description}</p>
+      <p className={styles.desc}>{description || d.description}</p>
       {action && (
         <button className={`btn btn-primary btn-sm ${styles.cta}`} onClick={action.onClick}>
           {action.label}

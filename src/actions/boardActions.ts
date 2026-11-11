@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { Resend } from "resend";
 import { memberInclude } from "@/lib/boardQuery";
+import type { BoardOp } from "@/utils/boardOps";
 
 function getResend() {
   return new Resend(process.env.RESEND_API_KEY);
@@ -136,10 +137,12 @@ export async function updateBoardAction(boardId: string, updates: Record<string,
 
 export async function toggleBoardFavoriteAction(boardId: string) {
   const user = await getAuthUser();
-  await verifyBoardAccess(boardId, user.id);
-  const board = await prisma.board.findUnique({ where: { id: boardId } });
-  if (!board) throw new Error("Board not found");
-  await prisma.board.update({ where: { id: boardId }, data: { isFavorite: !board.isFavorite } });
+  // A star is personal, so it lives on the member row and guests may use it too
+  const member = await prisma.member.findUnique({
+    where: { boardId_userId: { boardId, userId: user.id } }
+  });
+  if (!member) throw new Error("Unauthorized");
+  await prisma.member.update({ where: { id: member.id }, data: { isFavorite: !member.isFavorite } });
 }
 
 export async function archiveBoardAction(boardId: string) {
@@ -527,6 +530,112 @@ export async function bulkCopyCardsAction(boardId: string, cardIds: string[], ta
   if (newCardsData.length > 0) {
     await prisma.card.createMany({ data: newCardsData });
   }
+}
+
+// ── Undo / Redo ─────────────────────────────────────────────────────────────
+
+const ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
+const PRIORITIES = ['none', 'urgent', 'high', 'medium', 'low'];
+
+function assertId(value: unknown): asserts value is string {
+  if (typeof value !== 'string' || !ID_PATTERN.test(value)) throw new Error("Invalid request");
+}
+
+/**
+ * Applies the operations produced by an undo or redo (see utils/boardOps.ts).
+ * Everything is checked against the board: an id either already belongs to this
+ * board or does not exist yet (a deleted card/column being restored).
+ * Comments on a card that was deleted and then restored are not brought back.
+ */
+export async function applyBoardOpsAction(boardId: string, ops: BoardOp[]) {
+  const user = await getAuthUser();
+  await verifyBoardAccess(boardId, user.id);
+  if (!Array.isArray(ops) || ops.length === 0 || ops.length > 500) throw new Error("Invalid request");
+
+  await prisma.$transaction(async (tx) => {
+    // 1. Columns first, so restored cards have somewhere to go
+    for (const op of ops) {
+      if (op.type !== 'upsertColumn') continue;
+      const col = op.column;
+      assertId(col.id);
+      const existing = await tx.column.findUnique({ where: { id: col.id } });
+      if (existing && existing.boardId !== boardId) throw new Error("Unauthorized");
+      const data = {
+        title: String(col.title ?? '').trim().slice(0, 100) || 'Untitled',
+        color: String(col.color ?? '#0052CC').slice(0, 32),
+        icon: String(col.icon ?? '').slice(0, 32),
+        wipLimit: Math.max(0, Math.floor(Number(col.wipLimit) || 0)),
+      };
+      if (existing) await tx.column.update({ where: { id: col.id }, data });
+      else await tx.column.create({ data: { id: col.id, boardId, order: Math.max(0, Number(op.index) || 0), ...data } });
+    }
+
+    // 2. Cards: restore deleted ones, or put edited fields back
+    for (const op of ops) {
+      if (op.type !== 'upsertCard') continue;
+      const card = op.card;
+      assertId(card.id);
+      assertId(op.columnId);
+      const column = await tx.column.findUnique({ where: { id: op.columnId } });
+      if (column?.boardId !== boardId) continue; // column no longer exists
+      const existing = await tx.card.findUnique({ where: { id: card.id } });
+      if (existing && existing.boardId !== boardId) throw new Error("Unauthorized");
+      const data = {
+        title: String(card.title ?? '').trim().slice(0, 500) || 'Untitled',
+        description: String(card.description ?? ''),
+        priority: PRIORITIES.includes(card.priority) ? card.priority : 'none',
+        dueDate: card.dueDate ? new Date(card.dueDate) : null,
+        reminderAt: card.reminderAt ? new Date(card.reminderAt) : null,
+        coverImage: String(card.coverImage ?? ''),
+        coverColor: String(card.coverColor ?? ''),
+        labels: (Array.isArray(card.labels) ? card.labels : []) as any,
+        checklist: (Array.isArray(card.checklist) ? card.checklist : []) as any,
+        assigneeIds: (Array.isArray(card.assigneeIds) ? card.assigneeIds : []) as any,
+      };
+      if (existing) {
+        await tx.card.update({ where: { id: card.id }, data });
+      } else {
+        const createdAt = card.createdAt ? new Date(card.createdAt) : new Date();
+        await tx.card.create({
+          data: {
+            id: card.id, boardId, columnId: op.columnId, order: 0, ...data,
+            ...(isNaN(createdAt.getTime()) ? {} : { createdAt }),
+          },
+        });
+      }
+    }
+
+    // 3. Removals
+    for (const op of ops) {
+      if (op.type === 'deleteCard') {
+        assertId(op.cardId);
+        await tx.card.deleteMany({ where: { id: op.cardId, boardId } });
+      } else if (op.type === 'deleteColumn') {
+        assertId(op.columnId);
+        await tx.column.deleteMany({ where: { id: op.columnId, boardId } });
+      }
+    }
+
+    // 4. Positions
+    for (const op of ops) {
+      if (op.type === 'setCardOrder') {
+        assertId(op.columnId);
+        const column = await tx.column.findUnique({ where: { id: op.columnId } });
+        if (column?.boardId !== boardId || !Array.isArray(op.cardIds)) continue;
+        for (let i = 0; i < op.cardIds.length; i++) {
+          assertId(op.cardIds[i]);
+          await tx.card.updateMany({ where: { id: op.cardIds[i], boardId }, data: { columnId: op.columnId, order: i } });
+        }
+      } else if (op.type === 'setColumnOrder' && Array.isArray(op.columnIds)) {
+        for (let i = 0; i < op.columnIds.length; i++) {
+          assertId(op.columnIds[i]);
+          await tx.column.updateMany({ where: { id: op.columnIds[i], boardId }, data: { order: i } });
+        }
+      }
+    }
+  }, { timeout: 30000, maxWait: 10000 });
+
+  await logActivity(boardId, user.id, 'undo_redo', { changes: ops.length });
 }
 
 // ── Member Actions ──────────────────────────────────────────────────────────

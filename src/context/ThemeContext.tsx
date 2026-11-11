@@ -14,10 +14,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const saved = localStorage.getItem('kordit_theme') as Theme | null;
-    if (saved === 'light' || saved === 'dark') {
-      setTheme(saved);
-      document.documentElement.setAttribute('data-theme', saved);
-    }
+    // No saved choice yet: follow the system setting
+    const initial: Theme = saved === 'light' || saved === 'dark'
+      ? saved
+      : window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    setTheme(initial);
+    document.documentElement.setAttribute('data-theme', initial);
   }, []);
 
   function toggleTheme() {

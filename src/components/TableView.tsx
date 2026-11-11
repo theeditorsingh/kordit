@@ -1,6 +1,7 @@
 'use client';
 import { useState, useRef } from 'react';
 import { Board, Card } from '@/types';
+import { cardMatchesSearch } from '@/utils/search';
 import { useBoardContext } from '@/context/BoardContext';
 import { getInitials } from '@/utils/storage';
 import { Plus, CheckSquare2 } from 'lucide-react';
@@ -57,7 +58,7 @@ export default function TableView({ board, search }: Props) {
     for (const cardId of col.cardIds) {
       const card = board.cards[cardId];
       if (!card) continue;
-      if (search && !card.title.toLowerCase().includes(search.toLowerCase())) continue;
+      if (!cardMatchesSearch(card, search)) continue;
       rows.push({ card, colId: col.id, colTitle: col.title, colColor: col.color });
     }
   }

@@ -144,6 +144,7 @@ model Card {
 model Member {
   id        String   @id @default(cuid())
   role      String   @default("Member") // Admin, Member, Guest
+  isFavorite Boolean @default(false)     // This member starred the board (per user)
   createdAt DateTime @default(now())
 
   boardId String

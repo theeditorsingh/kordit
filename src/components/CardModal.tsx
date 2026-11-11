@@ -4,6 +4,7 @@ import { Board, Card, ChecklistItem, Label, Priority } from '@/types';
 import { useBoardContext } from '@/context/BoardContext';
 
 import CommentSection from './CommentSection';
+import { useConfirm } from './ConfirmDialog';
 import {
   X, Plus, Trash2, Check, Calendar, Tag, Users, AlignLeft, List,
   Image, Link2, AlertTriangle, Sparkles, Loader2, Bell, CheckCircle2
@@ -43,6 +44,7 @@ function toDatetimeLocal(dateStr: string): string {
 
 export default function CardModal({ card, board, columnId, onClose }: Props) {
   const { dispatch, deleteCard: deleteCardFn, updateCard } = useBoardContext();
+  const confirm = useConfirm();
   const [data, setData] = useState<Card>({ ...card });
   // Snapshot of the card as it was when the modal opened, used to work out what changed
   const originalRef = useRef<Card>(card);
@@ -79,6 +81,8 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
 
   // ── Auto-focus title on open ────────────────────────────────────────────
   useEffect(() => {
+    // On touch screens focusing would pop the keyboard over the card, so leave it
+    if (window.matchMedia('(hover: none)').matches) return;
     // Short delay to allow animation to settle
     const t = setTimeout(() => titleInputRef.current?.focus(), 150);
     return () => clearTimeout(t);
@@ -179,8 +183,8 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
     onClose();
   }
 
-  function deleteCard() {
-    if (confirm('Delete this card?')) {
+  async function deleteCard() {
+    if (await confirm(`Delete "${data.title || card.title}"?`, { title: 'Delete card' })) {
       deleteCardFn(board.id, columnId, card.id);
       onClose();
     }
@@ -361,6 +365,9 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
       <div
         ref={modalBoxRef}
         className="modal-box"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Card: ${data.title || 'Untitled'}`}
         style={{ maxWidth: 860, transform: dragY > 0 ? `translateY(${dragY}px)` : undefined, opacity: dragY > 0 ? Math.max(0.5, 1 - dragY / 300) : undefined, transition: dragY === 0 ? 'transform 0.3s ease, opacity 0.3s ease' : 'none' }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
@@ -582,6 +589,8 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
                           selectOrCreateLabel(newLabelName, newLabelColor);
                         }
                         if (e.key === 'Escape') {
+                          // Close only the label picker, not the whole card
+                          e.stopPropagation();
                           setLabelDropdownOpen(false);
                           setShowLabelForm(false);
                         }
@@ -791,6 +800,7 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
             {saveStatus === 'idle' && (
               <span className={styles.saveHint}>Ctrl+Enter to save</span>
             )}
+            <button className="btn btn-ghost" onClick={onClose} title="Close without saving your edits">Discard</button>
             <button className="btn btn-primary" onClick={save}>Save Changes</button>
           </div>
         </div>

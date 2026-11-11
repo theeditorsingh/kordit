@@ -1,5 +1,4 @@
 'use client';
-import { useTheme } from '@/context/ThemeContext';
 import { useBoardContext } from '@/context/BoardContext';
 import Sidebar from '@/components/Sidebar';
 import TopNav from '@/components/TopNav';
@@ -15,9 +14,8 @@ const CalendarView = lazy(() => import('@/components/CalendarView'));
 const OnboardingTour = lazy(() => import('@/components/OnboardingTour'));
 
 export default function BoardPage({ params }: { params: Promise<{ username: string, boardSlug: string }> }) {
-  const { theme } = useTheme();
   const { state, activeBoard, setActiveBoardId } = useBoardContext();
-  const [view, setView] = useState<ViewMode>('board');
+  const [view, setViewState] = useState<ViewMode>('board');
   const [search, setSearch] = useState('');
   const [mounted, setMounted] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -38,7 +36,20 @@ export default function BoardPage({ params }: { params: Promise<{ username: stri
   useEffect(() => {
     setMounted(true);
     doneProgress();
+    // Restore the view from the address bar (?view=table) so a reload or shared link keeps it
+    const fromUrl = new URLSearchParams(window.location.search).get('view');
+    if (fromUrl === 'table' || fromUrl === 'calendar') setViewState(fromUrl);
   }, []);
+
+  function setView(next: ViewMode) {
+    setViewState(next);
+    const url = new URL(window.location.href);
+    if (next === 'board') url.searchParams.delete('view');
+    else url.searchParams.set('view', next);
+    window.history.replaceState(window.history.state, '', url);
+  }
+
+  const boardFromSlug = state.boards.find(b => b.slug === unwrappedParams.boardSlug);
 
   // Sync URL slug to Context
   useEffect(() => {
@@ -55,7 +66,7 @@ export default function BoardPage({ params }: { params: Promise<{ username: stri
 
   if (!mounted) {
     return (
-      <div className="app-layout" data-theme={theme}>
+      <div className="app-layout">
         <div style={{ height: 52, background: 'var(--bg-surface)', borderBottom: '1px solid var(--border)' }} />
         <div className="app-body">
           <div style={{ width: 240, background: 'var(--bg-surface)', borderRight: '1px solid var(--border-subtle)' }} />
@@ -68,7 +79,7 @@ export default function BoardPage({ params }: { params: Promise<{ username: stri
   }
 
   return (
-    <div className="app-layout" data-theme={theme}>
+    <div className="app-layout">
       <TopNav
         view={view}
         setView={setView}
@@ -92,7 +103,15 @@ export default function BoardPage({ params }: { params: Promise<{ username: stri
         )}
         <Sidebar isMobileOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <main className="main-content">
-          {!activeBoard ? (
+          {state.boards.length > 0 && !boardFromSlug ? (
+            <div style={{ flex: 1, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <EmptyState
+                variant="no-results"
+                title="Board not found"
+                description="This board doesn't exist, was archived, or you don't have access to it. Pick another board from the sidebar."
+              />
+            </div>
+          ) : !activeBoard ? (
             <div style={{ flex: 1, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <EmptyState variant="no-boards" />
             </div>
@@ -106,7 +125,7 @@ export default function BoardPage({ params }: { params: Promise<{ username: stri
             </Suspense>
           ) : (
             <Suspense fallback={<SkeletonBoard />}>
-              <CalendarView board={activeBoard} />
+              <CalendarView board={activeBoard} search={search} />
             </Suspense>
           )}
         </main>

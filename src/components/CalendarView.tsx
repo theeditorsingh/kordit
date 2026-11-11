@@ -1,17 +1,18 @@
 'use client';
 import { useState } from 'react';
 import { Board, Card } from '@/types';
+import { cardMatchesSearch } from '@/utils/search';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import dynamic from 'next/dynamic';
 const CardModal = dynamic(() => import('./CardModal'), { ssr: false });
 import styles from './CalendarView.module.css';
 
-interface Props { board: Board; }
+interface Props { board: Board; search?: string; }
 
 const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
-export default function CalendarView({ board }: Props) {
+export default function CalendarView({ board, search = '' }: Props) {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -35,6 +36,7 @@ export default function CalendarView({ board }: Props) {
     col.cardIds.forEach((id) => {
       const card = board.cards[id];
       if (!card?.dueDate) return;
+      if (!cardMatchesSearch(card, search)) return;
       const d = new Date(card.dueDate);
       if (d.getFullYear() === year && d.getMonth() === month) {
         const day = d.getDate();

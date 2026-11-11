@@ -1,5 +1,4 @@
 'use client';
-import { useTheme } from '@/context/ThemeContext';
 import { useBoardContext } from '@/context/BoardContext';
 import Sidebar from '@/components/Sidebar';
 import TopNav from '@/components/TopNav';
@@ -10,7 +9,6 @@ import { ViewMode } from '@/types';
 import { TEMPLATES } from '@/utils/templates';
 
 export default function Home() {
-  const { theme } = useTheme();
   const { state, createBoard } = useBoardContext();
   const [view, setView] = useState<ViewMode>('board');
   const [search, setSearch] = useState('');
@@ -42,7 +40,7 @@ export default function Home() {
   }
 
   return (
-    <div className="app-layout" data-theme={theme}>
+    <div className="app-layout">
       <TopNav view={view} setView={setView} search={search} setSearch={setSearch} />
       <div className="app-body">
         <Sidebar />

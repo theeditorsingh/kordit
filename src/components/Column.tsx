@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { Droppable } from '@hello-pangea/dnd';
 import { Board, Column as ColumnType } from '@/types';
 import { useBoardContext } from '@/context/BoardContext';
+import { useConfirm } from './ConfirmDialog';
+import { cardMatchesSearch } from '@/utils/search';
 import CardItem from './Card';
 import dynamic from 'next/dynamic';
 const CardModal = dynamic(() => import('./CardModal'), { ssr: false });
@@ -14,6 +16,7 @@ interface Props { column: ColumnType; board: Board; search: string; onModalOpenC
 
 export default function Column({ column, board, search, onModalOpenChange }: Props) {
   const { dispatch, createCard, updateColumn, deleteColumn } = useBoardContext();
+  const confirm = useConfirm();
   const [addingCard, setAddingCard] = useState(false);
   const [cardTitle, setCardTitle] = useState('');
   const [cardDesc, setCardDesc] = useState('');
@@ -37,7 +40,7 @@ export default function Column({ column, board, search, onModalOpenChange }: Pro
   const allCards = column.cardIds
     .map((id) => board.cards[id])
     .filter(Boolean)
-    .filter((c) => !search || c.title.toLowerCase().includes(search.toLowerCase()));
+    .filter((c) => cardMatchesSearch(c, search));
   
   const cards = allCards.slice(0, displayLimit);
 
@@ -104,11 +107,13 @@ export default function Column({ column, board, search, onModalOpenChange }: Pro
            stored.getDate() === target.getDate();
   }
 
-  function handleDeleteColumn() {
-    if (confirm(`Delete "${column.title}" and all its cards?`)) {
+  async function handleDeleteColumn() {
+    setShowMenu(false);
+    const count = column.cardIds.length;
+    const what = count > 0 ? ` and its ${count} card${count === 1 ? '' : 's'}` : '';
+    if (await confirm(`Delete "${column.title}"${what}?`, { title: 'Delete column' })) {
       deleteColumn(board.id, column.id);
     }
-    setShowMenu(false);
   }
 
   function handleCopyCards() {

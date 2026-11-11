@@ -1,17 +1,19 @@
 'use client';
 import { useBoardContext } from '@/context/BoardContext';
+import { useConfirm } from './ConfirmDialog';
 import { X, Trash2, ArrowRight, Copy, ChevronDown } from 'lucide-react';
 import styles from './BulkActionBar.module.css';
 
 export default function BulkActionBar() {
   const { state, activeBoard, clearSelection, bulkDelete, bulkMove, bulkCopy } = useBoardContext();
   
+  const confirm = useConfirm();
   const selectedCount = state.selectedCardIds.length;
 
   if (selectedCount === 0 || !activeBoard) return null;
 
-  const handleDelete = () => {
-    if (confirm(`Delete ${selectedCount} cards? This cannot be undone.`)) {
+  const handleDelete = async () => {
+    if (await confirm(`Delete ${selectedCount} card${selectedCount === 1 ? '' : 's'}?`, { title: 'Delete cards' })) {
       bulkDelete(activeBoard.id, state.selectedCardIds);
     }
   };

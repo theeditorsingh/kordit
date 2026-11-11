@@ -17,6 +17,7 @@ import styles from './TopNav.module.css';
 import NotificationPermissionBanner from './NotificationPermissionBanner';
 import { useReminders } from '@/hooks/useReminders';
 import { useSwipeDown } from '@/hooks/useSwipeDown';
+import { useConfirm } from './ConfirmDialog';
 
 interface Props {
   view: ViewMode;
@@ -38,6 +39,8 @@ const GRADIENTS = [
 export default function TopNav({ view, setView, search, setSearch, onMenuClick }: Props) {
   const { theme, toggleTheme } = useTheme();
   const { activeBoard, updateBoard, saveBoardAsTemplate, undo, redo, canUndo, canRedo } = useBoardContext();
+  const confirm = useConfirm();
+  const desktopSearchRef = useRef<HTMLInputElement>(null);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showAutomations, setShowAutomations] = useState(false);
@@ -80,6 +83,12 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
       // Leave Ctrl+Z alone while typing so the browser's own text undo works
       const el = e.target as HTMLElement | null;
       if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)) return;
+      // "/" jumps to the search box
+      if (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey && desktopSearchRef.current) {
+        e.preventDefault();
+        desktopSearchRef.current.focus();
+        return;
+      }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
         if (e.shiftKey) {
           e.preventDefault();
@@ -136,6 +145,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
               className={`${styles.viewTab} ${view === 'board' ? styles.active : ''}`}
               onClick={() => setView('board')}
               title="Board View"
+              aria-label="Board View"
             >
               <LayoutGrid size={15} /> <span className={styles.tabLabel}>Board</span>
             </button>
@@ -143,6 +153,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
               className={`${styles.viewTab} ${view === 'table' ? styles.active : ''}`}
               onClick={() => setView('table')}
               title="Table View"
+              aria-label="Table View"
             >
               <Table2 size={15} /> <span className={styles.tabLabel}>Table</span>
             </button>
@@ -150,6 +161,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
               className={`${styles.viewTab} ${view === 'calendar' ? styles.active : ''}`}
               onClick={() => setView('calendar')}
               title="Calendar View"
+              aria-label="Calendar View"
             >
               <Calendar size={15} /> <span className={styles.tabLabel}>Calendar</span>
             </button>
@@ -167,6 +179,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
                 onClick={undo}
                 disabled={!canUndo}
                 title="Undo (Ctrl+Z)"
+                aria-label="Undo (Ctrl+Z)"
                 style={{ opacity: canUndo ? 1 : 0.35 }}
               >
                 <Undo2 size={15} />
@@ -176,6 +189,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
                 onClick={redo}
                 disabled={!canRedo}
                 title="Redo (Ctrl+Shift+Z)"
+                aria-label="Redo (Ctrl+Shift+Z)"
                 style={{ opacity: canRedo ? 1 : 0.35 }}
               >
                 <Redo2 size={15} />
@@ -191,6 +205,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
                   className="btn btn-ghost btn-icon btn-sm"
                   onClick={() => setShowBgPicker(!showBgPicker)}
                   title="Board background"
+                  aria-label="Board background"
                 >
                   <Palette size={15} />
                 </button>
@@ -213,6 +228,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
                           style={{ background: 'var(--bg-base)', border: '2px dashed var(--border)' }}
                           onClick={() => setBoardBackground('', 'color')}
                           title="Remove background"
+                          aria-label="Remove background"
                         >
                           <X size={14} />
                         </button>
@@ -226,6 +242,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
                 className="btn btn-ghost btn-icon btn-sm"
                 onClick={() => setShowAutomations(true)}
                 title="Automations"
+                aria-label="Automations"
                 style={{ marginLeft: 4 }}
               >
                 <Zap size={15} />
@@ -233,12 +250,13 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
 
               <button
                 className="btn btn-ghost btn-icon btn-sm"
-                onClick={() => {
-                  if (confirm('Save this board as a template? A copy will be created with the same columns.')) {
+                onClick={async () => {
+                  if (await confirm('A copy of this board will be created with the same columns and no cards.', { title: 'Save as template', confirmLabel: 'Create copy', danger: false })) {
                     saveBoardAsTemplate(activeBoard.id);
                   }
                 }}
                 title="Save as template"
+                aria-label="Save as template"
                 style={{ marginLeft: 4 }}
               >
                 <Copy size={15} />
@@ -248,6 +266,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
                 className={`btn btn-ghost btn-sm ${styles.aiBtn}`}
                 onClick={() => setShowDigest(true)}
                 title="AI Weekly Digest"
+                aria-label="AI Weekly Digest"
                 style={{ marginLeft: 4 }}
                 id="ai-digest-btn"
               >
@@ -261,6 +280,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
               className={`btn btn-ghost btn-icon btn-sm ${styles.mobileOnly}`}
               onClick={() => setShowMore(true)}
               title="More actions"
+              aria-label="More actions"
             >
               <MoreHorizontal size={18} />
             </button>
@@ -269,8 +289,10 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
             <div className={`${styles.searchWrap} ${styles.desktopOnly}`} style={{ marginLeft: 8 }}>
               <Search size={14} className={styles.searchIcon} />
               <input
+                ref={desktopSearchRef}
                 className={styles.searchInput}
-                placeholder="Search cards..."
+                placeholder="Search cards...  ( / )"
+                aria-label="Search cards"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -286,6 +308,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
               className={`btn btn-ghost btn-icon btn-sm ${styles.mobileOnly}`}
               onClick={() => { setShowMobileSearch(true); setTimeout(() => searchInputRef.current?.focus(), 100); }}
               title="Search"
+              aria-label="Search"
             >
               <Search size={18} />
             </button>
@@ -305,6 +328,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
             className="btn btn-ghost btn-icon"
             onClick={() => setShowUserMenu(!showUserMenu)}
             title="User Settings"
+            aria-label="User Settings"
           >
             <User size={16} />
           </button>
@@ -436,7 +460,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
                   { icon: <Redo2 size={20} />, label: 'Redo', action: () => { setShowMore(false); redo(); }, disabled: !canRedo },
                   { icon: <Palette size={20} />, label: 'Board Background', action: () => { setShowMore(false); setShowBgPicker(true); } },
                   { icon: <Zap size={20} />, label: 'Automations', action: () => { setShowMore(false); setShowAutomations(true); } },
-                  { icon: <Copy size={20} />, label: 'Save as Template', action: () => { setShowMore(false); if (activeBoard && confirm('Save as template?')) saveBoardAsTemplate(activeBoard.id); } },
+                  { icon: <Copy size={20} />, label: 'Save as Template', action: async () => { setShowMore(false); if (activeBoard && await confirm('A copy of this board will be created with the same columns and no cards.', { title: 'Save as template', confirmLabel: 'Create copy', danger: false })) saveBoardAsTemplate(activeBoard.id); } },
                   { icon: <Sparkles size={20} />, label: 'AI Weekly Digest', action: () => { setShowMore(false); setShowDigest(true); } },
                   { icon: <Share2 size={20} />, label: 'Share Board', action: () => { setShowMore(false); setShowShareModal(true); } },
                 ].map((item, i) => (
