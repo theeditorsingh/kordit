@@ -5,7 +5,7 @@ import { useBoardContext } from '@/context/BoardContext';
 import { useTheme } from '@/context/ThemeContext';
 import {
   Sun, Moon, Search, LayoutGrid, Table2, Calendar, X, Share2, User, LogOut,
-  Zap, Palette, Save, Copy, Sparkles, Undo2, Redo2, Menu, MoreHorizontal, Settings
+  Zap, Palette, Save, Copy, Sparkles, Undo2, Redo2, Menu, MoreHorizontal, Settings, ListFilter, ChevronDown
 } from 'lucide-react';
 
 import AutomationPanel from './AutomationPanel';
@@ -13,6 +13,8 @@ import WeeklyDigest from './WeeklyDigest';
 import ShareModal from './ShareModal';
 import ProfileModal from './ProfileModal';
 import BoardBackgroundPicker from './BoardBackgroundPicker';
+import FilterMenu from './FilterMenu';
+import { CardFilters } from '@/utils/search';
 import type { BackgroundType } from '@/utils/boardBackground';
 import { ViewMode } from '@/types';
 import styles from './TopNav.module.css';
@@ -27,9 +29,13 @@ interface Props {
   search: string;
   setSearch: (s: string) => void;
   onMenuClick?: () => void;
+  /** Quick filters (board page only). Omit to hide the Filter button. */
+  filters?: CardFilters;
+  setFilters?: (f: CardFilters) => void;
+  filterCounts?: { shown: number; total: number };
 }
 
-export default function TopNav({ view, setView, search, setSearch, onMenuClick }: Props) {
+export default function TopNav({ view, setView, search, setSearch, onMenuClick, filters, setFilters, filterCounts }: Props) {
   const { theme, toggleTheme } = useTheme();
   const { activeBoard, updateBoard, saveBoardAsTemplate, undo, redo, canUndo, canRedo } = useBoardContext();
   const confirm = useConfirm();
@@ -39,6 +45,9 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
   const [showAutomations, setShowAutomations] = useState(false);
   const [showBgPicker, setShowBgPicker] = useState(false);
   const [bgAnchor, setBgAnchor] = useState<DOMRect | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterAnchor, setFilterAnchor] = useState<DOMRect | null>(null);
+  const activeFilterCount = filters ? Object.values(filters).filter(Boolean).length : 0;
   const [showDigest, setShowDigest] = useState(false);
   const [showMore, setShowMore] = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
@@ -251,6 +260,34 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
               <MoreHorizontal size={18} />
             </button>
 
+            {/* Filter dropdown — desktop (on mobile it is in the More sheet) */}
+            {filters && setFilters && (
+              <div className={styles.desktopOnly} style={{ marginLeft: 8 }}>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  onClick={(e) => { setFilterAnchor(e.currentTarget.getBoundingClientRect()); setShowFilters(!showFilters); }}
+                  aria-haspopup="menu"
+                  aria-expanded={showFilters}
+                  title="Filter cards"
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    ...(activeFilterCount > 0 ? { color: 'var(--accent)', background: 'var(--accent-subtle)' } : {}),
+                  }}
+                >
+                  <ListFilter size={14} />
+                  <span>Filter</span>
+                  {activeFilterCount > 0 && (
+                    <span style={{
+                      minWidth: 18, height: 18, padding: '0 5px', borderRadius: 9,
+                      background: 'var(--accent)', color: '#fff', fontSize: 11, fontWeight: 700,
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    }}>{activeFilterCount}</span>
+                  )}
+                  <ChevronDown size={13} />
+                </button>
+              </div>
+            )}
+
             {/* Desktop search (hidden on mobile) */}
             <div className={`${styles.searchWrap} ${styles.desktopOnly}`} style={{ marginLeft: 8 }}>
               <Search size={14} className={styles.searchIcon} />
@@ -396,6 +433,16 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
         </div>
       </div>
       {showShareModal && <ShareModal onClose={() => setShowShareModal(false)} />}
+      {showFilters && filters && setFilters && (
+        <FilterMenu
+          filters={filters}
+          onChange={setFilters}
+          shown={filterCounts?.shown ?? 0}
+          total={filterCounts?.total ?? 0}
+          anchorRect={filterAnchor}
+          onClose={() => setShowFilters(false)}
+        />
+      )}
       {/* Outside the desktop-only group so the mobile "More" sheet can open it too */}
       {showBgPicker && activeBoard && (
         <BoardBackgroundPicker
@@ -434,6 +481,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
                 {[
                   { icon: <Undo2 size={20} />, label: 'Undo', action: () => { setShowMore(false); undo(); }, disabled: !canUndo },
                   { icon: <Redo2 size={20} />, label: 'Redo', action: () => { setShowMore(false); redo(); }, disabled: !canRedo },
+                  ...(filters && setFilters ? [{ icon: <ListFilter size={20} />, label: activeFilterCount > 0 ? `Filters (${activeFilterCount} on)` : 'Filters', action: () => { setShowMore(false); setFilterAnchor(null); setShowFilters(true); } }] : []),
                   { icon: <Palette size={20} />, label: 'Board Background', action: () => { setShowMore(false); setBgAnchor(null); setShowBgPicker(true); } },
                   { icon: <Zap size={20} />, label: 'Automations', action: () => { setShowMore(false); setShowAutomations(true); } },
                   { icon: <Copy size={20} />, label: 'Save as Template', action: async () => { setShowMore(false); if (activeBoard && await confirm('A copy of this board will be created with the same columns and no cards.', { title: 'Save as template', confirmLabel: 'Create copy', danger: false })) saveBoardAsTemplate(activeBoard.id); } },

@@ -64,7 +64,6 @@
 }
 .doneBtn:hover { color: #36B37E; transform: scale(1.1); }
 .doneBtnChecked { color: #36B37E; }
-.titleDone { text-decoration: line-through; color: var(--text-muted); }
 
 .title {
   font-size: 13px; font-weight: 500; color: var(--text-primary);

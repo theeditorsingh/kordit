@@ -8,7 +8,6 @@ import { doneProgress } from '@/components/TopProgressBar';
 import { useState, useEffect, use, Suspense, lazy } from 'react';
 import { Card, ViewMode } from '@/types';
 import { useSession } from 'next-auth/react';
-import FilterBar from '@/components/FilterBar';
 import { CardFilters, NO_FILTERS, cardMatchesFilters, cardMatchesSearch, hasActiveFilters } from '@/utils/search';
 import { getDoneCardIds } from '@/utils/columns';
 
@@ -101,6 +100,9 @@ export default function BoardPage({ params }: { params: Promise<{ username: stri
         search={search}
         setSearch={setSearch}
         onMenuClick={() => setSidebarOpen(prev => !prev)}
+        filters={filters}
+        setFilters={setFilters}
+        filterCounts={{ shown: shownCount, total: boardCards.length }}
       />
       <div className="app-body" style={{ position: 'relative' }}>
         {/* Mobile overlay */}
@@ -118,9 +120,6 @@ export default function BoardPage({ params }: { params: Promise<{ username: stri
         )}
         <Sidebar isMobileOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <main className="main-content">
-          {activeBoard && boardFromSlug && (
-            <FilterBar filters={filters} onChange={setFilters} shown={shownCount} total={boardCards.length} />
-          )}
           <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {state.boards.length > 0 && !boardFromSlug ? (
             <div style={{ flex: 1, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

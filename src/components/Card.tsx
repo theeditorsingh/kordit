@@ -153,7 +153,7 @@ export default function CardItem({ card, index, board, columnId, dragDisabled, i
                   {isDone ? <CheckCircle2 size={15} /> : <Circle size={15} />}
                 </button>
               )}
-              <div className={`${styles.title} ${isDone ? styles.titleDone : ''}`}>{card.title}</div>
+              <div className={styles.title}>{card.title}</div>
             </div>
 
 
