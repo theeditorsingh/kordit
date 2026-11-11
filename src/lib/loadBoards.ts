@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { boardInclude } from "@/lib/boardQuery";
+import { memberInclude } from "@/lib/boardQuery";
 
 /**
  * All non-archived boards a user is a member of, shaped for the client.
@@ -12,7 +12,27 @@ export async function loadBoardsForUser(userId: string) {
       members: { some: { userId } },
       isArchived: false,
     },
-    include: boardInclude,
+    // Core board loading must not depend on optional workspace features.
+    // Workspace setup runs only when Team workspace is opened.
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      color: true,
+      visibility: true,
+      background: true,
+      backgroundType: true,
+      labelColors: true,
+      isArchived: true,
+      isFavorite: true,
+      createdAt: true,
+      updatedAt: true,
+      ownerId: true,
+      columns: { orderBy: { order: 'asc' } },
+      cards: { orderBy: { order: 'asc' } },
+      members: memberInclude,
+      owner: { select: { username: true } },
+    },
     orderBy: { createdAt: 'asc' },
   });
 

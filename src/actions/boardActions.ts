@@ -824,7 +824,7 @@ export async function inviteMemberAction(boardId: string, email: string, role: '
     const inviteLink = `${appUrl}/login`;
 
     await getResend().emails.send({
-      from: "magiclink@theeditorsingh.com",
+      from: process.env.EMAIL_FROM || "magiclink@theeditorsingh.com",
       to: email,
       subject: `You have been invited to join the board "${board.title}"`,
       html: `<p>${escapeHtml(authUser.name || authUser.email || 'Someone')} has invited you to collaborate on the board <strong>${escapeHtml(board.title)}</strong> in Kordit.</p>

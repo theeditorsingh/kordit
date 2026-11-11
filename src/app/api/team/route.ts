@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
   if (process.env.RESEND_API_KEY) {
     const appUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
     await new Resend(process.env.RESEND_API_KEY).emails.send({
-      from: 'magiclink@theeditorsingh.com',
+      from: process.env.EMAIL_FROM || 'magiclink@theeditorsingh.com',
       to: email,
       subject: `Join ${ctx.workspace.name} on Kordit`,
       html: `<p>You have been invited to <strong>${escapeHtml(ctx.workspace.name)}</strong> on Kordit.</p><p><a href="${appUrl}/login">Open Kordit</a></p>`,
