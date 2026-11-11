@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { Droppable } from '@hello-pangea/dnd';
-import { Board, Column as ColumnType } from '@/types';
+import { Board, Card as CardType, Column as ColumnType } from '@/types';
 import { useBoardContext } from '@/context/BoardContext';
 import { useConfirm } from './ConfirmDialog';
 import { cardMatchesSearch } from '@/utils/search';
@@ -9,13 +9,59 @@ import CardItem from './Card';
 import dynamic from 'next/dynamic';
 const CardModal = dynamic(() => import('./CardModal'), { ssr: false });
 import EmptyState from './EmptyState';
-import { Plus, MoreHorizontal, Trash2, AlignLeft, Calendar as CalendarIcon, Edit2, Settings, AlertCircle, Copy, Check } from 'lucide-react';
+import { Plus, MoreHorizontal, Trash2, AlignLeft, Calendar as CalendarIcon, Edit2, Settings, AlertCircle, Copy, Check, ChevronsRightLeft, ChevronsLeftRight } from 'lucide-react';
+import { isDoneColumn } from '@/utils/columns';
 import styles from './Column.module.css';
 
-interface Props { column: ColumnType; board: Board; search: string; onModalOpenChange?: (open: boolean) => void; }
+interface Props {
+  column: ColumnType;
+  board: Board;
+  search: string;
+  /** Quick-filter test from the filter bar; undefined when no filter is on */
+  cardFilter?: (card: CardType) => boolean;
+  onModalOpenChange?: (open: boolean) => void;
+}
 
-export default function Column({ column, board, search, onModalOpenChange }: Props) {
-  const { dispatch, createCard, updateColumn, deleteColumn } = useBoardContext();
+// Which columns this person has folded, remembered in this browser only
+const COLLAPSED_KEY = 'kordit-collapsed-columns';
+function readCollapsed(): string[] {
+  try {
+    const raw = JSON.parse(localStorage.getItem(COLLAPSED_KEY) || '[]');
+    return Array.isArray(raw) ? raw : [];
+  } catch {
+    return [];
+  }
+}
+
+export default function Column({ column, board, search, cardFilter, onModalOpenChange }: Props) {
+  const { dispatch, createCard, updateColumn, deleteColumn, moveCard, notifyError } = useBoardContext();
+  const [collapsed, setCollapsedState] = useState(() => typeof window !== 'undefined' && readCollapsed().includes(column.id));
+
+  function setCollapsed(next: boolean) {
+    setCollapsedState(next);
+    setShowMenu(false);
+    try {
+      const ids = readCollapsed().filter((id) => id !== column.id);
+      if (next) ids.push(column.id);
+      localStorage.setItem(COLLAPSED_KEY, JSON.stringify(ids));
+    } catch { /* storage unavailable: still collapses for this visit */ }
+  }
+
+  const isDone = isDoneColumn(column);
+
+  // The tick on a card: send it to the Done column, or back to the first column if it is already there
+  function toggleDone(card: CardType) {
+    const target = isDone
+      ? board.columns.find((c) => !isDoneColumn(c))
+      : board.columns.find((c) => isDoneColumn(c));
+    if (!target) {
+      notifyError(isDone ? 'There is no other column to move this card to.' : 'Add a column named "Done" to use this.');
+      return;
+    }
+    const sourceIndex = column.cardIds.indexOf(card.id);
+    if (sourceIndex === -1) return;
+    moveCard(board.id, card.id, column.id, target.id, sourceIndex, 0);
+  }
   const confirm = useConfirm();
   const [addingCard, setAddingCard] = useState(false);
   const [cardTitle, setCardTitle] = useState('');
@@ -40,7 +86,7 @@ export default function Column({ column, board, search, onModalOpenChange }: Pro
   const allCards = column.cardIds
     .map((id) => board.cards[id])
     .filter(Boolean)
-    .filter((c) => cardMatchesSearch(c, search));
+    .filter((c) => cardMatchesSearch(c, search) && (!cardFilter || cardFilter(c)));
   
   const cards = allCards.slice(0, displayLimit);
 
@@ -169,6 +215,35 @@ export default function Column({ column, board, search, onModalOpenChange }: Pro
 
   const COL_COLORS = ['#0052CC','#36B37E','#FF5630','#FF991F','#6554C0','#00B8D9','#172B4D'];
 
+  // Folded: a narrow strip with the name and count. Cards can still be dropped on it.
+  if (collapsed) {
+    return (
+      <div className={`${styles.column} ${styles.collapsedColumn} ${isOverWip ? styles.overWip : ''}`}>
+        <Droppable droppableId={column.id}>
+          {(provided, snapshot) => (
+            <div
+              ref={provided.innerRef}
+              {...provided.droppableProps}
+              className={`${styles.collapsedBody} ${snapshot.isDraggingOver ? styles.draggingOver : ''}`}
+              role="button"
+              tabIndex={0}
+              title={`Expand "${column.title}"`}
+              aria-label={`Expand column ${column.title}, ${column.cardIds.length} cards`}
+              onClick={() => setCollapsed(false)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setCollapsed(false); } }}
+            >
+              <ChevronsLeftRight size={14} />
+              <span className={styles.dot} style={{ background: column.color }} />
+              <span className={`${styles.count} ${isOverWip ? styles.countOver : ''}`}>{column.cardIds.length}</span>
+              <span className={styles.collapsedTitle}>{column.title}</span>
+              <div style={{ display: 'none' }}>{provided.placeholder}</div>
+            </div>
+          )}
+        </Droppable>
+      </div>
+    );
+  }
+
   return (
     <div className={`${styles.column} ${isOverWip ? styles.overWip : ''}`}>
       <div className={styles.header}>
@@ -210,6 +285,9 @@ export default function Column({ column, board, search, onModalOpenChange }: Pro
               </button>
               <button className={styles.menuItem} onClick={handleCopyCards}>
                 <Copy size={13}/> Copy All Cards
+              </button>
+              <button className={styles.menuItem} onClick={() => setCollapsed(true)}>
+                <ChevronsRightLeft size={13}/> Collapse Column
               </button>
               <div className={styles.menuDivider} />
               <button className={`${styles.menuItem} ${styles.menuDanger}`} onClick={handleDeleteColumn}>
@@ -277,7 +355,7 @@ export default function Column({ column, board, search, onModalOpenChange }: Pro
             className={`${styles.cardList} ${snapshot.isDraggingOver ? styles.draggingOver : ''}`}
           >
             {cards.map((card, index) => (
-              <CardItem key={card.id} card={card} index={index} board={board} columnId={column.id} dragDisabled={!!search} onModalOpenChange={onModalOpenChange} />
+              <CardItem key={card.id} card={card} index={index} board={board} columnId={column.id} dragDisabled={!!search || !!cardFilter} isDone={isDone} onToggleDone={() => toggleDone(card)} onModalOpenChange={onModalOpenChange} />
             ))}
             {provided.placeholder}
             {cards.length === 0 && !addingCard && (

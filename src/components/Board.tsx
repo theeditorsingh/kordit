@@ -1,6 +1,6 @@
 'use client';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
-import { Board as BoardType } from '@/types';
+import { Board as BoardType, Card as CardType } from '@/types';
 import { useBoardContext } from '@/context/BoardContext';
 import Column from './Column';
 import BulkActionBar from './BulkActionBar';
@@ -9,9 +9,9 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import styles from './Board.module.css';
 import { getBoardBackgroundStyle } from '@/utils/boardBackground';
 
-interface Props { board: BoardType; search: string; }
+interface Props { board: BoardType; search: string; cardFilter?: (card: CardType) => boolean; }
 
-export default function Board({ board, search }: Props) {
+export default function Board({ board, search, cardFilter }: Props) {
   const { dispatch, createColumn, moveCard, moveColumn } = useBoardContext();
   const [addingCol, setAddingCol] = useState(false);
   const [colTitle, setColTitle] = useState('');
@@ -150,6 +150,7 @@ export default function Board({ board, search }: Props) {
                           column={col}
                           board={board}
                           search={search}
+                          cardFilter={cardFilter}
                           onModalOpenChange={setModalOpen}
                         />
                       </div>

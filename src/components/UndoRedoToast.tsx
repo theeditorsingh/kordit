@@ -5,10 +5,12 @@ import styles from './UndoRedoToast.module.css';
 interface Props {
   message: string | null;
   kind?: 'info' | 'error';
+  /** Optional button inside the toast, e.g. "Undo" */
+  action?: { label: string; onClick: () => void };
   onDismiss: () => void;
 }
 
-export default function UndoRedoToast({ message, kind = 'info', onDismiss }: Props) {
+export default function UndoRedoToast({ message, kind = 'info', action, onDismiss }: Props) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -17,16 +19,16 @@ export default function UndoRedoToast({ message, kind = 'info', onDismiss }: Pro
       const t = setTimeout(() => {
         setVisible(false);
         setTimeout(onDismiss, 300);
-      }, kind === 'error' ? 5000 : 2500);
+      }, action ? 6000 : kind === 'error' ? 5000 : 2500);
       return () => clearTimeout(t);
     }
-  }, [message, kind, onDismiss]);
+  }, [message, kind, action, onDismiss]);
 
   if (!message) return null;
 
   return (
     <div
-      className={`${styles.toast} ${kind === 'error' ? styles.error : ''} ${visible ? styles.show : styles.hide}`}
+      className={`${styles.toast} ${kind === 'error' ? styles.error : ''} ${action ? styles.withAction : ''} ${visible ? styles.show : styles.hide}`}
       role={kind === 'error' ? 'alert' : 'status'}
     >
       {kind === 'error' ? (
@@ -41,6 +43,11 @@ export default function UndoRedoToast({ message, kind = 'info', onDismiss }: Pro
         </svg>
       )}
       {message}
+      {action && (
+        <button className={styles.actionBtn} onClick={action.onClick}>
+          {action.label}
+        </button>
+      )}
     </div>
   );
 }

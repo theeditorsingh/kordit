@@ -4,7 +4,6 @@ import { Board, Card, ChecklistItem, Label, Priority } from '@/types';
 import { useBoardContext } from '@/context/BoardContext';
 
 import CommentSection from './CommentSection';
-import { useConfirm } from './ConfirmDialog';
 import {
   X, Plus, Trash2, Check, Calendar, Tag, Users, AlignLeft, List,
   Image, Link2, AlertTriangle, Sparkles, Loader2, Bell, CheckCircle2
@@ -44,7 +43,6 @@ function toDatetimeLocal(dateStr: string): string {
 
 export default function CardModal({ card, board, columnId, onClose }: Props) {
   const { dispatch, deleteCard: deleteCardFn, updateCard } = useBoardContext();
-  const confirm = useConfirm();
   const [data, setData] = useState<Card>({ ...card });
   // Snapshot of the card as it was when the modal opened, used to work out what changed
   const originalRef = useRef<Card>(card);
@@ -183,11 +181,10 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
     onClose();
   }
 
-  async function deleteCard() {
-    if (await confirm(`Delete "${data.title || card.title}"?`, { title: 'Delete card' })) {
-      deleteCardFn(board.id, columnId, card.id);
-      onClose();
-    }
+  function deleteCard() {
+    // No confirmation: the delete message that appears has an Undo button
+    deleteCardFn(board.id, columnId, card.id);
+    onClose();
   }
 
   function toggleAssignee(memberId: string) {

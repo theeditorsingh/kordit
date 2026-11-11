@@ -2,6 +2,7 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { useBoardContext } from '@/context/BoardContext';
 import { Card, Board } from '@/types';
+import { getDoneCardIds } from '@/utils/columns';
 
 const FIRED_KEY = 'kordit-fired-reminders';
 const CHECK_INTERVAL = 60_000; // 60 seconds
@@ -10,9 +11,11 @@ const CHECK_INTERVAL = 60_000; // 60 seconds
 function getAllCards(boards: Board[]): (Card & { boardTitle: string; boardSlug: string })[] {
   const result: (Card & { boardTitle: string; boardSlug: string })[] = [];
   for (const board of boards) {
+    // Cards in a Done column are finished: no reminders or overdue alerts for them
+    const done = getDoneCardIds(board);
     for (const cardId of Object.keys(board.cards)) {
       const card = board.cards[cardId];
-      if (card) {
+      if (card && !done.has(cardId)) {
         result.push({ ...card, boardTitle: board.title, boardSlug: board.slug });
       }
     }

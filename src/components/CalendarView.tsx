@@ -7,12 +7,12 @@ import dynamic from 'next/dynamic';
 const CardModal = dynamic(() => import('./CardModal'), { ssr: false });
 import styles from './CalendarView.module.css';
 
-interface Props { board: Board; search?: string; }
+interface Props { board: Board; search?: string; cardFilter?: (card: Card) => boolean; }
 
 const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
-export default function CalendarView({ board, search = '' }: Props) {
+export default function CalendarView({ board, search = '', cardFilter }: Props) {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -37,6 +37,7 @@ export default function CalendarView({ board, search = '' }: Props) {
       const card = board.cards[id];
       if (!card?.dueDate) return;
       if (!cardMatchesSearch(card, search)) return;
+      if (cardFilter && !cardFilter(card)) return;
       const d = new Date(card.dueDate);
       if (d.getFullYear() === year && d.getMonth() === month) {
         const day = d.getDate();

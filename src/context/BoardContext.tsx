@@ -545,7 +545,7 @@ function formatPrismaBoards(prismaBoards: any[]): Board[] {
 export function BoardProvider({ children, initialBoards = [] }: { children: React.ReactNode, initialBoards?: any[] }) {
   const router = useRouter();
   const { data: session } = useSession();
-  const [toast, setToast] = useState<{ message: string; kind: 'info' | 'error' } | null>(null);
+  const [toast, setToast] = useState<{ message: string; kind: 'info' | 'error'; action?: { label: string; onClick: () => void } } | null>(null);
   const dismissToast = useCallback(() => setToast(null), []);
   const notifyError = useCallback((message: string) => setToast({ message, kind: 'error' }), []);
 
@@ -563,8 +563,12 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
   const canUndo = full.past.length > 0;
   const canRedo = full.future.length > 0;
 
+  // Latest history, readable from callbacks created in an earlier render (e.g. a toast button)
+  const fullRef = useRef(full);
+  useEffect(() => { fullRef.current = full; });
+
   function undo() {
-    const entry = full.past[full.past.length - 1];
+    const entry = fullRef.current.past[fullRef.current.past.length - 1];
     if (!entry) return;
     dispatch({ type: 'UNDO' });
     setToast({ message: 'Action undone ↩', kind: 'info' });
@@ -572,7 +576,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
   }
 
   function redo() {
-    const entry = full.future[0];
+    const entry = fullRef.current.future[0];
     if (!entry) return;
     dispatch({ type: 'REDO' });
     setToast({ message: 'Action redone ↪', kind: 'info' });
@@ -819,7 +823,23 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
   }
 
   async function deleteCard(boardId: string, columnId: string, cardId: string) {
+    const title = state.boards.find((b) => b.id === boardId)?.cards[cardId]?.title;
     dispatch({ type: 'DELETE_CARD', boardId, columnId, cardId });
+    // No "are you sure?" for a single card: it is deleted at once and can be brought back
+    setToast({
+      message: title ? `Deleted "${title.length > 30 ? title.slice(0, 30) + '…' : title}"` : 'Card deleted',
+      kind: 'info',
+      action: {
+        label: 'Undo',
+        onClick: () => {
+          const past = fullRef.current.past;
+          const last = past[past.length - 1];
+          // Only step back if this delete is still the most recent change
+          if (last && last.before.cards[cardId] && !last.after.cards[cardId]) undo();
+          else notifyError('Other changes were made since. Use Ctrl+Z to step back through them.');
+        },
+      },
+    });
     pendingOpsRef.current += 1;
     try {
       await deleteCardAction(boardId, cardId);
@@ -1065,7 +1085,7 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
       undo, redo, canUndo, canRedo, notifyError,
     }}>
       {children}
-      <UndoRedoToast message={toast?.message ?? null} kind={toast?.kind} onDismiss={dismissToast} />
+      <UndoRedoToast message={toast?.message ?? null} kind={toast?.kind} action={toast?.action} onDismiss={dismissToast} />
     </BoardContext.Provider>
   );
 }

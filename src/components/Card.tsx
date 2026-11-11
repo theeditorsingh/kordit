@@ -3,18 +3,17 @@ import { useState, useRef, useCallback } from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 import { Board, Card } from '@/types';
 
-import { Calendar, CheckSquare, AlertTriangle, Edit2, Trash2, CheckCircle2, AlignLeft } from 'lucide-react';
+import { Calendar, CheckSquare, AlertTriangle, Edit2, Trash2, CheckCircle2, Circle, AlignLeft } from 'lucide-react';
 import { getInitials } from '@/utils/storage';
 import dynamic from 'next/dynamic';
 import { useBoardContext } from '@/context/BoardContext';
 import styles from './Card.module.css';
 import { useSwipeDown } from '@/hooks/useSwipeDown';
-import { useConfirm } from './ConfirmDialog';
 
 // Loaded on first open so the modal code stays out of the initial board bundle
 const CardModal = dynamic(() => import('./CardModal'), { ssr: false });
 
-interface Props { card: Card; index: number; board: Board; columnId: string; dragDisabled?: boolean; onModalOpenChange?: (open: boolean) => void; }
+interface Props { card: Card; index: number; board: Board; columnId: string; dragDisabled?: boolean; /** The card sits in the board's Done column */ isDone?: boolean; onToggleDone?: () => void; onModalOpenChange?: (open: boolean) => void; }
 
 const PRIORITY_LABELS: Record<string, string> = { none: 'None', urgent: 'Urgent', high: 'High', medium: 'Medium', low: 'Low' };
 
@@ -39,12 +38,11 @@ function formatDate(date: string) {
 }
 
 
-export default function CardItem({ card, index, board, columnId, dragDisabled, onModalOpenChange }: Props) {
+export default function CardItem({ card, index, board, columnId, dragDisabled, isDone, onToggleDone, onModalOpenChange }: Props) {
   const [open, setOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number } | null>(null);
   const [showBottomSheet, setShowBottomSheet] = useState(false);
   const { deleteCard, toggleCardSelection, state } = useBoardContext();
-  const confirm = useConfirm();
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Swipe-down to dismiss the long-press bottom sheet
@@ -134,7 +132,7 @@ export default function CardItem({ card, index, board, columnId, dragDisabled, o
                 )}
                 <div className={styles.metaRight}>
                   {card.dueDate && (
-                    <span className={`${styles.due} ${getDueDateClass(card.dueDate)}`}>
+                    <span className={`${styles.due} ${isDone ? '' : getDueDateClass(card.dueDate)}`}>
                       <Calendar size={11}/> {formatDate(card.dueDate)}
                     </span>
                   )}
@@ -143,7 +141,20 @@ export default function CardItem({ card, index, board, columnId, dragDisabled, o
             )}
 
             {/* Title — full width */}
-            <div className={styles.title}>{card.title}</div>
+            <div className={styles.titleRow}>
+              {onToggleDone && (
+                <button
+                  className={`${styles.doneBtn} ${isDone ? styles.doneBtnChecked : ''}`}
+                  onClick={(e) => { e.stopPropagation(); onToggleDone(); }}
+                  title={isDone ? 'Mark as not done' : 'Mark as done'}
+                  aria-label={isDone ? 'Mark as not done' : 'Mark as done'}
+                  aria-pressed={!!isDone}
+                >
+                  {isDone ? <CheckCircle2 size={15} /> : <Circle size={15} />}
+                </button>
+              )}
+              <div className={`${styles.title} ${isDone ? styles.titleDone : ''}`}>{card.title}</div>
+            </div>
 
 
             {/* Footer: checklist + time on left, avatars on right */}
@@ -220,12 +231,10 @@ export default function CardItem({ card, index, board, columnId, dragDisabled, o
               </button>
               <button
                 style={{ padding: '8px 12px', textAlign: 'left', fontSize: '13px', background: 'none', border: 'none', cursor: 'pointer', color: '#ff5630', borderRadius: '4px' }}
-                onClick={async (e) => {
+                onClick={(e) => {
                   e.stopPropagation();
                   setContextMenu(null);
-                  if (await confirm(`Delete "${card.title}"?`, { title: 'Delete card' })) {
-                     deleteCard(board.id, columnId, card.id);
-                  }
+                  deleteCard(board.id, columnId, card.id);
                 }}
                 onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255, 86, 48, 0.1)'}
                 onMouseOut={(e) => e.currentTarget.style.background = 'none'}
@@ -281,11 +290,9 @@ export default function CardItem({ card, index, board, columnId, dragDisabled, o
                 {isSelected ? 'Deselect' : 'Select'}
               </button>
               <button
-                onClick={async () => {
+                onClick={() => {
                   setShowBottomSheet(false);
-                  if (await confirm(`Delete "${card.title}"?`, { title: 'Delete card' })) {
-                    deleteCard(board.id, columnId, card.id);
-                  }
+                  deleteCard(board.id, columnId, card.id);
                 }}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 14, width: '100%',

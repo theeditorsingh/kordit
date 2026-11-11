@@ -12,6 +12,7 @@ import styles from './TableView.module.css';
 interface Props {
   board: Board;
   search: string;
+  cardFilter?: (card: Card) => boolean;
 }
 
 // ── helpers ─────────────────────────────────────────────────────────────────
@@ -45,7 +46,7 @@ const PRIORITY_COLORS: Record<string, string> = {
 
 // ── component ────────────────────────────────────────────────────────────────
 
-export default function TableView({ board, search }: Props) {
+export default function TableView({ board, search, cardFilter }: Props) {
   const { createCard } = useBoardContext();
   const [selectedCard, setSelectedCard] = useState<{ card: Card; colId: string } | null>(null);
   const [addingToCol, setAddingToCol] = useState<string | null>(null);
@@ -59,6 +60,7 @@ export default function TableView({ board, search }: Props) {
       const card = board.cards[cardId];
       if (!card) continue;
       if (!cardMatchesSearch(card, search)) continue;
+      if (cardFilter && !cardFilter(card)) continue;
       rows.push({ card, colId: col.id, colTitle: col.title, colColor: col.color });
     }
   }
@@ -109,7 +111,7 @@ export default function TableView({ board, search }: Props) {
             {rows.length === 0 ? (
               <tr>
                 <td colSpan={6} className={styles.emptyCell}>
-                  {search ? `No cards match "${search}"` : 'No cards on this board yet.'}
+                  {search ? `No cards match "${search}"` : cardFilter ? 'No cards match these filters.' : 'No cards on this board yet.'}
                 </td>
               </tr>
             ) : (

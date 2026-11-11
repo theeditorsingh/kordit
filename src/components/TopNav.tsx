@@ -38,6 +38,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showAutomations, setShowAutomations] = useState(false);
   const [showBgPicker, setShowBgPicker] = useState(false);
+  const [bgAnchor, setBgAnchor] = useState<DOMRect | null>(null);
   const [showDigest, setShowDigest] = useState(false);
   const [showMore, setShowMore] = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
@@ -194,7 +195,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
               {/* Board Background */}
               <button
                 className="btn btn-ghost btn-icon btn-sm"
-                onClick={() => setShowBgPicker(!showBgPicker)}
+                onClick={(e) => { setBgAnchor(e.currentTarget.getBoundingClientRect()); setShowBgPicker(!showBgPicker); }}
                 title="Board background"
                 aria-label="Board background"
                 aria-expanded={showBgPicker}
@@ -400,6 +401,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
         <BoardBackgroundPicker
           key={activeBoard.id}
           board={activeBoard}
+          anchorRect={bgAnchor}
           onApply={setBoardBackground}
           onClose={() => setShowBgPicker(false)}
         />
@@ -432,7 +434,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
                 {[
                   { icon: <Undo2 size={20} />, label: 'Undo', action: () => { setShowMore(false); undo(); }, disabled: !canUndo },
                   { icon: <Redo2 size={20} />, label: 'Redo', action: () => { setShowMore(false); redo(); }, disabled: !canRedo },
-                  { icon: <Palette size={20} />, label: 'Board Background', action: () => { setShowMore(false); setShowBgPicker(true); } },
+                  { icon: <Palette size={20} />, label: 'Board Background', action: () => { setShowMore(false); setBgAnchor(null); setShowBgPicker(true); } },
                   { icon: <Zap size={20} />, label: 'Automations', action: () => { setShowMore(false); setShowAutomations(true); } },
                   { icon: <Copy size={20} />, label: 'Save as Template', action: async () => { setShowMore(false); if (activeBoard && await confirm('A copy of this board will be created with the same columns and no cards.', { title: 'Save as template', confirmLabel: 'Create copy', danger: false })) saveBoardAsTemplate(activeBoard.id); } },
                   { icon: <Sparkles size={20} />, label: 'AI Weekly Digest', action: () => { setShowMore(false); setShowDigest(true); } },

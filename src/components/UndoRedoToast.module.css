@@ -28,6 +28,20 @@
   font-size: 13px;
 }
 
+.withAction { pointer-events: auto; padding-right: 8px; }
+.actionBtn {
+  margin-left: 6px;
+  padding: 4px 10px;
+  border: none;
+  border-radius: 12px;
+  background: var(--accent-subtle);
+  color: var(--accent);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.actionBtn:hover { background: var(--accent); color: #fff; }
+
 .show {
   opacity: 1;
   transform: translateX(-50%) translateY(0);

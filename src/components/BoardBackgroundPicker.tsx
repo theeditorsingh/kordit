@@ -11,6 +11,8 @@ import styles from './BoardBackgroundPicker.module.css';
 
 interface Props {
   board: Board;
+  /** Where the button that opened the picker is; the popover opens under it on desktop */
+  anchorRect?: DOMRect | null;
   onApply: (background: string, backgroundType: BackgroundType) => void;
   onClose: () => void;
 }
@@ -66,7 +68,9 @@ function ColorField({ label, value, onChange }: { label: string; value: string; 
   );
 }
 
-export default function BoardBackgroundPicker({ board, onApply, onClose }: Props) {
+const POPOVER_WIDTH = 296;
+
+export default function BoardBackgroundPicker({ board, anchorRect, onApply, onClose }: Props) {
   const current = board.background || '';
   const currentGradient = board.backgroundType === 'gradient' ? parseGradient(current) : null;
   const currentSolid = board.backgroundType === 'color' && isHexColor(current) ? current.toUpperCase() : null;
@@ -80,6 +84,18 @@ export default function BoardBackgroundPicker({ board, onApply, onClose }: Props
   const [angle, setAngle] = useState(currentGradient?.angle ?? DEFAULT_GRADIENT.angle);
 
   const swipe = useSwipeDown({ onDismiss: onClose });
+
+  // Desktop: sit just below the palette button, kept inside the window.
+  // Phones (or no visible button): the stylesheet turns it into a bottom sheet.
+  const anchored = !!anchorRect && anchorRect.width > 0 && typeof window !== 'undefined' && window.innerWidth > 768;
+  const position: React.CSSProperties = anchored
+    ? {
+        top: anchorRect.bottom + 8,
+        left: Math.max(8, Math.min(anchorRect.left, window.innerWidth - POPOVER_WIDTH - 8)),
+        right: 'auto',
+        maxHeight: `calc(100dvh - ${Math.round(anchorRect.bottom + 24)}px)`,
+      }
+    : {};
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -105,7 +121,7 @@ export default function BoardBackgroundPicker({ board, onApply, onClose }: Props
         className={styles.picker}
         role="dialog"
         aria-label="Board background"
-        style={swipe.dragStyle}
+        style={{ ...swipe.dragStyle, ...position }}
         onTouchStart={swipe.onTouchStart}
         onTouchMove={swipe.onTouchMove}
         onTouchEnd={swipe.onTouchEnd}
