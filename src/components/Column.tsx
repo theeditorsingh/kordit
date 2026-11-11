@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import { Droppable } from '@hello-pangea/dnd';
 import { Board, Column as ColumnType } from '@/types';
-import { AnimatePresence } from 'framer-motion';
 import { useBoardContext } from '@/context/BoardContext';
 import CardItem from './Card';
 import dynamic from 'next/dynamic';
@@ -397,7 +396,6 @@ export default function Column({ column, board, search, onModalOpenChange }: Pro
         </button>
       ) : null}
 
-      <AnimatePresence>
         {openingCardId && board.cards[openingCardId] && (
           <CardModal
             card={board.cards[openingCardId]}
@@ -409,7 +407,6 @@ export default function Column({ column, board, search, onModalOpenChange }: Pro
             }}
           />
         )}
-      </AnimatePresence>
     </div>
   );
 }

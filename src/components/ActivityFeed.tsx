@@ -3,7 +3,6 @@ import { useState, useEffect, useRef } from 'react';
 import { Activity } from '@/types';
 import { getInitials } from '@/utils/storage';
 import { supabase } from '@/lib/supabase';
-import { motion, AnimatePresence } from 'framer-motion';
 import EmptyState from './EmptyState';
 import { SkeletonActivityFeed } from './Skeleton';
 import {
@@ -43,37 +42,6 @@ function timeAgo(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-const itemVariants = {
-  hidden: { opacity: 0, x: -16, scale: 0.97 },
-  visible: (i: number) => ({
-    opacity: 1,
-    x: 0,
-    scale: 1,
-    transition: {
-      delay: i * 0.04,
-      duration: 0.3,
-      ease: [0.25, 0.1, 0.25, 1] as [number, number, number, number],
-    },
-  }),
-  exit: {
-    opacity: 0,
-    x: -12,
-    scale: 0.95,
-    transition: { duration: 0.2 },
-  },
-};
-
-const newItemHighlight = {
-  initial: { boxShadow: '0 0 0 0 rgba(0, 82, 204, 0)' },
-  pulse: {
-    boxShadow: [
-      '0 0 0 0 rgba(0, 82, 204, 0.3)',
-      '0 0 8px 2px rgba(0, 82, 204, 0.15)',
-      '0 0 0 0 rgba(0, 82, 204, 0)',
-    ],
-    transition: { duration: 1.5, ease: 'easeOut' as const },
-  },
-};
 
 export default function ActivityFeed({ boardId }: Props) {
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -133,7 +101,6 @@ export default function ActivityFeed({ boardId }: Props) {
 
   return (
     <div className={styles.feed}>
-      <AnimatePresence mode="popLayout">
         {activities.map((activity, index) => {
           const config = ACTION_CONFIG[activity.action] || { icon: Edit2, verb: activity.action, color: '#8B949E' };
           const Icon = config.icon;
@@ -141,25 +108,16 @@ export default function ActivityFeed({ boardId }: Props) {
           const isNew = newIds.has(activity.id);
 
           return (
-            <motion.div
+            <div
               key={activity.id}
               className={`${styles.item} ${isNew ? styles.itemNew : ''}`}
-              custom={index}
-              variants={itemVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              layout
             >
-              <motion.div
+              <div
                 className={styles.iconWrap}
                 style={{ background: `${config.color}20`, color: config.color }}
-                variants={isNew ? newItemHighlight : undefined}
-                initial="initial"
-                animate={isNew ? 'pulse' : 'initial'}
               >
                 <Icon size={12} />
-              </motion.div>
+              </div>
               <div className={styles.content}>
                 <span className={styles.userName}>{activity.user?.name || activity.user?.username || 'User'}</span>
                 {' '}{config.verb}{' '}
@@ -173,10 +131,9 @@ export default function ActivityFeed({ boardId }: Props) {
                 {details.name && <span className={styles.target}>"{details.name}"</span>}
               </div>
               <span className={styles.time}>{timeAgo(activity.createdAt)}</span>
-            </motion.div>
+            </div>
           );
         })}
-      </AnimatePresence>
     </div>
   );
 }

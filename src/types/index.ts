@@ -1,6 +1,6 @@
 export type Priority = 'none' | 'urgent' | 'high' | 'medium' | 'low';
 export type Theme = 'dark' | 'light';
-export type ViewMode = 'board' | 'list' | 'calendar';
+export type ViewMode = 'board' | 'table' | 'calendar';
 export type Visibility = 'Private' | 'Workspace' | 'Public';
 
 export interface Label {
@@ -35,9 +35,7 @@ export interface Card {
   createdAt: string;
   coverImage?: string;
   coverColor?: string;
-  timeSpent?: number;
-  timerStarted?: string | null;
-  blockedBy?: string[];
+
   reminderAt?: string | null;
 }
 

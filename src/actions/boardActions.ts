@@ -391,7 +391,7 @@ export async function updateCardAction(boardId: string, cardId: string, updates:
   if (card?.boardId !== boardId) throw new Error("Unauthorized");
 
   const data: Record<string, any> = {};
-  const directFields = ['title', 'description', 'priority', 'coverImage', 'coverColor', 'timeSpent'];
+  const directFields = ['title', 'description', 'priority', 'coverImage', 'coverColor'];
   for (const key of directFields) {
     if (updates[key] !== undefined) data[key] = updates[key];
   }
@@ -399,14 +399,12 @@ export async function updateCardAction(boardId: string, cardId: string, updates:
   if (updates.dueDate !== undefined) {
     data.dueDate = updates.dueDate ? new Date(updates.dueDate) : null;
   }
-  if (updates.timerStarted !== undefined) {
-    data.timerStarted = updates.timerStarted ? new Date(updates.timerStarted) : null;
-  }
+
   if (updates.reminderAt !== undefined) {
     data.reminderAt = updates.reminderAt ? new Date(updates.reminderAt) : null;
   }
 
-  const jsonFields = ['labels', 'checklist', 'assigneeIds', 'blockedBy'];
+  const jsonFields = ['labels', 'checklist', 'assigneeIds'];
   for (const key of jsonFields) {
     if (updates[key] !== undefined) data[key] = updates[key];
   }

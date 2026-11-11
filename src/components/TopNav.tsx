@@ -4,7 +4,7 @@ import { signOut } from 'next-auth/react';
 import { useBoardContext } from '@/context/BoardContext';
 import { useTheme } from '@/context/ThemeContext';
 import {
-  Sun, Moon, Search, LayoutGrid, List, Calendar, X, Share2, User, LogOut,
+  Sun, Moon, Search, LayoutGrid, Table2, Calendar, X, Share2, User, LogOut,
   Zap, Palette, Save, Copy, Sparkles, Undo2, Redo2, Menu, MoreHorizontal, Settings
 } from 'lucide-react';
 
@@ -140,11 +140,11 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
               <LayoutGrid size={15} /> <span className={styles.tabLabel}>Board</span>
             </button>
             <button
-              className={`${styles.viewTab} ${view === 'list' ? styles.active : ''}`}
-              onClick={() => setView('list')}
-              title="List View"
+              className={`${styles.viewTab} ${view === 'table' ? styles.active : ''}`}
+              onClick={() => setView('table')}
+              title="Table View"
             >
-              <List size={15} /> <span className={styles.tabLabel}>List</span>
+              <Table2 size={15} /> <span className={styles.tabLabel}>Table</span>
             </button>
             <button
               className={`${styles.viewTab} ${view === 'calendar' ? styles.active : ''}`}
