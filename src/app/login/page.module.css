@@ -32,6 +32,36 @@
   margin-bottom: 60px;
 }
 
+.logoLight {
+  display: block;
+  border-radius: 8px;
+}
+
+.logoDark {
+  display: none;
+  border-radius: 8px;
+}
+
+:global(html[data-theme='dark']) .logoLight {
+  display: none;
+}
+
+:global(html[data-theme='dark']) .logoDark {
+  display: block;
+}
+
+.mobileLogo {
+  display: none;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+@media (max-width: 768px) {
+  .mobileLogo {
+    display: flex;
+  }
+}
+
 .brandingLogoText {
   font-size: 22px;
   font-weight: 700;

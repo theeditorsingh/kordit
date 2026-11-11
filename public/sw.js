@@ -1,5 +1,5 @@
-// Kordit Service Worker v1.0
-const CACHE_NAME = 'kordit-v1';
+// Kordit Service Worker v3.0
+const CACHE_NAME = 'kordit-v3';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',

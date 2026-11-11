@@ -137,7 +137,20 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
         </button>
 
         <div className={styles.logo}>
-          <img src="/kordit-logo.svg" alt="Kordit" width={26} height={26} />
+          <img
+            src="/Kordit_Logo.svg"
+            alt="Kordit"
+            width={26}
+            height={26}
+            className={styles.logoLight}
+          />
+          <img
+            src="/Kordit_White_Tile_Dark_Mode.svg"
+            alt="Kordit"
+            width={26}
+            height={26}
+            className={styles.logoDark}
+          />
           <span className={styles.logoText}>Kordit</span>
         </div>
         {activeBoard && (

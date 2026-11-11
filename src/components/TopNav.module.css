@@ -26,6 +26,24 @@
   flex-shrink: 0;
 }
 
+.logoLight {
+  display: block;
+  border-radius: 6px;
+}
+
+.logoDark {
+  display: none;
+  border-radius: 6px;
+}
+
+:global(html[data-theme='dark']) .logoLight {
+  display: none;
+}
+
+:global(html[data-theme='dark']) .logoDark {
+  display: block;
+}
+
 .logoText {
   font-size: 16px;
   font-weight: 800;
@@ -155,9 +173,7 @@
 :global(html[data-appearance='classic']) .nav :global(.btn-primary:hover) {
   background: #f1f2f4;
 }
-:global(html[data-appearance='classic']) .logo img {
-  filter: brightness(0) invert(1);
-}
+
 :global(html[data-appearance='classic']) .viewTabs,
 :global(html[data-appearance='classic']) .searchWrap {
   background: rgba(255, 255, 255, 0.14);

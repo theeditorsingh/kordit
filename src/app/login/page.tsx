@@ -64,7 +64,8 @@ export default function Login() {
       {/* ─── LEFT SIDE - BRANDING ─── */}
       <div className={styles.brandingSection}>
         <div className={styles.brandingHeader}>
-          <img src="/kordit-logo.svg" alt="Kordit" width={36} height={36} />
+          <img src="/Kordit_Logo.svg" alt="Kordit" width={36} height={36} className={styles.logoLight} />
+          <img src="/Kordit_White_Tile_Dark_Mode.svg" alt="Kordit" width={36} height={36} className={styles.logoDark} />
           <span className={styles.brandingLogoText}>Kordit</span>
         </div>
         
@@ -195,6 +196,10 @@ export default function Login() {
       <div className={styles.loginSection}>
         <div className={styles.card}>
           <div className={styles.loginHeader}>
+            <div className={styles.mobileLogo}>
+              <img src="/Kordit_Logo.svg" alt="Kordit" width={44} height={44} className={styles.logoLight} />
+              <img src="/Kordit_White_Tile_Dark_Mode.svg" alt="Kordit" width={44} height={44} className={styles.logoDark} />
+            </div>
             <h2>Welcome back</h2>
             <p>Log in to manage your boards, tasks, and workflows.</p>
           </div>
