@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { Resend } from "resend";
 import { memberInclude } from "@/lib/boardQuery";
 import type { BoardOp } from "@/utils/boardOps";
+import { isValidBackground } from "@/utils/boardBackground";
 
 function getResend() {
   return new Resend(process.env.RESEND_API_KEY);
@@ -121,6 +122,11 @@ export async function updateBoardAction(boardId: string, updates: Record<string,
     const title = typeof updates.title === 'string' ? updates.title.trim() : '';
     if (!title || title.length > 200) throw new Error("Board title must be 1-200 characters");
     updates = { ...updates, title };
+  }
+
+  // A background is stored as CSS, so only accept the exact shapes the picker produces
+  if (updates.background !== undefined || updates.backgroundType !== undefined) {
+    if (!isValidBackground(updates.backgroundType, updates.background)) throw new Error("Invalid background");
   }
 
   const allowedFields = ['title', 'color', 'background', 'backgroundType', 'visibility'];

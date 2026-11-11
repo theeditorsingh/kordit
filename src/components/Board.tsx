@@ -7,6 +7,7 @@ import BulkActionBar from './BulkActionBar';
 import { Plus } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import styles from './Board.module.css';
+import { getBoardBackgroundStyle } from '@/utils/boardBackground';
 
 interface Props { board: BoardType; search: string; }
 
@@ -110,14 +111,7 @@ export default function Board({ board, search }: Props) {
     setAddingCol(false);
   }
 
-  const boardStyle: React.CSSProperties = {};
-  if (board.backgroundType === 'gradient' && board.background) {
-    boardStyle.background = board.background;
-  } else if (board.backgroundType === 'image' && board.background) {
-    boardStyle.backgroundImage = `url(${board.background})`;
-    boardStyle.backgroundSize = 'cover';
-    boardStyle.backgroundPosition = 'center';
-  }
+  const boardStyle = getBoardBackgroundStyle(board);
 
   return (
     <>

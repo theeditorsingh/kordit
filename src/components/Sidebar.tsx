@@ -14,6 +14,7 @@ import ActivityFeed from './ActivityFeed';
 import AutomationPanel from './AutomationPanel';
 import ArchivedBoardsModal from './ArchivedBoardsModal';
 import styles from './Sidebar.module.css';
+import { getBoardBackgroundStyle } from '@/utils/boardBackground';
 
 export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: boolean; onClose?: () => void }) {
   const { data: session } = useSession();
@@ -147,7 +148,7 @@ export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: bool
                       }
                     }}
                   >
-                    <span className={styles.boardDot} style={{ background: BOARD_COLORS[i % BOARD_COLORS.length] }} />
+                    <span className={styles.boardDot} style={{ background: getBoardBackgroundStyle(board).background ?? BOARD_COLORS[i % BOARD_COLORS.length] }} />
                     {!collapsed && <span className={styles.boardTitle}>{board.title}</span>}
                     {!collapsed && board.isFavorite && <Star size={11} style={{ color: '#FFC400', fill: '#FFC400', flexShrink: 0 }} />}
                     {!collapsed && (

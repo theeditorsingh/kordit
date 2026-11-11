@@ -12,6 +12,8 @@ import AutomationPanel from './AutomationPanel';
 import WeeklyDigest from './WeeklyDigest';
 import ShareModal from './ShareModal';
 import ProfileModal from './ProfileModal';
+import BoardBackgroundPicker from './BoardBackgroundPicker';
+import type { BackgroundType } from '@/utils/boardBackground';
 import { ViewMode } from '@/types';
 import styles from './TopNav.module.css';
 import NotificationPermissionBanner from './NotificationPermissionBanner';
@@ -26,15 +28,6 @@ interface Props {
   setSearch: (s: string) => void;
   onMenuClick?: () => void;
 }
-
-const GRADIENTS = [
-  'linear-gradient(135deg, #0052CC, #6554C0)',
-  'linear-gradient(135deg, #36B37E, #00B8D9)',
-  'linear-gradient(135deg, #FF5630, #FF991F)',
-  'linear-gradient(135deg, #6554C0, #FF7452)',
-  'linear-gradient(135deg, #172B4D, #0052CC)',
-  'linear-gradient(135deg, #00B8D9, #36B37E)',
-];
 
 export default function TopNav({ view, setView, search, setSearch, onMenuClick }: Props) {
   const { theme, toggleTheme } = useTheme();
@@ -109,10 +102,9 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
   // Start reminder checker
   useReminders();
 
-  function setBoardBackground(background: string, backgroundType: 'color' | 'gradient' | 'image') {
+  function setBoardBackground(background: string, backgroundType: BackgroundType) {
     if (!activeBoard) return;
     updateBoard(activeBoard.id, { background, backgroundType });
-    setShowBgPicker(false);
   }
 
   return (
@@ -200,43 +192,16 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
             <div className={styles.desktopOnly}>
 
               {/* Board Background */}
-              <div style={{ position: 'relative', marginLeft: 4 }}>
-                <button
-                  className="btn btn-ghost btn-icon btn-sm"
-                  onClick={() => setShowBgPicker(!showBgPicker)}
-                  title="Board background"
-                  aria-label="Board background"
-                >
-                  <Palette size={15} />
-                </button>
-                {showBgPicker && (
-                  <>
-                    <div style={{ position: 'fixed', inset: 0, zIndex: 90 }} onClick={() => setShowBgPicker(false)} />
-                    <div className={styles.bgPicker}>
-                      <div className={styles.bgPickerTitle}>Board Background</div>
-                      <div className={styles.bgGrid}>
-                        {GRADIENTS.map((g, i) => (
-                          <button
-                            key={i}
-                            className={styles.bgSwatch}
-                            style={{ background: g }}
-                            onClick={() => setBoardBackground(g, 'gradient')}
-                          />
-                        ))}
-                        <button
-                          className={styles.bgSwatch}
-                          style={{ background: 'var(--bg-base)', border: '2px dashed var(--border)' }}
-                          onClick={() => setBoardBackground('', 'color')}
-                          title="Remove background"
-                          aria-label="Remove background"
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
+              <button
+                className="btn btn-ghost btn-icon btn-sm"
+                onClick={() => setShowBgPicker(!showBgPicker)}
+                title="Board background"
+                aria-label="Board background"
+                aria-expanded={showBgPicker}
+                style={{ marginLeft: 4 }}
+              >
+                <Palette size={15} />
+              </button>
 
               <button
                 className="btn btn-ghost btn-icon btn-sm"
@@ -430,6 +395,15 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick }
         </div>
       </div>
       {showShareModal && <ShareModal onClose={() => setShowShareModal(false)} />}
+      {/* Outside the desktop-only group so the mobile "More" sheet can open it too */}
+      {showBgPicker && activeBoard && (
+        <BoardBackgroundPicker
+          key={activeBoard.id}
+          board={activeBoard}
+          onApply={setBoardBackground}
+          onClose={() => setShowBgPicker(false)}
+        />
+      )}
       {showAutomations && activeBoard && <AutomationPanel boardId={activeBoard.id} onClose={() => setShowAutomations(false)} />}
       {showDigest && activeBoard && <WeeklyDigest boardId={activeBoard.id} boardTitle={activeBoard.title} onClose={() => setShowDigest(false)} />}
       {showProfile && (
