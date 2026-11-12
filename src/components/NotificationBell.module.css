@@ -192,3 +192,19 @@
     font-size: 15px;
   }
 }
+
+/* Mobile header: unread shown as a small blue dot (count stays in the button's aria-label) */
+@media (max-width: 768px) {
+  .badge {
+    top: 9px;
+    right: 10px;
+    min-width: 0;
+    width: 9px;
+    height: 9px;
+    padding: 0;
+    font-size: 0;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 2px var(--bg-surface);
+  }
+}

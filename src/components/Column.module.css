@@ -537,3 +537,83 @@
   font-size: 11px;
   color: var(--text-muted);
 }
+
+/* Desktop/mobile variants of the same control */
+.mobileOnlyIcon, .emptyMobile, .addBtnMobileOnly { display: none; }
+
+/* ─── MOBILE COLUMN (≤768px) ─── */
+@media (max-width: 768px) {
+  .desktopOnlyIcon, .emptyDesktop { display: none; }
+  .mobileOnlyIcon { display: inline-flex; }
+  .addBtnMobileOnly { display: flex; }
+  .emptyMobile {
+    display: block;
+    padding: 18px 8px;
+    text-align: center;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+
+  /* ~85% (320px) to ~89% (430px) of the viewport; the next column peeks in */
+  .column {
+    width: calc(100vw - 48px);
+    max-height: none; /* height comes from the board (see Board.module.css) */
+    scroll-snap-align: start;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: 18px;
+    box-shadow: 0 1px 2px rgba(9, 30, 66, 0.04), 0 4px 16px rgba(9, 30, 66, 0.05);
+  }
+  .column.collapsedColumn { width: 52px; scroll-snap-align: start; }
+
+  .header {
+    padding: 12px 6px 8px 16px;
+    min-height: 56px;
+    background: var(--bg-surface);
+    border-radius: 18px 18px 0 0;
+  }
+  .headerLeft { gap: 10px; min-width: 0; flex: 1; }
+  .dot { width: 12px; height: 12px; }
+  .title {
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: -0.2px;
+    padding: 2px 4px;
+    margin-left: -4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+  .count {
+    flex-shrink: 0;
+    min-width: 28px;
+    height: 28px;
+    min-height: 28px;
+    padding: 0 8px;
+    justify-content: center;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: var(--bg-overlay);
+  }
+  .menuBtn { width: 44px; height: 44px; min-width: 44px; min-height: 44px; padding: 0; justify-content: center; color: var(--text-primary); }
+
+  .cardList { padding: 4px 12px 8px; gap: 10px; }
+
+  .addBtn {
+    width: calc(100% - 24px);
+    margin: 4px 12px 12px;
+    min-height: 48px;
+    padding: 0 14px;
+    gap: 12px;
+    border: none;
+    border-radius: 12px;
+    background: var(--accent-subtle);
+    color: var(--accent);
+    font-size: 16px;
+    font-weight: 500;
+  }
+  .addBtn:hover, .addBtn:active { background: color-mix(in srgb, var(--accent) 14%, var(--bg-surface)); color: var(--accent); }
+}

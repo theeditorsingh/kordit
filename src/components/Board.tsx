@@ -5,7 +5,7 @@ import { useBoardContext } from '@/context/BoardContext';
 import Column from './Column';
 import BulkActionBar from './BulkActionBar';
 import { Plus } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import styles from './Board.module.css';
 import { getBoardBackgroundStyle } from '@/utils/boardBackground';
 
@@ -16,17 +16,19 @@ export default function Board({ board, search, cardFilter }: Props) {
   const [addingCol, setAddingCol] = useState(false);
   const [colTitle, setColTitle] = useState('');
   const boardRef = useRef<HTMLDivElement>(null);
+  const chipStripRef = useRef<HTMLDivElement>(null);
   // Track whether any card modal is open — disables column drag while modal is visible
   const [modalOpen, setModalOpen] = useState(false);
   const [activeColIndex, setActiveColIndex] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
 
-  // Detect mobile on mount
+  // Detect mobile (same breakpoint as the CSS)
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth <= 768);
+    const mq = window.matchMedia('(max-width: 768px)');
+    const check = () => setIsMobile(mq.matches);
     check();
-    window.addEventListener('resize', check);
-    return () => window.removeEventListener('resize', check);
+    mq.addEventListener('change', check);
+    return () => mq.removeEventListener('change', check);
   }, []);
 
   // Track the nearest column edge instead of the last intersecting narrow column.
@@ -44,13 +46,51 @@ export default function Board({ board, search, cardFilter }: Props) {
       });
       setActiveColIndex(nearest);
     };
-    el.addEventListener('scroll', update, {passive: true});
+    let frame = 0;
+    const onScroll = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => { frame = 0; update(); });
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
     const resize = new ResizeObserver(update);
     resize.observe(el);
     el.querySelectorAll('[data-col-index]').forEach(column => resize.observe(column));
     update();
-    return () => { el.removeEventListener('scroll', update); resize.disconnect(); };
+    return () => { el.removeEventListener('scroll', onScroll); resize.disconnect(); cancelAnimationFrame(frame); };
   }, [isMobile, board.id, board.columns.length]);
+
+  // Keep the active chip visible in the chip strip (scrolls the strip only, never the page)
+  useEffect(() => {
+    const strip = chipStripRef.current;
+    if (!strip || !isMobile) return;
+    const chip = strip.querySelector<HTMLElement>(`[data-chip-index="${activeColIndex}"]`);
+    if (!chip) return;
+    const pad = 16;
+    const left = chip.offsetLeft - pad;
+    const right = chip.offsetLeft + chip.offsetWidth + pad - strip.clientWidth;
+    let target: number | null = null;
+    if (strip.scrollLeft > left) target = left;
+    else if (strip.scrollLeft < right) target = right;
+    if (target !== null) strip.scrollTo({ left: Math.max(0, target), behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+  }, [activeColIndex, isMobile]);
+
+  // Chip data: open (not completed) cards per column, same count as the column header
+  const chips = useMemo(() => board.columns.map((col) => ({
+    id: col.id,
+    title: col.title,
+    color: col.color,
+    count: col.cardIds.filter((id) => board.cards[id] && !board.cards[id].completedAt).length,
+  })), [board.columns, board.cards]);
+
+  function jumpToColumn(index: number) {
+    const el = boardRef.current;
+    const column = el?.querySelector<HTMLElement>(`[data-col-index="${index}"]`);
+    if (el && column) {
+      const left = el.scrollLeft + column.getBoundingClientRect().left - el.getBoundingClientRect().left - 16;
+      el.scrollTo({ left, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+    }
+    setActiveColIndex(index);
+  }
 
   useEffect(() => {
     const boardEl = boardRef.current;
@@ -130,19 +170,28 @@ export default function Board({ board, search, cardFilter }: Props) {
 
   return (
     <>
-      {board.columns.length > 1 && (
-        <label className={styles.columnPicker}>
-          Column
-          <select aria-label="Jump to column" value={Math.min(activeColIndex, board.columns.length - 1)} onChange={event => {
-            const index = Number(event.target.value);
-            const el = boardRef.current;
-            const column = el?.querySelector<HTMLElement>(`[data-col-index="${index}"]`);
-            if (el && column) el.scrollTo({ left: el.scrollLeft + column.getBoundingClientRect().left - el.getBoundingClientRect().left - 16, behavior: 'auto' });
-            setActiveColIndex(index);
-          }}>
-            {board.columns.map((column, index) => <option key={column.id} value={index}>{column.title}</option>)}
-          </select>
-        </label>
+      {/* Mobile: column chips, kept in sync with the swipeable board */}
+      {board.columns.length > 0 && (
+        <div className={styles.chipStrip} ref={chipStripRef} role="tablist" aria-label="Columns">
+          {chips.map((chip, index) => {
+            const active = index === Math.min(activeColIndex, chips.length - 1);
+            return (
+              <button
+                key={chip.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                data-chip-index={index}
+                className={`${styles.chip} ${active ? styles.chipActive : ''}`}
+                onClick={() => jumpToColumn(index)}
+              >
+                <span className={styles.chipDot} style={{ background: chip.color }} />
+                <span className={styles.chipTitle}>{chip.title}</span>
+                <span className={styles.chipCount}>{chip.count}</span>
+              </button>
+            );
+          })}
+        </div>
       )}
       <DragDropContext onDragEnd={onDragEnd}>
         <Droppable droppableId="board-columns" direction="horizontal" type="COLUMN">
@@ -219,4 +268,8 @@ export default function Board({ board, search, cardFilter }: Props) {
 
     </>
   );
+}
+
+function prefersReducedMotion() {
+  return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }

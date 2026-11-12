@@ -1,9 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { AlertCircle, Check, Loader2, RefreshCw } from 'lucide-react';
-import { Appearance, useTheme } from '@/context/ThemeContext';
-import styles from './PreferencesSettings.module.css';
+import { AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 
 type Preferences = {
   assignments: boolean;
@@ -24,12 +22,6 @@ const rows: Array<{ key: keyof Preferences; label: string; hint: string }> = [
   { key: 'browser', label: 'Browser reminders', hint: 'Allow local browser reminder delivery.' },
 ];
 
-const appearances: Array<{ id: Appearance; name: string; hint: string }> = [
-  { id: 'kordit', name: 'Kordit', hint: 'Balanced spacing and crisp structure.' },
-  { id: 'classic', name: 'Classic Kanban', hint: 'Compact, square and information-dense.' },
-  { id: 'material', name: 'Material', hint: 'Spacious, rounded and softly elevated.' },
-];
-
 const defaultPreferences: Preferences = {
   assignments: true,
   comments: true,
@@ -41,7 +33,6 @@ const defaultPreferences: Preferences = {
 };
 
 export default function PreferencesSettings() {
-  const { appearance, setAppearance } = useTheme();
   const [preferences, setPreferences] = useState<Preferences>(defaultPreferences);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -97,39 +88,6 @@ export default function PreferencesSettings() {
           {rows.map((row) => <button key={row.key} type="button" aria-pressed={preferences[row.key]} disabled={loading || saving !== null} onClick={() => toggle(row.key)} style={{ display: 'flex', alignItems: 'center', gap: 16, width: '100%', padding: '13px 14px', border: 0, borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', color: 'var(--text-primary)', textAlign: 'left', cursor: loading || saving !== null ? 'wait' : 'pointer' }}><span style={{ flex: 1 }}><b style={{ display: 'block', fontSize: 13 }}>{row.label}</b><small style={{ color: 'var(--text-muted)' }}>{row.hint}</small></span><span style={{ width: 38, height: 22, padding: 3, borderRadius: 20, background: preferences[row.key] ? 'var(--accent)' : 'var(--bg-hover)', display: 'flex', justifyContent: preferences[row.key] ? 'flex-end' : 'flex-start' }}><i style={{ width: 16, height: 16, borderRadius: '50%', background: '#fff', display: 'block' }} /></span>{saving === row.key && <Loader2 size={13} />}</button>)}
       </div>
 
-      <h2 style={{ margin: '28px 0 0', fontSize: 20 }}>Appearance</h2>
-      <p style={{ margin: '6px 0 14px', color: 'var(--text-muted)', fontSize: 13 }}>Changes the workspace layout instantly. Light and dark mode work with every style.</p>
-      <div className={styles.appearanceGrid}>
-        {appearances.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            className={styles.appearanceOption}
-            data-preset={item.id}
-            data-selected={appearance === item.id}
-            aria-pressed={appearance === item.id}
-            onClick={() => setAppearance(item.id)}
-          >
-            <span className={styles.preview} aria-hidden="true">
-              <span className={styles.previewNav} />
-              <span className={styles.previewBody}>
-                <span className={styles.previewSidebar} />
-                <span className={styles.previewColumns}>
-                  <span className={styles.previewColumn}><i className={styles.previewCard} /><i className={styles.previewCard} /></span>
-                  <span className={styles.previewColumn}><i className={styles.previewCard} /><i className={styles.previewCard} /></span>
-                </span>
-              </span>
-            </span>
-            <span className={styles.optionMeta}>
-              <span className={styles.optionCopy}>
-                <b className={styles.optionName}>{item.name}</b>
-                <small className={styles.optionHint}>{item.hint}</small>
-              </span>
-              {appearance === item.id && <Check size={15} className={styles.selectedIcon} />}
-            </span>
-          </button>
-        ))}
-      </div>
     </div>
   );
 }

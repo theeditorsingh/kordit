@@ -11,7 +11,7 @@ import CardItem from './Card';
 import dynamic from 'next/dynamic';
 const CardModal = dynamic(() => import('./CardModal'), { ssr: false });
 import EmptyState from './EmptyState';
-import { Plus, MoreHorizontal, Trash2, AlignLeft, Calendar as CalendarIcon, Edit2, Settings, AlertCircle, Copy, Check, ChevronsRightLeft, ChevronsLeftRight, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { Plus, MoreHorizontal, MoreVertical, Trash2, AlignLeft, Calendar as CalendarIcon, Edit2, Settings, AlertCircle, Copy, Check, ChevronsRightLeft, ChevronsLeftRight, ChevronRight, CheckCircle2 } from 'lucide-react';
 import styles from './Column.module.css';
 
 interface Props {
@@ -260,8 +260,9 @@ export default function Column({ column, board, search, cardFilter, onModalOpenC
               <Check size={10}/> Copied!
             </span>
           )}
-          <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowMenu(!showMenu)}>
-            <MoreHorizontal size={15}/>
+          <button className={`btn btn-ghost btn-icon btn-sm ${styles.menuBtn}`} onClick={() => setShowMenu(!showMenu)} aria-label={`Column options for ${column.title}`} aria-expanded={showMenu}>
+            <MoreHorizontal size={15} className={styles.desktopOnlyIcon}/>
+            <MoreVertical size={20} className={styles.mobileOnlyIcon}/>
           </button>
           {showMenu && (
             <div className={styles.menu}>
@@ -318,10 +319,16 @@ export default function Column({ column, board, search, cardFilter, onModalOpenC
             ))}
             {provided.placeholder}
             {cards.length === 0 && completedCards.length === 0 && !addingCard && (
-              <EmptyState
-                variant="no-cards"
-                action={{ label: '+ Add a card', onClick: () => setAddingCard(true) }}
-              />
+              <>
+                <div className={styles.emptyDesktop}>
+                  <EmptyState
+                    variant="no-cards"
+                    action={{ label: '+ Add a card', onClick: () => setAddingCard(true) }}
+                  />
+                </div>
+                {/* Mobile: the column's single create action is the "Add a task" bar below */}
+                <div className={styles.emptyMobile}>No tasks yet</div>
+              </>
             )}
             {allCards.length > displayLimit && (
               <button 
@@ -463,11 +470,19 @@ export default function Column({ column, board, search, cardFilter, onModalOpenC
             </button>
           </div>
         </div>
-      ) : cards.length > 0 || completedCards.length > 0 ? (
-        <button className={styles.addBtn} onClick={() => setAddingCard(true)}>
-          <Plus size={14}/> Add a card
+      ) : (
+        // Desktop shows this only when the column has cards (the empty state has its own button);
+        // mobile always shows it, so every column has exactly one create action.
+        <button
+          className={`${styles.addBtn} ${cards.length === 0 && completedCards.length === 0 ? styles.addBtnMobileOnly : ''}`}
+          onClick={() => setAddingCard(true)}
+        >
+          <Plus size={14} className={styles.desktopOnlyIcon}/>
+          <Plus size={20} className={styles.mobileOnlyIcon}/>
+          <span className={styles.desktopOnlyIcon}>Add a card</span>
+          <span className={styles.mobileOnlyIcon}>Add a task</span>
         </button>
-      ) : null}
+      )}
 
         {openingCardId && board.cards[openingCardId] && (
           <CardModal

@@ -4,7 +4,6 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 
 const themes = new Set(['light', 'dark']);
-const appearances = new Set(['kordit', 'classic', 'material']);
 
 async function currentUserId() {
   return (await getServerSession(authOptions))?.user?.id ?? null;
@@ -27,13 +26,14 @@ export async function PUT(request: NextRequest) {
   const userId = await currentUserId();
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const input = await request.json().catch(() => null) as { theme?: unknown; appearance?: unknown } | null;
-  if (!input || !themes.has(String(input.theme)) || !appearances.has(String(input.appearance))) {
+  const input = await request.json().catch(() => null) as { theme?: unknown } | null;
+  if (!input || !themes.has(String(input.theme))) {
     return NextResponse.json({ error: 'Invalid UI preference' }, { status: 400 });
   }
 
   const theme = String(input.theme);
-  const appearance = String(input.appearance);
+  // Only the Kordit style exists now
+  const appearance = 'kordit';
 
   try {
     const preference = await prisma.uiPreference.upsert({

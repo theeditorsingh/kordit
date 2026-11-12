@@ -5,8 +5,10 @@ import { useBoardContext } from '@/context/BoardContext';
 import { useTheme } from '@/context/ThemeContext';
 import {
   Sun, Moon, Search, LayoutGrid, Table2, Calendar, X, Share2, User, LogOut,
-  Zap, Palette, Save, Copy, Sparkles, Undo2, Redo2, Menu, MoreHorizontal, Settings, ListFilter, ChevronDown, BarChart3, Users
+  Zap, Palette, Copy, Sparkles, Undo2, Redo2, Menu, Settings, ListFilter, ChevronDown, BarChart3, Users, Check
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 
 import AutomationPanel from './AutomationPanel';
 import WeeklyDigest from './WeeklyDigest';
@@ -40,7 +42,10 @@ interface Props {
 
 export default function TopNav({ view, setView, search, setSearch, onMenuClick, filters, setFilters, filterCounts }: Props) {
   const { theme, toggleTheme } = useTheme();
-  const { activeBoard, updateBoard, saveBoardAsTemplate, undo, redo, canUndo, canRedo } = useBoardContext();
+  const { state, activeBoard, updateBoard, saveBoardAsTemplate, undo, redo, canUndo, canRedo } = useBoardContext();
+  const router = useRouter();
+  const { data: session } = useSession();
+  const [showBoardMenu, setShowBoardMenu] = useState(false);
   const confirm = useConfirm();
   const desktopSearchRef = useRef<HTMLInputElement>(null);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -123,9 +128,33 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
     updateBoard(activeBoard.id, { background, backgroundType });
   }
 
+  // Mobile board bar: open tasks only, the same rule the column counts use
+  const openTaskCount = activeBoard
+    ? activeBoard.columns.reduce((n, col) => n + col.cardIds.filter((id) => {
+        const c = activeBoard.cards[id];
+        return c && !c.completedAt;
+      }).length, 0)
+    : 0;
+  const switchableBoards = state.boards.filter((b) => !b.isArchived);
+
+  function openBoard(boardId: string) {
+    setShowBoardMenu(false);
+    const board = state.boards.find((b) => b.id === boardId);
+    if (!board || board.id === activeBoard?.id) return;
+    // Same navigation the sidebar uses
+    const targetUsername = board.ownerUsername || session?.user?.username;
+    if (targetUsername) router.push(`/${targetUsername}/${board.slug}`);
+  }
+
+  // On mobile, Profile opens the actions sheet (it also holds the account items); desktop keeps the dropdown
+  function onProfileClick() {
+    if (window.matchMedia('(max-width: 768px)').matches) setShowMore(true);
+    else setShowUserMenu(!showUserMenu);
+  }
+
   return (
     <>
-    <header className={`${styles.nav} ${activeBoard ? styles.hasBoard : ''}`}>
+    <header className={styles.nav}>
       <div className={styles.left}>
         {/* Hamburger for mobile */}
         <button
@@ -264,16 +293,6 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
               <span className={styles.aiBtnLabel}>AI Digest</span>
             </button>
 
-            {/* Mobile: More button */}
-            <button
-              className={`btn btn-ghost btn-icon btn-sm ${styles.mobileOnly}`}
-              onClick={() => setShowMore(true)}
-              title="More actions"
-              aria-label="More actions"
-            >
-              <MoreHorizontal size={18} />
-            </button>
-
             {/* Filter dropdown — desktop (on mobile it is in the More sheet) */}
             {filters && setFilters && (
               <div className={styles.desktopOnly}>
@@ -339,7 +358,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
           </>
         )}
 
-        <button className={`btn btn-ghost btn-icon ${activeBoard ? styles.mobileHide : ''}`} onClick={toggleTheme} title="Toggle theme">
+        <button className={`btn btn-ghost btn-icon ${styles.mobileHide}`} onClick={toggleTheme} title="Toggle theme" aria-label="Toggle theme">
           {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
         </button>
 
@@ -348,7 +367,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
         <div className={styles.profileWrap} style={{ position: 'relative' }}>
           <button
             className="btn btn-ghost btn-icon"
-            onClick={() => setShowUserMenu(!showUserMenu)}
+            onClick={onProfileClick}
             title="User Settings"
             aria-label="User Settings"
           >
@@ -503,7 +522,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
           <div className="modal-overlay" onClick={() => setShowMore(false)} style={{ zIndex: 400 }}>
             <div
               className="modal-box"
-              style={{ maxWidth: '100%', position: 'fixed', bottom: 0, borderRadius: '28px 28px 0 0', padding: '4px 0', paddingBottom: 'calc(24px + env(safe-area-inset-bottom))', ...moreSheetSwipe.dragStyle }}
+              style={{ maxWidth: '100%', position: 'fixed', bottom: 0, borderRadius: '28px 28px 0 0', padding: '4px 0', paddingBottom: 'calc(24px + env(safe-area-inset-bottom))', maxHeight: '85dvh', overflowY: 'auto', ...moreSheetSwipe.dragStyle }}
               onClick={e => e.stopPropagation()}
               onTouchStart={moreSheetSwipe.onTouchStart}
               onTouchMove={moreSheetSwipe.onTouchMove}
@@ -512,6 +531,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
               <div style={{ width: 32, height: 4, background: 'var(--m3-outline-variant, var(--border-subtle))', borderRadius: 9999, margin: '12px auto 16px', opacity: 0.6 }} />
               <div style={{ padding: '0 12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {[
+                  ...(activeBoard ? [
                   { icon: <Undo2 size={20} />, label: 'Undo', action: () => { setShowMore(false); undo(); }, disabled: !canUndo },
                   { icon: <Redo2 size={20} />, label: 'Redo', action: () => { setShowMore(false); redo(); }, disabled: !canRedo },
                   ...(filters && setFilters ? [{ icon: <ListFilter size={20} />, label: activeFilterCount > 0 ? `Filters (${activeFilterCount} on)` : 'Filters', action: () => { setShowMore(false); setFilterAnchor(null); setShowFilters(true); } }] : []),
@@ -520,7 +540,12 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
                   { icon: <Copy size={20} />, label: 'Save as Template', action: async () => { setShowMore(false); if (activeBoard && await confirm('A copy of this board will be created with the same columns and no cards.', { title: 'Save as template', confirmLabel: 'Create copy', danger: false })) saveBoardAsTemplate(activeBoard.id); } },
                   { icon: <Sparkles size={20} />, label: 'AI Weekly Digest', action: () => { setShowMore(false); setShowDigest(true); } },
                   { icon: <Share2 size={20} />, label: 'Share Board', action: () => { setShowMore(false); setShowShareModal(true); } },
+                  ] : []),
                   { icon: theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />, label: theme === 'dark' ? 'Use Light Theme' : 'Use Dark Theme', action: () => { setShowMore(false); toggleTheme(); } },
+                  { icon: <Settings size={20} />, label: 'Profile & Settings', action: () => { setShowMore(false); setShowProfile(true); } },
+                  { icon: <BarChart3 size={20} />, label: 'Analytics', action: () => { setShowMore(false); setShowAnalytics(true); } },
+                  { icon: <Users size={20} />, label: 'Team workspace', action: () => { setShowMore(false); setShowTeam(true); } },
+                  { icon: <LogOut size={20} />, label: 'Sign Out', action: () => { setShowMore(false); signOut({ callbackUrl: '/login' }); } },
                 ].map((item, i) => (
                   <button
                     key={i}
@@ -577,6 +602,65 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
         </div>
       )}
     </header>
+
+    {/* Mobile board bar: board name + counts, icon view switcher */}
+    {activeBoard && (
+      <div className={styles.boardBar}>
+        <div className={styles.boardBarInfo}>
+          <button
+            className={styles.boardTitleBtn}
+            onClick={() => setShowBoardMenu(!showBoardMenu)}
+            aria-haspopup="listbox"
+            aria-expanded={showBoardMenu}
+            aria-label={`Board: ${activeBoard.title}. Switch board`}
+          >
+            <span className={styles.boardTitleText}>{activeBoard.title}</span>
+            <ChevronDown size={20} className={styles.boardTitleChevron} />
+          </button>
+          <div className={styles.boardMeta}>
+            {activeBoard.columns.length} column{activeBoard.columns.length === 1 ? '' : 's'} · {openTaskCount} task{openTaskCount === 1 ? '' : 's'}
+          </div>
+          {showBoardMenu && (
+            <>
+              <div className={styles.boardMenuScrim} onClick={() => setShowBoardMenu(false)} />
+              <ul className={styles.boardMenu} role="listbox" aria-label="Switch board">
+                {switchableBoards.map((b) => (
+                  <li key={b.id}>
+                    <button
+                      role="option"
+                      aria-selected={b.id === activeBoard.id}
+                      className={`${styles.boardMenuItem} ${b.id === activeBoard.id ? styles.boardMenuItemActive : ''}`}
+                      onClick={() => openBoard(b.id)}
+                    >
+                      <span className={styles.boardMenuName}>{b.title}</span>
+                      {b.id === activeBoard.id && <Check size={16} />}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </div>
+        <div className={styles.viewIcons} role="group" aria-label="View" id="view-switcher-mobile">
+          {([
+            ['board', LayoutGrid, 'Board view'],
+            ['table', Table2, 'Table view'],
+            ['calendar', Calendar, 'Calendar view'],
+          ] as const).map(([v, Icon, label]) => (
+            <button
+              key={v}
+              className={`${styles.viewIcon} ${view === v ? styles.viewIconActive : ''}`}
+              onClick={() => setView(v)}
+              aria-label={label}
+              aria-pressed={view === v}
+              title={label}
+            >
+              <Icon size={20} />
+            </button>
+          ))}
+        </div>
+      </div>
+    )}
     <NotificationPermissionBanner />
     </>
   );

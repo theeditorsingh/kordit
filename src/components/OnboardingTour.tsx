@@ -64,7 +64,9 @@ export default function OnboardingTour() {
   const updateTarget = useCallback(() => {
     const id = STEPS[step]?.targetId;
     if (id) {
-      const el = document.getElementById(id);
+      // Prefer the visible variant (e.g. the mobile view switcher when the desktop one is hidden)
+      let el = document.getElementById(id);
+      if (!el || el.getClientRects().length === 0) el = document.getElementById(`${id}-mobile`) ?? el;
       if (el) {
         setTargetRect(el.getBoundingClientRect());
         return;

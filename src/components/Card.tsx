@@ -1,9 +1,9 @@
 'use client';
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, type CSSProperties } from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 import { Board, Card } from '@/types';
 
-import { Calendar, CheckSquare, AlertTriangle, Edit2, Trash2, CheckCircle2, Circle, AlignLeft } from 'lucide-react';
+import { Calendar, CheckSquare, Edit2, Trash2, CheckCircle2, Circle, AlignLeft, ArrowRightLeft, ChevronRight } from 'lucide-react';
 import { getInitials } from '@/utils/storage';
 import dynamic from 'next/dynamic';
 import { useBoardContext } from '@/context/BoardContext';
@@ -42,7 +42,8 @@ export default function CardItem({ card, index, board, columnId, dragDisabled, o
   const [open, setOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number } | null>(null);
   const [showBottomSheet, setShowBottomSheet] = useState(false);
-  const { deleteCard, toggleCardSelection, state } = useBoardContext();
+  const { deleteCard, toggleCardSelection, moveCard, state } = useBoardContext();
+  const [showMoveList, setShowMoveList] = useState(false);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -187,10 +188,19 @@ export default function CardItem({ card, index, board, columnId, dragDisabled, o
                 {assignees.length > 0 && (
                   <div className={styles.avatars}>
                     {assignees.slice(0, 3).map((m) => (
-                      <span key={m!.id} className="avatar avatar-sm" style={{ background: m!.color, marginLeft: -6 }}>
-                        {getInitials(m!.name)}
+                      <span
+                        key={m!.id}
+                        className={`avatar avatar-sm ${styles.avatar}`}
+                        style={{ background: m!.color, marginLeft: -6, '--member-color': m!.color } as CSSProperties}
+                        title={m!.name}
+                      >
+                        <span className={styles.initialsFull}>{getInitials(m!.name)}</span>
+                        <span className={styles.initialOne} aria-hidden="true">{getInitials(m!.name).charAt(0)}</span>
                       </span>
                     ))}
+                    {assignees.length > 1 && (
+                      <span className={styles.moreAssignees} aria-label={`${assignees.length - 1} more assignees`}>+{assignees.length - 1}</span>
+                    )}
                   </div>
                 )}
               </div>
@@ -289,6 +299,48 @@ export default function CardItem({ card, index, board, columnId, dragDisabled, o
                 <Edit2 size={18} style={{ color: 'var(--text-muted)' }} />
                 Edit Card
               </button>
+              {board.columns.length > 1 && (
+                <button
+                  onClick={() => setShowMoveList((v) => !v)}
+                  aria-expanded={showMoveList}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 14, width: '100%',
+                    padding: '14px 20px', background: 'none', border: 'none', borderRadius: 10,
+                    fontSize: 15, fontWeight: 500, color: 'var(--text-primary)', cursor: 'pointer',
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  <ArrowRightLeft size={18} style={{ color: 'var(--text-muted)' }} />
+                  <span style={{ flex: 1, textAlign: 'left' }}>Move to…</span>
+                  <ChevronRight size={16} style={{ color: 'var(--text-muted)', transform: showMoveList ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }} />
+                </button>
+              )}
+              {showMoveList && (
+                <div role="group" aria-label="Move to column" style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '0 8px 6px 44px' }}>
+                  {board.columns.filter((col) => col.id !== columnId).map((col) => (
+                    <button
+                      key={col.id}
+                      onClick={() => {
+                        const src = board.columns.find((c) => c.id === columnId);
+                        const srcIdx = src ? src.cardIds.indexOf(card.id) : -1;
+                        setShowMoveList(false);
+                        setShowBottomSheet(false);
+                        if (srcIdx === -1) return;
+                        // Same call drag-and-drop makes; the card joins the end of the column
+                        moveCard(board.id, card.id, columnId, col.id, srcIdx, col.cardIds.length);
+                      }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 10, width: '100%', minHeight: 44,
+                        padding: '10px 12px', background: 'none', border: 'none', borderRadius: 10,
+                        fontSize: 15, color: 'var(--text-primary)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+                      }}
+                    >
+                      <span style={{ width: 10, height: 10, borderRadius: '50%', background: col.color, flexShrink: 0 }} />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{col.title}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
               <button
                 onClick={() => { setShowBottomSheet(false); toggleCardSelection(card.id); }}
                 style={{

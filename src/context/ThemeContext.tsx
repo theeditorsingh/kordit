@@ -3,13 +3,10 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { useSession } from 'next-auth/react';
 import { Theme } from '@/types';
 
-export type Appearance = 'kordit' | 'classic' | 'material';
 
 interface ThemeContextType {
   theme: Theme;
   toggleTheme: () => void;
-  appearance: Appearance;
-  setAppearance: (appearance: Appearance) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | null>(null);
@@ -18,27 +15,17 @@ function isTheme(value: unknown): value is Theme {
   return value === 'light' || value === 'dark';
 }
 
-function isAppearance(value: unknown): value is Appearance {
-  return value === 'kordit' || value === 'classic' || value === 'material';
-}
-
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const { status } = useSession();
   const [theme, setTheme] = useState<Theme>('light');
-  const [appearance, setAppearanceState] = useState<Appearance>('kordit');
   const themeRef = useRef<Theme>('light');
-  const appearanceRef = useRef<Appearance>('kordit');
   const interactedRef = useRef(false);
 
-  const applyPreference = useCallback((nextTheme: Theme, nextAppearance: Appearance) => {
+  const applyPreference = useCallback((nextTheme: Theme) => {
     themeRef.current = nextTheme;
-    appearanceRef.current = nextAppearance;
     setTheme(nextTheme);
-    setAppearanceState(nextAppearance);
     localStorage.setItem('kordit_theme', nextTheme);
-    localStorage.setItem('kordit_appearance', nextAppearance);
     document.documentElement.setAttribute('data-theme', nextTheme);
-    document.documentElement.setAttribute('data-appearance', nextAppearance);
   }, []);
 
   useEffect(() => {
@@ -48,27 +35,27 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       const localTheme: Theme = isTheme(savedTheme)
         ? savedTheme
         : window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      const savedAppearance = localStorage.getItem('kordit_appearance');
-      const localAppearance: Appearance = isAppearance(savedAppearance) ? savedAppearance : 'kordit';
-      applyPreference(localTheme, localAppearance);
+      // Appearance presets were removed; clear the old saved choice
+      localStorage.removeItem('kordit_appearance');
+      applyPreference(localTheme);
 
       if (status !== 'authenticated') return;
 
       try {
         const response = await fetch('/api/ui-preferences', { cache: 'no-store', signal: controller.signal });
         if (!response.ok) return;
-        const data = await response.json() as { preference?: { theme?: unknown; appearance?: unknown } | null };
+        const data = await response.json() as { preference?: { theme?: unknown } | null };
         const serverPreference = data.preference;
 
-        if (serverPreference && isTheme(serverPreference.theme) && isAppearance(serverPreference.appearance)) {
-          if (!interactedRef.current) applyPreference(serverPreference.theme, serverPreference.appearance);
+        if (serverPreference && isTheme(serverPreference.theme)) {
+          if (!interactedRef.current) applyPreference(serverPreference.theme);
           return;
         }
 
         await fetch('/api/ui-preferences', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ theme: themeRef.current, appearance: appearanceRef.current }),
+          body: JSON.stringify({ theme: themeRef.current }),
           signal: controller.signal,
         });
       } catch (error) {
@@ -82,30 +69,24 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     };
   }, [applyPreference, status]);
 
-  const persistPreference = useCallback((nextTheme: Theme, nextAppearance: Appearance) => {
+  const persistPreference = useCallback((nextTheme: Theme) => {
     if (status !== 'authenticated') return;
     void fetch('/api/ui-preferences', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ theme: nextTheme, appearance: nextAppearance }),
+      body: JSON.stringify({ theme: nextTheme }),
     }).catch(() => console.warn('UI preferences will remain local until sync is available.'));
   }, [status]);
 
   function toggleTheme() {
     interactedRef.current = true;
     const next = themeRef.current === 'dark' ? 'light' : 'dark';
-    applyPreference(next, appearanceRef.current);
-    persistPreference(next, appearanceRef.current);
-  }
-
-  function setAppearance(next: Appearance) {
-    interactedRef.current = true;
-    applyPreference(themeRef.current, next);
-    persistPreference(themeRef.current, next);
+    applyPreference(next);
+    persistPreference(next);
   }
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, appearance, setAppearance }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme }}>
       {children}
     </ThemeContext.Provider>
   );

@@ -186,54 +186,6 @@
 }
 .searchClear:hover { color: var(--text-primary); }
 
-:global(html[data-appearance='classic']) .nav {
-  border-bottom-color: rgba(255, 255, 255, 0.16);
-  box-shadow: 0 1px 2px rgba(9, 30, 66, 0.28);
-}
-:global(html[data-appearance='classic']) .nav :global(.btn-ghost) {
-  color: rgba(255, 255, 255, 0.84);
-}
-:global(html[data-appearance='classic']) .nav :global(.btn-ghost:hover) {
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.16);
-}
-:global(html[data-appearance='classic']) .nav :global(.btn-primary) {
-  background: #ffffff;
-  color: #0c66e4;
-}
-:global(html[data-appearance='classic']) .nav :global(.btn-primary:hover) {
-  background: #f1f2f4;
-}
-
-:global(html[data-appearance='classic']) .viewTabs,
-:global(html[data-appearance='classic']) .searchWrap {
-  background: rgba(255, 255, 255, 0.14);
-  border-color: rgba(255, 255, 255, 0.2);
-}
-:global(html[data-appearance='classic']) .viewTab,
-:global(html[data-appearance='classic']) .searchInput,
-:global(html[data-appearance='classic']) .searchIcon {
-  color: rgba(255, 255, 255, 0.84);
-}
-:global(html[data-appearance='classic']) .viewTab.active {
-  background: #ffffff;
-  color: #0c66e4;
-}
-:global(html[data-appearance='classic']) .searchInput::placeholder {
-  color: rgba(255, 255, 255, 0.62);
-}
-
-:global(html[data-appearance='material']) .nav {
-  border-bottom-color: transparent;
-  box-shadow: 0 2px 8px rgba(60, 64, 67, 0.15);
-}
-:global(html[data-appearance='material']) .viewTabs {
-  padding: 4px;
-}
-:global(html[data-appearance='material']) .viewTab {
-  padding: 7px 16px;
-}
-
 /* Background Picker */
 .bgPicker {
   position: absolute;
@@ -328,74 +280,170 @@
   .right { gap: 4px; }
 }
 
+/* ─── MOBILE (≤768px): row 1 = [☰][logo Kordit] … [search][bell][profile] ─── */
 @media (max-width: 768px) {
   .nav {
-    height: 56px;
-    padding: 0 12px;
+    height: 60px;
+    padding: 0 6px 0 4px;
     gap: 4px;
-    background: var(--m3-surface-container, var(--bg-surface));
+    background: var(--bg-surface);
+    color: var(--text-primary);
     border-bottom: none;
-    box-shadow: 0 1px 0 var(--border-subtle);
+    box-shadow: none;
   }
-  .nav.hasBoard {
-    height: 128px;
-    flex-wrap: wrap;
-    align-content: center;
-    row-gap: 6px;
-    padding-top: 6px;
-    padding-bottom: 7px;
+  .hamburger { display: flex; }
+  .left { min-width: 0; gap: 4px; flex: 1; }
+  .logo { gap: 8px; min-width: 0; }
+  .logo img { width: 30px; height: 30px; border-radius: 8px; }
+  .logoText {
+    display: inline;
+    font-size: 21px;
+    font-weight: 800;
+    letter-spacing: -0.6px;
+    color: var(--text-primary);
   }
-  .hamburger {
-    display: flex;
+  .boardName, .center { display: none !important; }
+  .right { min-width: 0; gap: 0; flex-shrink: 0; }
+
+  /* Header icon buttons: 44px targets, 22px glyphs (only direct header controls, not modals inside <header>) */
+  .left > .hamburger,
+  .right > :global(.btn-icon),
+  .right > div > :global(.btn-icon) {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+    justify-content: center;
     border-radius: 50%;
+    color: var(--text-primary);
   }
-  .tabLabel { display: none; }
-  .searchInput { width: 80px; }
-  .left { min-width: 0; gap: 8px; flex: 1; }
-  .right { min-width: 0; gap: 2px; flex-shrink: 0; }
-  .center { display: none; }
-  .hasBoard .center {
-    order: 3;
-    display: flex;
-    flex: 0 0 100%;
-    width: 100%;
-  }
+  .left > .hamburger svg,
+  .right > :global(.btn-icon) svg,
+  .right > div > :global(.btn-icon) svg { width: 22px; height: 22px; }
+
   .desktopOnly { display: none !important; }
   .profileWrap { margin-left: 0 !important; }
   .userDropdown {
     position: fixed !important;
-    top: 132px !important;
+    top: 64px !important;
     right: 8px !important;
     margin-top: 0 !important;
     width: min(240px, calc(100vw - 16px)) !important;
   }
+}
 
-  /* M3 Segmented Button for view tabs on mobile */
-  .viewTabs {
+@media (max-width: 360px) {
+  .logoText { font-size: 18px; }
+  .logo img { width: 26px; height: 26px; }
+  .left > .hamburger,
+  .right > :global(.btn-icon),
+  .right > div > :global(.btn-icon) { width: 40px; min-width: 40px; }
+}
+
+/* ─── Mobile board bar (row 2): board name + counts, icon view switcher ─── */
+.boardBar { display: none; }
+@media (max-width: 768px) {
+  .boardBar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 16px 12px;
+    background: var(--bg-surface);
+    flex-shrink: 0;
+    position: relative;
+    z-index: 60;
+  }
+  .boardBarInfo { position: relative; min-width: 0; flex: 1; }
+  .boardTitleBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 100%;
+    min-height: 36px;
+    padding: 0;
+    color: var(--text-primary);
+    font: inherit;
+    text-align: left;
+  }
+  .boardTitleText {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.4px;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+  .boardTitleChevron { flex-shrink: 0; color: var(--text-primary); }
+  .boardMeta {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .boardMenuScrim { position: fixed; inset: 0; z-index: 150; }
+  .boardMenu {
+    position: absolute;
+    top: 100%;
+    left: -4px;
+    margin-top: 6px;
+    z-index: 160;
+    width: min(300px, calc(100vw - 24px));
+    max-height: 55dvh;
+    overflow-y: auto;
+    padding: 6px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: 14px;
+    box-shadow: var(--shadow-lg);
+  }
+  .boardMenuItem {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     width: 100%;
-    background: var(--m3-surface-container-high, var(--bg-overlay));
-    border-radius: 9999px;
-    padding: 4px;
-    gap: 0;
-    border: 1px solid var(--m3-outline-variant, var(--border));
+    min-height: 44px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-primary);
+    text-align: left;
   }
-  .viewTab {
-    flex: 1;
+  .boardMenuItem:active { background: var(--bg-hover); }
+  .boardMenuItemActive { color: var(--accent); background: var(--accent-subtle); }
+  .boardMenuName { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .viewIcons { display: flex; gap: 6px; flex-shrink: 0; }
+  .viewIcon {
+    width: 44px;
+    height: 44px;
+    display: inline-flex;
+    align-items: center;
     justify-content: center;
-    padding: 6px 14px;
-    border-radius: 9999px;
-    font-size: 12px;
-    font-weight: 600;
-    transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
   }
-  .viewTab.active {
-    background: var(--accent);
-    color: #fff;
-    box-shadow: none;
+  .viewIconActive {
+    background: var(--accent-subtle);
+    border-color: transparent;
+    color: var(--accent);
   }
-  .viewTab:active {
-    transform: scale(0.95);
-  }
+}
+@media (max-width: 360px) {
+  .boardBar { gap: 8px; padding-inline: 12px; }
+  .boardTitleText { font-size: 20px; }
+  .viewIcons { gap: 4px; }
+  .viewIcon { width: 40px; height: 40px; }
 }
 
 /* Mobile-only: hidden on desktop */
@@ -409,15 +457,6 @@
 
 /* Desktop-only wrapper */
 .desktopOnly { display: flex; align-items: center; gap: 0; }
-
-@media (max-width: 480px) {
-  .nav { padding: 0 8px; gap: 2px; }
-  .nav.hasBoard { padding: 6px 8px 7px; }
-  .logoText { display: inline; font-size: 15px; }
-  .left { gap: 4px; }
-  .logo { gap: 5px; }
-  .right :global(.btn-icon) { width: 36px; min-width: 36px; padding: 8px; }
-}
 
 /* ─── Full-screen Mobile Search ─── */
 .mobileSearchOverlay {
@@ -467,9 +506,3 @@
 
 
 @media (min-width: 769px) and (max-width: 1180px) { .boardName { display: block; max-width: 100px; } }
-@media (max-width: 768px) {
- .tabLabel { display: inline; }
- .viewTab { padding-inline: 6px; min-height: 36px; gap: 5px; }
- .left { position: relative; align-self: stretch; align-items: center; padding-bottom: 14px; }
- .boardName { display: block; position: absolute; bottom: 0; left: 44px; padding: 0; border: none; max-width: calc(100% - 44px); font-size: 11px; }
-}

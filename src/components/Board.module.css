@@ -34,53 +34,91 @@
   transform: rotate(2deg);
 }
 
-/* ─── M3 TOUCH / MOBILE ─── */
-@media (max-width: 768px) {
-  .board {
-    padding: 12px 16px;
-    gap: 12px;
-    -webkit-overflow-scrolling: touch;
-    /* Free scrolling also reaches narrow collapsed columns. */
-    scroll-snap-type: none;
-    overscroll-behavior-x: contain;
-    scroll-padding: 16px;
-  }
-}
+/* Column chips: mobile only */
+.chipStrip { display: none; }
 
-/* Column page dots (mobile only) */
-.pageDots { display: none; }
+/* ─── MOBILE (≤768px): chips + one snapped column at a time ─── */
 @media (max-width: 768px) {
-  .pageDots {
-    pointer-events: none;
+  .chipStrip {
     display: flex;
-    justify-content: center;
     gap: 8px;
-    padding: 10px 0 calc(16px + env(safe-area-inset-bottom));
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    z-index: 50;
-    background: linear-gradient(transparent, var(--bg-base) 35%);
-    padding-top: 24px;
+    padding: 2px 16px 12px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex-shrink: 0;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border-subtle);
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
   }
-  .pageDot {
-    width: 8px;
-    height: 8px;
-    border-radius: 9999px;
-    background: var(--m3-outline-variant, var(--border));
-    transition: all 0.35s cubic-bezier(0.2, 0, 0, 1);
-  }
-  .pageDotActive {
-    width: 24px;
-    border-radius: 9999px;
-  }
-}
+  .chipStrip::-webkit-scrollbar { display: none; }
 
-.columnPicker { display: none; }
-@media (max-width: 768px) {
- .columnPicker { display: flex; align-items: center; gap: 12px; padding: 6px 16px; font-size: 13px; background: var(--bg-surface); }
- .columnPicker select { min-height: 44px; flex: 1; min-width: 0; font-size: 16px; border: 1px solid var(--border); border-radius: 8px; padding: 6px; background: var(--bg-surface); color: var(--text-primary); }
- .board { flex: 1; min-height: 0; height: auto; }
- .withSelection { padding-bottom: 180px; }
+  .chip {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 40px;
+    max-width: 75vw;
+    padding: 4px 6px 4px 12px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    position: relative;
+    transition: border-color 0.15s, background 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* 44px-tall hit area without a taller chip */
+  .chip::after { content: ''; position: absolute; inset: -2px 0; }
+  .chipActive {
+    border-color: var(--accent);
+    box-shadow: inset 0 0 0 0.5px var(--accent);
+    background: var(--accent-subtle);
+  }
+  .chipDot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .chipTitle { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .chipCount {
+    flex-shrink: 0;
+    min-width: 26px;
+    height: 26px;
+    padding: 0 7px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: var(--bg-overlay);
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .chipActive .chipCount { background: color-mix(in srgb, var(--accent) 14%, var(--bg-surface)); color: var(--accent); }
+
+  .board {
+    flex: 1;
+    min-height: 0;
+    height: auto;
+    padding: 14px 16px 16px;
+    gap: 10px;
+    background-color: var(--bg-base);
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: 16px;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x pan-y;
+    /* Columns fill the board height and scroll their cards inside */
+    align-items: stretch;
+  }
+  /* Draggable wrapper → [data-col-index] → column: a flex chain so a tall column shrinks to fit */
+  .board > div { display: flex; flex-direction: column; align-items: flex-start; min-height: 0; }
+  .board > div > [data-col-index] { display: flex; flex-direction: column; min-height: 0; flex: 0 1 auto; }
+  .board > div > [data-col-index] > * { flex: 0 1 auto; min-height: 0; }
+  /* Lets the board reach its end so the last column is fully visible */
+  .addColWrap { scroll-snap-align: end; padding-right: 16px; }
+  .addColBtn { width: 200px; min-height: 44px; }
+  .withSelection { padding-bottom: 180px; }
 }
