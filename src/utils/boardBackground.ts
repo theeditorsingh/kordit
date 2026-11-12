@@ -9,6 +9,14 @@ const GRADIENT = /^linear-gradient\((\d{1,3})deg, (#[0-9a-fA-F]{6}), (#[0-9a-fA-
 export const DEFAULT_GRADIENT = { angle: 135, from: '#0052CC', to: '#6554C0' };
 
 export const PRESET_GRADIENTS = [
+  // Kordit set
+  'linear-gradient(135deg, #0B3FB5, #1F6FF2)', // royal blue
+  'linear-gradient(135deg, #A45DEB, #5A2BD4)', // violet
+  'linear-gradient(135deg, #C644B8, #FF8E4D)', // magenta to orange
+  'linear-gradient(135deg, #17AFA9, #62D2C2)', // teal
+  'linear-gradient(135deg, #1B55CC, #2C82EC)', // blue
+  'linear-gradient(135deg, #1CB3A8, #3FCB7C)', // teal to green
+  // Earlier presets (kept so boards that use them still show as selected)
   'linear-gradient(135deg, #0052CC, #6554C0)',
   'linear-gradient(135deg, #36B37E, #00B8D9)',
   'linear-gradient(135deg, #FF5630, #FF991F)',
