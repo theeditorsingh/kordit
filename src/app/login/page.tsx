@@ -31,7 +31,8 @@ export default function Login() {
         });
 
         if (res?.error) {
-          setErrorMessage('Failed to send magic link. Please try again.');
+          // NextAuth doesn't pass the reason through here; one cause is the per-email send limit
+          setErrorMessage("Couldn't send the magic link. If you've requested several, wait 15 minutes and try again.");
           setStatus('error');
         } else {
           setStatus('success');
@@ -45,7 +46,8 @@ export default function Login() {
         });
 
         if (res?.error) {
-          setErrorMessage('Invalid credentials.');
+          // The server's lockout message is safe to show; anything else stays generic
+          setErrorMessage(res.error.startsWith('Too many') ? res.error : 'Invalid credentials.');
           setStatus('error');
         } else {
           router.push('/');
