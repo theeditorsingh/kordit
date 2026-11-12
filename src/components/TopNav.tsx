@@ -193,7 +193,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
         {activeBoard && (
           <>
             {/* Undo / Redo — desktop only (available in More sheet on mobile) */}
-            <div className={styles.desktopOnly}>
+            <div className={`${styles.btnGroup} ${styles.desktopOnly}`}>
               <button
                 className="btn btn-ghost btn-icon btn-sm"
                 onClick={undo}
@@ -216,17 +216,14 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
               </button>
             </div>
 
-            {/* Desktop-only actions (hidden on mobile) */}
-            <div className={styles.desktopOnly}>
-
-              {/* Board Background */}
+            {/* Desktop-only secondary board actions */}
+            <div className={`${styles.desktopTools} ${styles.desktopOnly}`}>
               <button
                 className="btn btn-ghost btn-icon btn-sm"
                 onClick={(e) => { setBgAnchor(e.currentTarget.getBoundingClientRect()); setShowBgPicker(!showBgPicker); }}
                 title="Board background"
                 aria-label="Board background"
                 aria-expanded={showBgPicker}
-                style={{ marginLeft: 4 }}
               >
                 <Palette size={15} />
               </button>
@@ -236,7 +233,6 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
                 onClick={() => setShowAutomations(true)}
                 title="Automations"
                 aria-label="Automations"
-                style={{ marginLeft: 4 }}
               >
                 <Zap size={15} />
               </button>
@@ -250,23 +246,22 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
                 }}
                 title="Save as template"
                 aria-label="Save as template"
-                style={{ marginLeft: 4 }}
               >
                 <Copy size={15} />
               </button>
-
-              <button
-                className={`btn btn-ghost btn-sm ${styles.aiBtn}`}
-                onClick={() => setShowDigest(true)}
-                title="AI Weekly Digest"
-                aria-label="AI Weekly Digest"
-                style={{ marginLeft: 4 }}
-                id="ai-digest-btn"
-              >
-                <Sparkles size={14} />
-                <span className={styles.tabLabel}>AI Digest</span>
-              </button>
             </div>
+
+            {/* AI Digest */}
+            <button
+              className={`btn btn-ghost btn-sm ${styles.aiBtn} ${styles.desktopOnly}`}
+              onClick={() => setShowDigest(true)}
+              title="AI Weekly Digest"
+              aria-label="AI Weekly Digest"
+              id="ai-digest-btn"
+            >
+              <Sparkles size={14} />
+              <span className={styles.aiBtnLabel}>AI Digest</span>
+            </button>
 
             {/* Mobile: More button */}
             <button
@@ -280,7 +275,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
 
             {/* Filter dropdown — desktop (on mobile it is in the More sheet) */}
             {filters && setFilters && (
-              <div className={styles.desktopOnly} style={{ marginLeft: 8 }}>
+              <div className={styles.desktopOnly}>
                 <button
                   className="btn btn-ghost btn-sm"
                   onClick={(e) => { setFilterAnchor(e.currentTarget.getBoundingClientRect()); setShowFilters(!showFilters); }}
@@ -293,7 +288,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
                   }}
                 >
                   <ListFilter size={14} />
-                  <span>Filter</span>
+                  <span className={styles.filterBtnLabel}>Filter</span>
                   {activeFilterCount > 0 && (
                     <span style={{
                       minWidth: 18, height: 18, padding: '0 5px', borderRadius: 9,
@@ -307,7 +302,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
             )}
 
             {/* Desktop search (hidden on mobile) */}
-            <div className={`${styles.searchWrap} ${styles.desktopOnly}`} style={{ marginLeft: 8 }}>
+            <div className={`${styles.searchWrap} ${styles.desktopOnly}`}>
               <Search size={14} className={styles.searchIcon} />
               <input
                 ref={desktopSearchRef}
@@ -333,20 +328,23 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
             >
               <Search size={18} />
             </button>
-            {/* Share — icon-only on mobile (tabLabel hidden at ≤768px) */}
-            <button className={`btn btn-primary btn-sm ${styles.mobileHide}`} onClick={() => setShowShareModal(true)} style={{ alignItems: 'center', gap: 6, marginLeft: 8 }}>
-              <Share2 size={14} /> <span className={styles.tabLabel}>Share</span>
+
+            {/* Share */}
+            <button className={`btn btn-primary btn-sm ${styles.mobileHide}`} onClick={() => setShowShareModal(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <Share2 size={14} /> <span className={styles.shareBtnLabel}>Share</span>
             </button>
+
+            <div className={`${styles.divider} ${styles.desktopOnly}`} />
           </>
         )}
 
-        <button className={`btn btn-ghost btn-icon ${activeBoard ? styles.mobileHide : ''}`} onClick={toggleTheme} title="Toggle theme" style={{ marginLeft: 4 }}>
+        <button className={`btn btn-ghost btn-icon ${activeBoard ? styles.mobileHide : ''}`} onClick={toggleTheme} title="Toggle theme">
           {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
         </button>
 
         <NotificationBell />
 
-        <div className={styles.profileWrap} style={{ position: 'relative', marginLeft: 8 }}>
+        <div className={styles.profileWrap} style={{ position: 'relative' }}>
           <button
             className="btn btn-ghost btn-icon"
             onClick={() => setShowUserMenu(!showUserMenu)}

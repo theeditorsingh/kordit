@@ -98,6 +98,7 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
     // On touch screens focusing would pop the keyboard over the card, so leave it
     if (window.matchMedia('(hover: none)').matches) return;
     // Short delay to allow animation to settle
+    if (window.matchMedia('(max-width: 768px)').matches) return;
     const t = setTimeout(() => titleInputRef.current?.focus(), 150);
     return () => clearTimeout(t);
   }, []);
@@ -154,6 +155,8 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
   }, [data]);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    dragStartY.current = null;
+    if ((e.target as HTMLElement).closest('button, input, textarea, select')) return;
     const box = modalBoxRef.current;
     if (!box) return;
     const rect = box.getBoundingClientRect();
@@ -433,7 +436,7 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
     >
       <div
         ref={modalBoxRef}
-        className="modal-box"
+        className={`modal-box ${styles.modal}`}
         role="dialog"
         aria-modal="true"
         aria-label={`Card: ${data.title || 'Untitled'}`}
@@ -465,7 +468,7 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
               </button>
             ))}
           </div>
-          <button className="btn btn-ghost btn-icon" onClick={save}><X size={18}/></button>
+          <button className="btn btn-ghost btn-icon" onClick={save} aria-label="Save and close card"><X size={18}/></button>
         </div>
 
         <div className={styles.body}>

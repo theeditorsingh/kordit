@@ -186,6 +186,7 @@
     transition: transform 0.35s cubic-bezier(0.2, 0, 0, 1);
     box-shadow: var(--m3-elevation-2, var(--shadow-xl));
     width: 280px !important;
+    max-width: calc(100vw - 32px);
     background: var(--m3-surface-container, var(--bg-surface));
     border-right: none;
     border-radius: 0 var(--m3-radius-lg, 16px) var(--m3-radius-lg, 16px) 0;
@@ -202,6 +203,7 @@
 
   /* M3 navigation items on mobile */
   .boardItem {
+    flex-wrap: wrap;
     padding: 14px 16px;
     border-radius: 9999px;
     font-size: 14px;
@@ -213,6 +215,17 @@
     background: var(--accent-subtle);
     font-weight: 700;
   }
+  .boardTitle { min-width: 0; font-size: 14px; }
+  .boardActions {
+    position: static;
+    transform: none;
+    flex-basis: 100%;
+    justify-content: flex-end;
+    display: none;
+    padding: 4px 0 0;
+  }
+  .boardItem.active .boardActions,
+  .boardItem:focus-within .boardActions { display: flex; opacity: 1; pointer-events: auto; }
   .boardItem:active {
     transform: scale(0.98);
   }

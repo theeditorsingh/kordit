@@ -37,6 +37,9 @@ export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: bool
     return false;
   });
 
+  // Opening the mobile drawer always reveals its labels, regardless of desktop preference.
+  const isCollapsed = collapsed && !isMobileOpen;
+
   function toggleCollapsed() {
     setCollapsed(prev => {
       const next = !prev;
@@ -98,7 +101,7 @@ export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: bool
         />
       )}
       <aside
-        className={`${styles.sidebar} ${isMobileOpen ? styles.mobileOpen : ''} ${collapsed ? styles.collapsed : ''}`}
+        className={`${styles.sidebar} ${isMobileOpen ? styles.mobileOpen : ''} ${isCollapsed ? styles.collapsed : ''}`}
         style={{ overflowY: 'hidden' }}
         id="sidebar-boards-section"
       >
@@ -118,7 +121,7 @@ export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: bool
         <div style={{ padding: '12px 8px 0 8px' }}>
           <div className={styles.sectionHeader}>
             <LayoutGrid size={13} />
-            {!collapsed && <span>Boards</span>}
+            {!isCollapsed && <span>Boards</span>}
           </div>
 
           <ul className={styles.boardList}>
@@ -146,12 +149,13 @@ export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: bool
                       } else {
                         dispatch({ type: 'SET_ACTIVE_BOARD', boardId: board.id });
                       }
+                      onClose?.();
                     }}
                   >
                     <span className={styles.boardDot} style={{ background: getBoardBackgroundStyle(board).background ?? BOARD_COLORS[i % BOARD_COLORS.length] }} />
-                    {!collapsed && <span className={styles.boardTitle}>{board.title}</span>}
-                    {!collapsed && board.isFavorite && <Star size={11} style={{ color: '#FFC400', fill: '#FFC400', flexShrink: 0 }} />}
-                    {!collapsed && (
+                    {!isCollapsed && <span className={styles.boardTitle}>{board.title}</span>}
+                    {!isCollapsed && board.isFavorite && <Star size={11} style={{ color: '#FFC400', fill: '#FFC400', flexShrink: 0 }} />}
+                    {!isCollapsed && (
                       <span className={styles.boardActions}>
                         <span className={styles.actionBtn} role="button" tabIndex={0} aria-label={board.isFavorite ? 'Remove from favourites' : 'Add to favourites'} title={board.isFavorite ? 'Unfavorite' : 'Favorite'} onClick={(e) => { e.stopPropagation(); toggleFavorite(board.id); }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); toggleFavorite(board.id); } }}>
                           <Star size={12} style={board.isFavorite ? { color: '#FFC400', fill: '#FFC400' } : {}} />
@@ -191,7 +195,7 @@ export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: bool
                 <button className="btn btn-ghost btn-sm" onClick={() => setAdding(false)}>Cancel</button>
               </div>
             </div>
-          ) : collapsed ? (
+          ) : isCollapsed ? (
             /* Collapsed: just a + icon that expands on click */
             <div style={{ display: 'flex', justifyContent: 'center' }}>
               <button className="btn btn-ghost btn-icon btn-sm" onClick={toggleCollapsed} title="Expand sidebar to add board">
@@ -215,7 +219,7 @@ export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: bool
       </div>
 
       {/* Fixed Bottom Sections — hidden when collapsed */}
-      {activeBoard && !collapsed && (
+      {activeBoard && !isCollapsed && (
         <>
           {/* Activity Feed Toggle */}
           <div

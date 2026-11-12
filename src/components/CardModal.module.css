@@ -645,3 +645,45 @@
   background: conic-gradient(#FF5630, #FFC400, #36B37E, #00B8D9, #0052CC, #6554C0, #FF5630);
 }
 .moreColors { display: flex; align-items: flex-end; gap: 8px; }
+
+/* Keep the editor controls in view while only the form scrolls on phones. */
+@media (max-width: 768px) {
+  .modal:global(.modal-box) {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+    border-radius: 0;
+    padding-bottom: 0 !important;
+  }
+  .modal::before { display: none; }
+  .cover { height: 64px; border-radius: 0; }
+  .header { gap: 12px; padding-top: max(12px, env(safe-area-inset-top)); }
+  .priorityRow { gap: 8px; }
+  .priorityRow button { min-height: 36px; padding: 6px 9px; }
+  .body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+  }
+  .mainColumn, .sidebarColumn { min-width: 0; }
+  .sidebarColumn { border-top: 1px solid var(--border-subtle); padding-top: 20px; }
+  .body input, .body textarea, .body select { min-width: 0; max-width: 100%; font-size: 16px; }
+  .footer {
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px 16px max(12px, env(safe-area-inset-bottom));
+    background: var(--bg-surface);
+  }
+  .footer > button { width: 100%; }
+  .footerRight { width: 100%; flex-wrap: wrap; gap: 8px; }
+  .footerRight button { flex: 1; white-space: nowrap; padding: 12px; }
+  .saveHint { display: none; }
+  .saveIndicator { flex-basis: 100%; justify-content: center; }
+  .checkText, .memberName { overflow-wrap: anywhere; min-width: 0; }
+}

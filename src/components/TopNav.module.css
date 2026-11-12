@@ -10,13 +10,15 @@
   flex-shrink: 0;
   gap: 12px;
   z-index: 100;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .left {
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-width: 200px;
+  gap: 10px;
+  flex-shrink: 0;
 }
 
 .logo {
@@ -53,20 +55,22 @@
 
 .boardName {
   font-size: 13px;
+  font-weight: 500;
   color: color-mix(in srgb, var(--ui-nav-fg) 72%, transparent);
-  padding-left: 12px;
+  padding-left: 10px;
   border-left: 1px solid var(--border);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 160px;
+  max-width: 140px;
 }
 
 .center {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex: 1;
+  flex: 0 0 auto;
+  margin: 0 auto;
 }
 
 .viewTabs {
@@ -76,13 +80,14 @@
   border-radius: var(--ui-control-radius);
   padding: 3px;
   gap: 2px;
+  flex-shrink: 0;
 }
 
 .viewTab {
   display: flex;
   align-items: center;
   gap: 5px;
-  padding: 5px 12px;
+  padding: 5px 11px;
   border-radius: var(--ui-control-radius);
   font-size: 12px;
   font-weight: 500;
@@ -91,6 +96,7 @@
   cursor: pointer;
   border: none;
   background: none;
+  white-space: nowrap;
 }
 
 .viewTab:hover {
@@ -107,9 +113,32 @@
 .right {
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-width: 200px;
+  gap: 6px;
+  flex-shrink: 0;
   justify-content: flex-end;
+}
+
+.btnGroup {
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-overlay);
+  border-radius: var(--ui-control-radius);
+  padding: 2px;
+  gap: 1px;
+}
+
+.desktopTools {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.divider {
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+  margin: 0 3px;
+  flex-shrink: 0;
 }
 
 .searchWrap {
@@ -118,14 +147,16 @@
   background: var(--bg-overlay);
   border: 1px solid var(--border);
   border-radius: var(--ui-control-radius);
-  padding: 0 10px;
+  padding: 0 8px;
   gap: 6px;
-  transition: border-color 0.15s;
+  transition: width 0.2s cubic-bezier(0.2, 0, 0, 1), border-color 0.15s;
+  width: 130px;
 }
 
 .searchWrap:focus-within {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--accent-subtle);
+  width: 180px;
 }
 
 .searchIcon { color: var(--text-muted); flex-shrink: 0; }
@@ -136,8 +167,8 @@
   outline: none;
   color: var(--text-primary);
   font-size: 13px;
-  width: 160px;
-  padding: 6px 0;
+  width: 100%;
+  padding: 5px 0;
 }
 
 .searchInput::placeholder { color: var(--text-muted); }
@@ -270,11 +301,31 @@
 
 /* Labels that hide on smaller screens */
 .tabLabel {}
+.aiBtnLabel {}
+.filterBtnLabel {}
+.shareBtnLabel {}
 
 /* ─── RESPONSIVE ─── */
-@media (max-width: 900px) {
+@media (max-width: 1300px) {
+  .boardName { max-width: 110px; }
+  .aiBtnLabel { display: none; }
+  .searchWrap { width: 110px; }
+  .searchWrap:focus-within { width: 160px; }
+}
+
+@media (max-width: 1180px) {
+  .tabLabel { display: none; }
+  .filterBtnLabel { display: none; }
   .boardName { display: none; }
-  .searchInput { width: 100px; }
+  .nav { gap: 8px; }
+}
+
+@media (max-width: 1020px) {
+  .shareBtnLabel { display: none; }
+  .desktopTools { display: none !important; }
+  .searchWrap { width: 90px; }
+  .searchWrap:focus-within { width: 140px; }
+  .right { gap: 4px; }
 }
 
 @media (max-width: 768px) {
@@ -362,7 +413,10 @@
 @media (max-width: 480px) {
   .nav { padding: 0 8px; gap: 2px; }
   .nav.hasBoard { padding: 6px 8px 7px; }
-  .logoText { display: none; }
+  .logoText { display: inline; font-size: 15px; }
+  .left { gap: 4px; }
+  .logo { gap: 5px; }
+  .right :global(.btn-icon) { width: 36px; min-width: 36px; padding: 8px; }
 }
 
 /* ─── Full-screen Mobile Search ─── */

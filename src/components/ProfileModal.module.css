@@ -658,7 +658,7 @@
 }
 
 /* ─── M3 Mobile ─── */
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .overlay {
     align-items: flex-end;
     padding: 0;
@@ -666,7 +666,7 @@
 
   .modal {
     max-width: 100%;
-    max-height: 95vh;
+    max-height: 95dvh;
     border-radius: var(--m3-radius-xl, 28px) var(--m3-radius-xl, 28px) 0 0;
     border-bottom: none;
     box-shadow: var(--m3-elevation-2, var(--shadow-xl));
@@ -674,6 +674,7 @@
 
   .body {
     flex-direction: column;
+    min-height: 0;
   }
 
   /* M3 Scrollable tab bar */
@@ -682,9 +683,10 @@
     min-width: 0;
     border-right: none;
     border-bottom: 1px solid var(--border-subtle);
-    flex-direction: row;
-    flex-wrap: nowrap;
-    overflow-x: auto;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    flex-shrink: 0;
+    overflow: visible;
     padding: 8px 12px;
     gap: 6px;
     background: var(--m3-surface-container, var(--bg-elevated));
@@ -702,9 +704,9 @@
 
   .tabBtn {
     flex: 0 0 auto;
-    min-width: fit-content;
+    min-width: 0;
     justify-content: center;
-    padding: 10px 18px;
+    padding: 10px 8px;
     font-size: 13px;
     border-radius: 9999px;
     min-height: 40px;
@@ -724,6 +726,8 @@
   }
 
   .panel {
+    min-height: 0;
+    min-width: 0;
     padding: 24px 16px;
     padding-bottom: calc(24px + env(safe-area-inset-bottom));
   }
