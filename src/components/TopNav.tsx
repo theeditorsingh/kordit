@@ -27,6 +27,8 @@ import { useConfirm } from './ConfirmDialog';
 import NotificationBell from './NotificationBell';
 import AnalyticsModal from './AnalyticsModal';
 import TeamModal from './TeamModal';
+import { HeaderMenu, HeaderMenuDivider, HeaderMenuItem, HeaderMenuLabel, HeaderMenuSwitch, HeaderMenuUser } from './HeaderMenu';
+import { getInitials } from '@/utils/storage';
 
 interface Props {
   view: ViewMode;
@@ -51,6 +53,19 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
   const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
   const confirm = useConfirm();
   const desktopSearchRef = useRef<HTMLInputElement>(null);
+  // Desktop search is an icon until opened; it stays open while it has text
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchWrapRef = useRef<HTMLDivElement>(null);
+  // An empty search box closes on any press outside it. (Blur alone isn't enough:
+  // pressing the board doesn't move focus, because drag-and-drop handles the press.)
+  useEffect(() => {
+    if (!searchOpen || search) return;
+    const onDown = (e: PointerEvent) => {
+      if (!searchWrapRef.current?.contains(e.target as Node)) setSearchOpen(false);
+    };
+    document.addEventListener('pointerdown', onDown, true);
+    return () => document.removeEventListener('pointerdown', onDown, true);
+  }, [searchOpen, search]);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showAutomations, setShowAutomations] = useState(false);
@@ -97,18 +112,22 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
   const handleUndoRedoKey = useCallback(
     (e: KeyboardEvent) => {
       if (document.querySelector('[role="dialog"], [role="alertdialog"]')) return;
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k' && desktopSearchRef.current && desktopSearchRef.current.offsetParent) {
-        e.preventDefault();
-        desktopSearchRef.current.focus();
+      const openSearch = () => {
+        if (!window.matchMedia('(min-width: 769px)').matches) return false;
+        if (desktopSearchRef.current) desktopSearchRef.current.focus();
+        else setSearchOpen(true); // the input focuses itself when it appears
+        return true;
+      };
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        if (openSearch()) e.preventDefault();
         return;
       }
       // Leave Ctrl+Z alone while typing so the browser's own text undo works
       const el = e.target as HTMLElement | null;
       if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)) return;
       // "/" jumps to the search box
-      if (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey && desktopSearchRef.current) {
-        e.preventDefault();
-        desktopSearchRef.current.focus();
+      if (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (openSearch()) e.preventDefault();
         return;
       }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
@@ -173,6 +192,15 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
         ))}
       </ul>
     </>
+  );
+
+  // Account: name and a round avatar (profile image, or initials)
+  const displayName = session?.user?.name || session?.user?.username || 'Account';
+  const avatar = (size: number) => (
+    session?.user?.image
+      // eslint-disable-next-line @next/next/no-img-element
+      ? <img src={session.user.image} alt="" width={size} height={size} className={styles.avatar} style={{ width: size, height: size }} />
+      : <span className={styles.avatar} style={{ width: size, height: size, fontSize: Math.round(size * 0.4) }} aria-hidden="true">{getInitials(displayName)}</span>
   );
 
   // On mobile, Profile opens the actions sheet (it also holds the account items); desktop keeps the dropdown
@@ -262,75 +290,79 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
             </button>
           </div>
         )}
-        {activeBoard && (
-          <button
-            className={`${styles.boardColorBtn} ${showBgPicker ? styles.boardColorBtnOpen : ''}`}
-            onClick={(e) => { setBgAnchor(e.currentTarget.getBoundingClientRect()); setShowBgPicker(!showBgPicker); }}
-            aria-haspopup="dialog"
-            aria-expanded={showBgPicker}
-            title="Board color"
-            aria-label="Board color"
-          >
-            <Palette size={15} />
-            <span className={styles.boardColorLabel}>Board color</span>
-            <ChevronDown size={13} />
-          </button>
-        )}
       </div>
 
       <div className={styles.right}>
         {activeBoard && (
           <>
-            {/* Desktop search */}
-            <div className={`${styles.searchWrap} ${styles.desktopOnly}`}>
-              <Search size={14} className={styles.searchIcon} />
-              <input
-                ref={desktopSearchRef}
-                className={styles.searchInput}
-                placeholder="Search cards..."
-                aria-label="Search cards"
-                aria-keyshortcuts="/ Control+K Meta+K"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-              {search ? (
-                <button className={styles.searchClear} onClick={() => setSearch('')} aria-label="Clear search">
-                  <X size={12} />
-                </button>
+            {/* Desktop tool strip: icons, or the search box when it is open */}
+            <div className={`${styles.toolStrip} ${styles.desktopOnly}`}>
+              {searchOpen || search ? (
+                <div className={styles.searchWrap} ref={searchWrapRef}>
+                  <Search size={16} className={styles.searchIcon} />
+                  <input
+                    ref={desktopSearchRef}
+                    className={styles.searchInput}
+                    placeholder="Search cards..."
+                    aria-label="Search cards"
+                    aria-keyshortcuts="/ Control+K Meta+K"
+                    value={search}
+                    autoFocus
+                    onChange={(e) => setSearch(e.target.value)}
+                    onBlur={() => { if (!search) setSearchOpen(false); }}
+                    onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); setSearch(''); setSearchOpen(false); } }}
+                  />
+                  <button className={styles.searchClear} onClick={() => { setSearch(''); setSearchOpen(false); }} aria-label="Clear and close search" title="Close search (Esc)">
+                    <X size={14} />
+                  </button>
+                </div>
               ) : (
-                <kbd className={styles.kbd}>{isMac ? '⌘K' : 'Ctrl K'}</kbd>
+                <>
+                  <button className={styles.toolIcon} onClick={() => setSearchOpen(true)} title={`Search cards (${isMac ? '⌘K' : 'Ctrl K'})`} aria-label="Search cards">
+                    <Search size={18} />
+                  </button>
+                  {filters && setFilters && (
+                    <button
+                      className={`${styles.toolIcon} ${activeFilterCount > 0 || showFilters ? styles.toolIconOn : ''}`}
+                      onClick={(e) => { setFilterAnchor(e.currentTarget.getBoundingClientRect()); setShowFilters(!showFilters); }}
+                      aria-haspopup="menu"
+                      aria-expanded={showFilters}
+                      title="Filter cards"
+                      aria-label={activeFilterCount > 0 ? `Filter cards (${activeFilterCount} on)` : 'Filter cards'}
+                    >
+                      <ListFilter size={18} />
+                      {activeFilterCount > 0 && <span className={styles.toolBadge}>{activeFilterCount}</span>}
+                    </button>
+                  )}
+                  <button
+                    className={`${styles.toolIcon} ${showBgPicker ? styles.toolIconOpen : ''}`}
+                    onClick={(e) => { setBgAnchor(e.currentTarget.getBoundingClientRect()); setShowBgPicker(!showBgPicker); }}
+                    aria-haspopup="dialog"
+                    aria-expanded={showBgPicker}
+                    title="Board color"
+                    aria-label="Board color"
+                  >
+                    <Palette size={18} />
+                  </button>
+                  <button
+                    className={`${styles.toolIcon} ${styles.aiIcon}`}
+                    onClick={() => setShowDigest(true)}
+                    title="AI Weekly Digest"
+                    aria-label="AI Weekly Digest"
+                    id="ai-digest-btn"
+                  >
+                    <Sparkles size={18} />
+                  </button>
+                  <span className={styles.toolDivider} aria-hidden="true" />
+                  <button className={styles.toolIcon} onClick={undo} disabled={!canUndo} title={`Undo (${isMac ? '⌘Z' : 'Ctrl+Z'})`} aria-label="Undo">
+                    <Undo2 size={18} />
+                  </button>
+                  <button className={styles.toolIcon} onClick={redo} disabled={!canRedo} title={`Redo (${isMac ? '⇧⌘Z' : 'Ctrl+Shift+Z'})`} aria-label="Redo">
+                    <Redo2 size={18} />
+                  </button>
+                </>
               )}
             </div>
-
-            {/* AI Digest */}
-            <button
-              className={`btn btn-ghost btn-sm ${styles.aiBtn} ${styles.desktopOnly}`}
-              onClick={() => setShowDigest(true)}
-              title="AI Weekly Digest"
-              aria-label="AI Weekly Digest"
-              id="ai-digest-btn"
-            >
-              <Sparkles size={14} />
-              <span className={styles.aiBtnLabel}>AI Digest</span>
-            </button>
-
-            {/* Filter dropdown — desktop (on mobile it is in the Profile sheet) */}
-            {filters && setFilters && (
-              <div className={styles.desktopOnly}>
-                <button
-                  className={`btn btn-ghost btn-sm ${styles.toolBtn} ${activeFilterCount > 0 ? styles.toolBtnOn : ''}`}
-                  onClick={(e) => { setFilterAnchor(e.currentTarget.getBoundingClientRect()); setShowFilters(!showFilters); }}
-                  aria-haspopup="menu"
-                  aria-expanded={showFilters}
-                  title="Filter cards"
-                >
-                  <ListFilter size={15} />
-                  <span className={styles.filterBtnLabel}>Filter</span>
-                  {activeFilterCount > 0 && <span className={styles.filterCount}>{activeFilterCount}</span>}
-                  <ChevronDown size={13} />
-                </button>
-              </div>
-            )}
 
             {/* Mobile search icon */}
             <button
@@ -347,169 +379,70 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
               <Share2 size={14} /> <span className={styles.shareBtnLabel}>Share</span>
             </button>
 
-            {/* Desktop More: undo/redo, automations, template, theme */}
+            {/* Board menu */}
             <div className={`${styles.moreWrap} ${styles.desktopOnly}`}>
               <button
-                className="btn btn-ghost btn-icon"
+                className={styles.toolIcon}
                 onClick={() => setShowDesktopMore(!showDesktopMore)}
                 aria-haspopup="menu"
                 aria-expanded={showDesktopMore}
-                title="More actions"
-                aria-label="More actions"
+                title="Board menu"
+                aria-label="Board menu"
               >
                 <MoreHorizontal size={18} />
               </button>
               {showDesktopMore && (
-                <>
-                  <div className={styles.boardMenuScrim} onClick={() => setShowDesktopMore(false)} />
-                  <div className={styles.moreMenu} role="menu">
-                    {[
-                      { icon: <Undo2 size={15} />, label: 'Undo', hint: isMac ? '⌘Z' : 'Ctrl+Z', action: undo, disabled: !canUndo },
-                      { icon: <Redo2 size={15} />, label: 'Redo', hint: isMac ? '⇧⌘Z' : 'Ctrl+Shift+Z', action: redo, disabled: !canRedo },
-                      { icon: <Zap size={15} />, label: 'Automations', action: () => setShowAutomations(true) },
-                      { icon: <Copy size={15} />, label: 'Save as template', action: async () => { if (await confirm('A copy of this board will be created with the same columns and no cards.', { title: 'Save as template', confirmLabel: 'Create copy', danger: false })) saveBoardAsTemplate(activeBoard.id); } },
-                      { icon: theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />, label: theme === 'dark' ? 'Light theme' : 'Dark theme', action: toggleTheme },
-                    ].map((item) => (
-                      <button
-                        key={item.label}
-                        role="menuitem"
-                        className={styles.moreItem}
-                        disabled={item.disabled}
-                        onClick={() => { setShowDesktopMore(false); item.action(); }}
-                      >
-                        {item.icon}
-                        <span className={styles.moreLabel}>{item.label}</span>
-                        {item.hint && <span className={styles.moreHint}>{item.hint}</span>}
-                      </button>
-                    ))}
-                  </div>
-                </>
+                <HeaderMenu label="Board menu" onClose={() => setShowDesktopMore(false)}>
+                  <HeaderMenuLabel>Board</HeaderMenuLabel>
+                  <HeaderMenuItem icon={<Zap size={16} />} label="Automations" onSelect={() => { setShowDesktopMore(false); setShowAutomations(true); }} />
+                  <HeaderMenuItem
+                    icon={<Copy size={16} />}
+                    label="Save as template"
+                    onSelect={async () => {
+                      setShowDesktopMore(false);
+                      if (await confirm('A copy of this board will be created with the same columns and no cards.', { title: 'Save as template', confirmLabel: 'Create copy', danger: false })) saveBoardAsTemplate(activeBoard.id);
+                    }}
+                  />
+                </HeaderMenu>
               )}
             </div>
           </>
         )}
 
-        <button className={`btn btn-ghost btn-icon ${styles.mobileHide} ${activeBoard ? styles.desktopHide : ''}`} onClick={toggleTheme} title="Toggle theme" aria-label="Toggle theme">
-          {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-        </button>
 
         <NotificationBell />
 
         <div className={styles.profileWrap} style={{ position: 'relative' }}>
           <button
-            className="btn btn-ghost btn-icon"
+            className={`btn btn-ghost btn-icon ${styles.profileBtn}`}
             onClick={onProfileClick}
-            title="User Settings"
+            title="Account"
             aria-label="User Settings"
+            aria-haspopup="menu"
+            aria-expanded={showUserMenu}
           >
-            <User size={16} />
+            <User size={16} className={styles.profileIcon} />
+            {avatar(30)}
           </button>
 
           {showUserMenu && (
-            <>
-              <div
-                style={{ position: 'fixed', inset: 0, zIndex: 90 }}
-                onClick={() => setShowUserMenu(false)}
+            <HeaderMenu label="Account" onClose={() => setShowUserMenu(false)}>
+              <HeaderMenuUser name={displayName} email={session?.user?.email} avatar={avatar(36)} />
+              <HeaderMenuDivider />
+              <HeaderMenuItem icon={<Settings size={16} />} label="Profile & Settings" id="open-profile-settings-btn" onSelect={() => { setShowUserMenu(false); setShowProfile(true); }} />
+              <HeaderMenuItem icon={<BarChart3 size={16} />} label="Analytics" onSelect={() => { setShowUserMenu(false); setShowAnalytics(true); }} />
+              <HeaderMenuItem icon={<Users size={16} />} label="Team workspace" onSelect={() => { setShowUserMenu(false); setShowTeam(true); }} />
+              <HeaderMenuDivider />
+              <HeaderMenuSwitch
+                icon={theme === 'dark' ? <Moon size={16} /> : <Sun size={16} />}
+                label="Theme"
+                value={theme}
+                options={[{ value: 'light', label: 'Light' }, { value: 'dark', label: 'Dark' }]}
+                onChange={() => toggleTheme()}
               />
-              <div
-                className={styles.userDropdown}
-                style={{
-                  position: 'absolute',
-                  top: '100%',
-                  right: 0,
-                  marginTop: '8px',
-                  background: 'var(--bg-surface)',
-                  border: '1px solid var(--border-subtle)',
-                  borderRadius: 'var(--ui-modal-radius)',
-                  width: '220px',
-                  boxShadow: 'var(--shadow-lg)',
-                  zIndex: 100,
-                  padding: '8px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '4px'
-                }}
-              >
-                <div style={{ padding: '6px 12px', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  Account
-                </div>
-                <button
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    width: '100%',
-                    padding: '12px',
-                    background: 'none',
-                    border: 'none',
-                    borderRadius: 'var(--ui-control-radius)',
-                    color: 'var(--text-secondary)',
-                    fontSize: '14px',
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    transition: 'background 0.15s',
-                    minHeight: '44px',
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.background = 'var(--bg-hover)';
-                    e.currentTarget.style.color = 'var(--text-primary)';
-                  }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.background = 'none';
-                    e.currentTarget.style.color = 'var(--text-secondary)';
-                  }}
-                  onClick={() => { setShowUserMenu(false); setShowProfile(true); }}
-                  id="open-profile-settings-btn"
-                >
-                  <Settings size={16} />
-                  Profile {'&'} Settings
-                </button>
-                <button
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: 12, background: 'none', border: 'none', borderRadius: 'var(--ui-control-radius)', color: 'var(--text-secondary)', fontSize: 14, fontWeight: 500, cursor: 'pointer', textAlign: 'left', minHeight: 44 }}
-                  onClick={() => { setShowUserMenu(false); setShowAnalytics(true); }}
-                >
-                  <BarChart3 size={16} /> Analytics
-                </button>
-                <button
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: 12, background: 'none', border: 'none', borderRadius: 'var(--ui-control-radius)', color: 'var(--text-secondary)', fontSize: 14, fontWeight: 500, cursor: 'pointer', textAlign: 'left', minHeight: 44 }}
-                  onClick={() => { setShowUserMenu(false); setShowTeam(true); }}
-                >
-                  <Users size={16} /> Team workspace
-                </button>
-                <button
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    width: '100%',
-                    padding: '12px',
-                    background: 'none',
-                    border: 'none',
-                    borderRadius: 'var(--ui-control-radius)',
-                    color: 'var(--text-secondary)',
-                    fontSize: '14px',
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    transition: 'background 0.15s',
-                    minHeight: '44px',
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.background = 'rgba(255, 86, 48, 0.1)';
-                    e.currentTarget.style.color = '#FF5630';
-                  }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.background = 'none';
-                    e.currentTarget.style.color = 'var(--text-secondary)';
-                  }}
-                  onClick={() => signOut({ callbackUrl: '/login' })}
-                >
-                  <LogOut size={16} />
-                  Sign Out
-                </button>
-              </div>
-            </>
+              <HeaderMenuDivider />
+              <HeaderMenuItem icon={<LogOut size={16} />} label="Sign out" danger onSelect={() => signOut({ callbackUrl: '/login' })} />
+            </HeaderMenu>
           )}
         </div>
       </div>

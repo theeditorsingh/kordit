@@ -1,7 +1,10 @@
 'use client';
+import { useEffect, useRef } from 'react';
+import { X } from 'lucide-react';
 import { useBoardContext } from '@/context/BoardContext';
-import { X, ExternalLink, ArrowLeft } from 'lucide-react';
-import { TEMPLATES, BoardTemplate } from '@/utils/templates';
+import { useDialogFocus } from '@/hooks/useDialogFocus';
+import type { BoardTemplate } from '@/utils/templates';
+import TemplatePicker from './TemplatePicker';
 import styles from './TemplateModal.module.css';
 
 interface Props {
@@ -10,45 +13,42 @@ interface Props {
 
 export default function TemplateModal({ onClose }: Props) {
   const { createBoard } = useBoardContext();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(dialogRef);
 
-  const handleSelect = (template: BoardTemplate) => {
-    createBoard(template.title, template.columns);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); onClose(); } };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  async function handleUse(template: BoardTemplate) {
+    await createBoard(template.title, template.columns); // opens the new board
     onClose();
-  };
+  }
 
   return (
     <div className={styles.overlay} onClick={onClose}>
-      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+      <div
+        ref={dialogRef}
+        className={styles.modal}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="template-modal-title"
+        tabIndex={-1}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className={styles.header}>
-          <h2>
-            <button className={styles.closeBtn} style={{ marginRight: 8 }} onClick={onClose}>
-              <ArrowLeft size={16} />
-            </button>
-            Create from template
-          </h2>
-          <button className={styles.closeBtn} onClick={onClose}>
-            <X size={16} />
+          <div>
+            <h2 id="template-modal-title">Create from template</h2>
+            <p>Pick a template to see its board, then create it.</p>
+          </div>
+          <button className={styles.closeBtn} onClick={onClose} aria-label="Close">
+            <X size={18} />
           </button>
         </div>
-
         <div className={styles.content}>
-          <div className={styles.sectionTitle}>Top templates</div>
-          <div className={styles.templateList}>
-            {TEMPLATES.map((tpl) => (
-              <button key={tpl.id} className={styles.templateItem} onClick={() => handleSelect(tpl)}>
-                <div className={styles.templateIcon} style={{ backgroundColor: tpl.color }} />
-                <span className={styles.templateTitle}>{tpl.title}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className={styles.footer}>
-          <div className={styles.exploreInfo}>
-            <ExternalLink size={16} style={{ flexShrink: 0, marginTop: 2 }} />
-            <span>See hundreds of templates from the Kordit community</span>
-          </div>
-          <button className={styles.exploreBtn}>Explore templates</button>
+          <TemplatePicker onUse={handleUse} fill />
         </div>
       </div>
     </div>

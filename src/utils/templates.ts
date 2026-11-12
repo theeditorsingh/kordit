@@ -6,6 +6,8 @@ export interface TemplateColumn {
 export interface BoardTemplate {
   id: string;
   title: string;
+  /** One line shown in the template preview */
+  description: string;
   color: string;
   columns: TemplateColumn[];
 }
@@ -14,6 +16,7 @@ export const TEMPLATES: BoardTemplate[] = [
   { 
     id: '1', 
     title: '1-on-1 Meeting Agenda', 
+    description: "Keep a running agenda for regular one-to-one meetings.",
     color: '#8b5a2b',
     columns: [
       { title: 'To Discuss', color: '#0052CC' },
@@ -24,6 +27,7 @@ export const TEMPLATES: BoardTemplate[] = [
   { 
     id: '2', 
     title: 'Agile Board Template | Kordit', 
+    description: "Plan sprints and move work from backlog to done.",
     color: '#ff7f50',
     columns: [
       { title: 'Backlog', color: '#172B4D' },
@@ -36,6 +40,7 @@ export const TEMPLATES: BoardTemplate[] = [
   { 
     id: '3', 
     title: 'Company Overview', 
+    description: "Share company goals, department updates and key resources.",
     color: '#87ceeb',
     columns: [
       { title: 'Company Goals', color: '#0052CC' },
@@ -46,6 +51,7 @@ export const TEMPLATES: BoardTemplate[] = [
   { 
     id: '4', 
     title: 'Design Huddle', 
+    description: "Collect inspiration and move designs through feedback to approval.",
     color: '#ff69b4',
     columns: [
       { title: 'Inspiration', color: '#FF5630' },
@@ -57,6 +63,7 @@ export const TEMPLATES: BoardTemplate[] = [
   { 
     id: '5', 
     title: 'Go To Market Strategy Template', 
+    description: "Plan a launch from market research to the launch plan.",
     color: '#00ced1',
     columns: [
       { title: 'Market Research', color: '#0052CC' },
@@ -68,6 +75,7 @@ export const TEMPLATES: BoardTemplate[] = [
   { 
     id: '6', 
     title: 'Mise-En-Place Personal Productivity', 
+    description: "Sort personal tasks into today, this week and later.",
     color: '#556b2f',
     columns: [
       { title: 'Inbox', color: '#172B4D' },
@@ -79,6 +87,7 @@ export const TEMPLATES: BoardTemplate[] = [
   { 
     id: '7', 
     title: 'Project Management', 
+    description: "Track project work, including what is blocked.",
     color: '#9370db',
     columns: [
       { title: 'To Do', color: '#0052CC' },
@@ -90,6 +99,7 @@ export const TEMPLATES: BoardTemplate[] = [
   { 
     id: '8', 
     title: 'Remote Team Meetings', 
+    description: "Run remote meetings with an agenda, decisions and follow-ups.",
     color: '#e6e6fa',
     columns: [
       { title: 'Agenda', color: '#0052CC' },
@@ -101,6 +111,7 @@ export const TEMPLATES: BoardTemplate[] = [
   { 
     id: '9', 
     title: 'Simple Project Board', 
+    description: "A simple three-step board: to do, doing, done.",
     color: '#32cd32',
     columns: [
       { title: 'To Do', color: '#0052CC' },
@@ -111,6 +122,7 @@ export const TEMPLATES: BoardTemplate[] = [
   { 
     id: '10', 
     title: 'Teaching: Weekly Planning', 
+    description: "Plan lessons and tasks for each day of the school week.",
     color: '#ffa07a',
     columns: [
       { title: 'Monday', color: '#0052CC' },
