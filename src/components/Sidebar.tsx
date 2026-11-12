@@ -1,5 +1,6 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 const VISIBLE_BOARDS = 8; // the rest sit behind "Show more"
 import { useSession } from 'next-auth/react';
 import { usePathname, useRouter } from 'next/navigation';
@@ -10,7 +11,7 @@ import { useBoardContext } from '@/context/BoardContext';
 import { useConfirm } from './ConfirmDialog';
 import {
   Plus, Trash2, ChevronDown, ChevronsLeft, ChevronsRight, Users, Edit2, Check, X,
-  LayoutTemplate, Star, Archive, Activity, Home, CheckSquare, Inbox
+  LayoutTemplate, Star, Archive, Activity, Home, CheckSquare, Inbox, MoreHorizontal, FolderInput
 } from 'lucide-react';
 import MembersPanel from './MembersPanel';
 import TemplateModal from './TemplateModal';
@@ -40,6 +41,16 @@ export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: bool
   const [showTemplates, setShowTemplates] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [showAllBoards, setShowAllBoards] = useState(false);
+  // Board ⋯ menu: which board, and where its button is (the menu is a fixed popover)
+  const [menu, setMenu] = useState<{ boardId: string; rect: DOMRect } | null>(null);
+  useEffect(() => {
+    if (!menu) return;
+    const close = () => setMenu(null);
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('resize', close);
+    return () => { window.removeEventListener('keydown', onKey); window.removeEventListener('resize', close); };
+  }, [menu]);
   const [collapsed, setCollapsed] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('kordit-sidebar-collapsed') === 'true';
@@ -136,9 +147,22 @@ export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: bool
       >
 
 
+      {/* Collapse toggle — desktop only, top of the sidebar */}
+      <div className={styles.collapseRowTop}>
+        <button
+          className={styles.collapseBtn}
+          onClick={toggleCollapsed}
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-expanded={!collapsed}
+        >
+          {collapsed ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
+        </button>
+      </div>
+
       {/* Scrollable Boards Area */}
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto' }}>
-        <div style={{ padding: '12px 8px 0 8px' }}>
+        <div style={{ padding: '4px 8px 0 8px' }}>
           {/* Primary navigation */}
           <nav aria-label="Main" className={styles.navList}>
             {[
@@ -169,17 +193,16 @@ export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: bool
           </nav>
 
           {/* Workspaces */}
-          <div className={styles.boardsHeader}>
-            {!isCollapsed && <span className={styles.boardsHeading}>Workspaces</span>}
-            <button
-              className={styles.headerAddBtn}
-              onClick={() => { if (isCollapsed) toggleCollapsed(); setAddingWs(true); }}
-              title="New workspace"
-              aria-label="New workspace"
-            >
-              <Plus size={16} />
-            </button>
-          </div>
+          {isCollapsed ? (
+            workspaces.length > 0 && <div className={styles.collapsedDivider} role="separator" aria-label="Workspaces" />
+          ) : (
+            <div className={styles.boardsHeader}>
+              <span className={styles.boardsHeading}>Workspaces</span>
+              <button className={styles.headerAddBtn} onClick={() => setAddingWs(true)} title="New workspace" aria-label="New workspace">
+                <Plus size={16} />
+              </button>
+            </div>
+          )}
           {addingWs && !isCollapsed && (
             <div className={styles.addForm}>
               <input
@@ -197,7 +220,7 @@ export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: bool
               </div>
             </div>
           )}
-          <ul className={styles.boardList} style={{ marginBottom: 14 }}>
+          <ul className={styles.boardList} style={{ marginBottom: isCollapsed ? 0 : 14 }}>
             {workspaces.map((ws) => {
               const href = `/workspaces/${ws.slug}`;
               const active = pathname === href;
@@ -221,18 +244,16 @@ export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: bool
             )}
           </ul>
 
-          <div className={styles.boardsHeader}>
-            {!isCollapsed && <span className={styles.boardsHeading}>Boards</span>}
-            <button
-              className={styles.headerAddBtn}
-              onClick={() => { if (isCollapsed) toggleCollapsed(); setAdding(true); }}
-              title="New board"
-              aria-label="New board"
-              id="btn-new-board"
-            >
-              <Plus size={16} />
-            </button>
-          </div>
+          {isCollapsed ? (
+            <div className={styles.collapsedDivider} role="separator" aria-label="Boards" />
+          ) : (
+            <div className={styles.boardsHeader}>
+              <span className={styles.boardsHeading}>Boards</span>
+              <button className={styles.headerAddBtn} onClick={() => setAdding(true)} title="New board" aria-label="New board" id="btn-new-board">
+                <Plus size={16} />
+              </button>
+            </div>
+          )}
           {adding && !isCollapsed && (
             <div className={styles.addForm}>
               <input
@@ -285,33 +306,19 @@ export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: bool
                     {!isCollapsed && board.isFavorite && <Star size={11} style={{ color: '#FFC400', fill: '#FFC400', flexShrink: 0 }} />}
                   </button>
                     {!isCollapsed && (
-                      <details className={styles.boardActions}><summary aria-label={`Actions for ${board.title}`}>...</summary><div className={styles.boardActionMenu}>
-                        <span className={styles.actionBtn} role="button" tabIndex={0} aria-label={board.isFavorite ? 'Remove from favourites' : 'Add to favourites'} title={board.isFavorite ? 'Unfavorite' : 'Favorite'} onClick={(e) => { e.stopPropagation(); toggleFavorite(board.id); }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); toggleFavorite(board.id); } }}>
-                          <Star size={12} style={board.isFavorite ? { color: '#FFC400', fill: '#FFC400' } : {}} />
-                        </span>
-                        <span className={styles.actionBtn} role="button" tabIndex={0} aria-label="Rename board" title="Rename board" onClick={(e) => { e.stopPropagation(); startEdit(board.id, board.title); }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); startEdit(board.id, board.title); } }}>
-                          <Edit2 size={12}/>
-                        </span>
-                        <span className={styles.actionBtn} role="button" tabIndex={0} aria-label="Archive board" title="Archive board" onClick={(e) => { e.stopPropagation(); handleArchive(board.id); }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); handleArchive(board.id); } }}>
-                          <Archive size={12}/>
-                        </span>
-                        {workspaces.length > 0 && board.members.some((m) => m.id === session?.user?.id && m.role === 'Admin') && (
-                          <select
-                            className={styles.wsSelect}
-                            aria-label={`Workspace for ${board.title}`}
-                            title="Move to workspace"
-                            value={board.workspaceId ?? ''}
-                            onClick={(e) => e.stopPropagation()}
-                            onChange={(e) => moveBoardToWorkspace(board.id, e.target.value || null)}
-                          >
-                            <option value="">No workspace</option>
-                            {workspaces.map((ws) => <option key={ws.id} value={ws.id}>{ws.name}</option>)}
-                          </select>
-                        )}
-                        <span className={styles.actionBtn} role="button" tabIndex={0} aria-label="Delete board" title="Delete board" onClick={(e) => { e.stopPropagation(); deleteBoard(board.id); }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); deleteBoard(board.id); } }}>
-                          <Trash2 size={12}/>
-                        </span>
-                      </div></details>
+                      <button
+                        className={`${styles.boardMenuBtn} ${menu?.boardId === board.id ? styles.boardMenuBtnOpen : ''}`}
+                        aria-label={`Actions for ${board.title}`}
+                        aria-haspopup="menu"
+                        aria-expanded={menu?.boardId === board.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setMenu((m) => (m?.boardId === board.id ? null : { boardId: board.id, rect }));
+                        }}
+                      >
+                        <MoreHorizontal size={16} />
+                      </button>
                     )}
                   </div>
                 )}
@@ -390,17 +397,55 @@ export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: bool
         </>
       )}
 
-      {/* Collapse toggle — desktop only, bottom-left */}
-      <div className={styles.collapseRow}>
-        <button
-          className={styles.collapseBtn}
-          onClick={toggleCollapsed}
-          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          {collapsed ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
-        </button>
-      </div>
+
+      {menu && typeof document !== 'undefined' && (() => {
+        const board = state.boards.find((b) => b.id === menu.boardId);
+        if (!board) return null;
+        const canMove = workspaces.length > 0 && board.members.some((m) => m.id === session?.user?.id && m.role === 'Admin');
+        const width = 232;
+        const height = canMove ? 252 : 196;
+        const left = Math.max(8, Math.min(menu.rect.right - width, window.innerWidth - width - 8));
+        const below = menu.rect.bottom + 6;
+        const top = below + height > window.innerHeight - 8 ? Math.max(8, menu.rect.top - height - 6) : below;
+        const close = () => setMenu(null);
+        return createPortal(
+          <>
+            <div className={styles.menuScrim} onClick={close} />
+            <div className={styles.boardMenu} role="menu" aria-label={`Actions for ${board.title}`} style={{ top, left, width }}>
+              <div className={styles.boardMenuTitle} title={board.title}>{board.title}</div>
+              <button role="menuitem" className={styles.boardMenuItem} onClick={() => { close(); toggleFavorite(board.id); }}>
+                <Star size={15} style={board.isFavorite ? { color: '#FFC400', fill: '#FFC400' } : undefined} />
+                {board.isFavorite ? 'Remove from favourites' : 'Add to favourites'}
+              </button>
+              <button role="menuitem" className={styles.boardMenuItem} onClick={() => { close(); startEdit(board.id, board.title); }}>
+                <Edit2 size={15} /> Rename
+              </button>
+              {canMove && (
+                <label className={styles.boardMenuSelect}>
+                  <FolderInput size={15} />
+                  <span className={styles.srOnly}>Workspace for {board.title}</span>
+                  <select
+                    aria-label={`Workspace for ${board.title}`}
+                    value={board.workspaceId ?? ''}
+                    onChange={(e) => { moveBoardToWorkspace(board.id, e.target.value || null); close(); }}
+                  >
+                    <option value="">No workspace</option>
+                    {workspaces.map((ws) => <option key={ws.id} value={ws.id}>{ws.name}</option>)}
+                  </select>
+                </label>
+              )}
+              <button role="menuitem" className={styles.boardMenuItem} onClick={() => { close(); handleArchive(board.id); }}>
+                <Archive size={15} /> Archive
+              </button>
+              <div className={styles.boardMenuDivider} />
+              <button role="menuitem" className={`${styles.boardMenuItem} ${styles.boardMenuDanger}`} onClick={() => { close(); deleteBoard(board.id); }}>
+                <Trash2 size={15} /> Delete board
+              </button>
+            </div>
+          </>,
+          document.body,
+        );
+      })()}
 
       {showTemplates && <TemplateModal onClose={() => setShowTemplates(false)} />}
       {showArchived && <ArchivedBoardsModal onClose={() => setShowArchived(false)} />}

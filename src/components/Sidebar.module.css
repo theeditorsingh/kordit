@@ -317,9 +317,9 @@
 }
 .boardLinkMuted:hover { background: var(--bg-hover); color: var(--text-primary); }
 
-.collapseRow { flex-shrink: 0; padding: 10px 12px 14px; display: flex; }
-.collapsed .collapseRow { justify-content: center; padding-inline: 0; }
-.collapseRow .collapseBtn {
+.collapseRowTop { flex-shrink: 0; padding: 10px 10px 2px; display: flex; justify-content: flex-end; }
+.collapsed .collapseRowTop { justify-content: center; padding-inline: 0; }
+.collapseRowTop .collapseBtn {
   width: 34px; height: 34px;
   border: 1px solid var(--border-subtle);
   border-bottom: 1px solid var(--border-subtle);
@@ -328,10 +328,10 @@
   color: var(--text-secondary);
   box-shadow: 0 1px 2px rgba(9, 30, 66, 0.06);
 }
-.collapseRow .collapseBtn:hover { background: var(--bg-hover); color: var(--text-primary); }
+.collapseRowTop .collapseBtn:hover { background: var(--bg-hover); color: var(--text-primary); }
 
 @media (max-width: 768px) {
-  .collapseRow { display: none; }
+  .collapseRowTop { display: none; }
   .boardTitle { white-space: normal; }
 }
 
@@ -369,4 +369,60 @@
 @media (max-width: 768px) {
   .navItem { min-height: 44px; }
   .wsSelect { height: 44px; }
+}
+
+/* ─── Collapsed: section dividers instead of "+" buttons ─── */
+.collapsedDivider { height: 1px; margin: 10px 10px; background: var(--border-subtle); }
+
+/* ─── Board ⋯ button + popover menu ─── */
+.boardMenuBtn {
+  flex-shrink: 0;
+  width: 28px; height: 28px; margin-right: 4px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 7px; color: var(--text-secondary);
+}
+.boardMenuBtn:hover, .boardMenuBtnOpen { background: color-mix(in srgb, var(--text-primary) 8%, transparent); color: var(--text-primary); }
+@media (hover: hover) and (min-width: 769px) {
+  .boardItem:not(:hover):not(:focus-within):not(.active) .boardMenuBtn:not(.boardMenuBtnOpen) { opacity: 0; }
+}
+@media (max-width: 768px) {
+  .boardMenuBtn { width: 44px; height: 44px; }
+}
+.menuScrim { position: fixed; inset: 0; z-index: 900; }
+.boardMenu {
+  position: fixed; z-index: 901;
+  padding: 6px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  display: flex; flex-direction: column; gap: 1px;
+}
+.boardMenuTitle {
+  padding: 6px 10px 8px; font-size: 12px; font-weight: 600; color: var(--text-muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.boardMenuItem {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  min-height: 36px; padding: 8px 10px; border-radius: 8px;
+  font-size: 13.5px; font-weight: 500; color: var(--text-primary); text-align: left;
+}
+.boardMenuItem svg { color: var(--text-secondary); flex-shrink: 0; }
+.boardMenuItem:hover, .boardMenuItem:focus-visible { background: var(--bg-hover); }
+.boardMenuDanger, .boardMenuDanger svg { color: #DE350B; }
+.boardMenuDanger:hover { background: rgba(222, 53, 11, 0.08); }
+.boardMenuDivider { height: 1px; margin: 4px 6px; background: var(--border-subtle); }
+.boardMenuSelect {
+  display: flex; align-items: center; gap: 10px; padding: 4px 6px 4px 10px; min-height: 40px;
+}
+.boardMenuSelect svg { color: var(--text-secondary); flex-shrink: 0; }
+.boardMenuSelect select {
+  flex: 1; min-width: 0; height: 32px; padding: 0 6px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--bg-surface);
+  color: var(--text-primary); font: inherit; font-size: 13px;
+}
+.srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (max-width: 768px) {
+  .boardMenuItem { min-height: 44px; font-size: 15px; }
+  .boardMenuSelect select { height: 40px; }
 }
