@@ -1,6 +1,6 @@
 'use client';
 import React, { createContext, useContext, useEffect, useReducer, useRef, useCallback, useState } from 'react';
-import { AppState, Board, Card, Column, Member } from '@/types';
+import { AppState, Board, Card, Column, Member, Workspace } from '@/types';
 import {
   createBoardAction, createCardAction, createColumnAction, moveCardAction,
   deleteCardAction, bulkDeleteCardsAction, bulkMoveCardsAction, bulkCopyCardsAction,
@@ -32,7 +32,7 @@ const UNDOABLE_ACTIONS = new Set([
 ]);
 
 type Action =
-  | { type: 'SET_ACTIVE_BOARD'; boardId: string }
+  | { type: 'SET_ACTIVE_BOARD'; boardId: string | null }
   | { type: 'ADD_BOARD'; board: Board }
   | { type: 'UPDATE_BOARD_TITLE'; boardId: string; title: string }
   | { type: 'UPDATE_BOARD'; boardId: string; updates: Partial<Board> }
@@ -446,7 +446,7 @@ function reducer(full: FullState, action: Action): FullState {
     return { present: nextPresent, past: full.past.map(fix), future: full.future.map(fix) };
   }
 
-  if (UNDOABLE_ACTIONS.has(action.type) && 'boardId' in action) {
+  if (UNDOABLE_ACTIONS.has(action.type) && 'boardId' in action && action.boardId) {
     const before = full.present.boards.find((b) => b.id === action.boardId);
     const after = nextPresent.boards.find((b) => b.id === action.boardId);
     if (before && after && before !== after) {
@@ -464,7 +464,16 @@ interface BoardContextType {
   state: AppState;
   activeBoard: Board | null;
   dispatch: React.Dispatch<Action>;
-  createBoard: (title: string, customColumns?: { title: string, color: string }[]) => Promise<void>;
+  createBoard: (title: string, customColumns?: { title: string, color: string }[], workspaceId?: string | null) => Promise<void>;
+  /** Workspaces the user belongs to; `workspacesLoaded` is false until the first load finishes */
+  workspaces: Workspace[];
+  workspacesLoaded: boolean;
+  refreshWorkspaces: () => Promise<void>;
+  createWorkspace: (name: string) => Promise<Workspace | null>;
+  renameWorkspace: (workspaceId: string, name: string) => Promise<boolean>;
+  deleteWorkspace: (workspaceId: string) => Promise<boolean>;
+  /** Move a board into a workspace, or out of any (null). Board admins only. */
+  moveBoardToWorkspace: (boardId: string, workspaceId: string | null) => Promise<void>;
   deleteBoard: (boardId: string) => Promise<void>;
   createCard: (boardId: string, columnId: string, title: string, description?: string, dueDate?: string | null) => Promise<string>;
   createColumn: (boardId: string, title: string) => Promise<void>;
@@ -541,6 +550,7 @@ function formatPrismaBoards(prismaBoards: any[]): Board[] {
       labelColors: Array.isArray(pb.labelColors) ? pb.labelColors : [],
       isArchived: pb.isArchived || false,
       isFavorite: pb.isFavorite || false,
+      workspaceId: pb.workspaceId ?? null,
       columns: pb.columns.map((col: any) => ({
         id: col.id,
         title: col.title,
@@ -729,9 +739,86 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
 
   // ── Board Actions ─────────────────────────────────────────────────────────
 
-  async function createBoard(title: string, customColumns?: { title: string, color: string }[]) {
+  // ── Workspaces ────────────────────────────────────────────────────────────
+
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [workspacesLoaded, setWorkspacesLoaded] = useState(false);
+
+  const refreshWorkspaces = useCallback(async () => {
     try {
-      const dbBoard = await createBoardAction(title, customColumns);
+      const res = await fetch('/api/workspaces', { cache: 'no-store' });
+      if (!res.ok) return;
+      const data = await res.json();
+      setWorkspaces(Array.isArray(data.workspaces) ? data.workspaces : []);
+    } catch {
+      // Offline or unavailable: keep what we have
+    } finally {
+      setWorkspacesLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    const timer = setTimeout(refreshWorkspaces, 0);
+    return () => clearTimeout(timer);
+  }, [session?.user?.id, refreshWorkspaces]);
+
+  async function createWorkspace(name: string): Promise<Workspace | null> {
+    try {
+      const res = await fetch('/api/workspaces', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Request failed');
+      setWorkspaces((list) => [...list, data.workspace]);
+      return data.workspace as Workspace;
+    } catch (e) {
+      reportFailure("Couldn't create the workspace.", e);
+      return null;
+    }
+  }
+
+  async function renameWorkspace(workspaceId: string, name: string) {
+    const before = workspaces;
+    setWorkspaces((list) => list.map((w) => (w.id === workspaceId ? { ...w, name } : w)));
+    try {
+      const res = await fetch(`/api/workspaces/${encodeURIComponent(workspaceId)}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Request failed');
+      return true;
+    } catch (e) {
+      setWorkspaces(before);
+      reportFailure("Couldn't rename the workspace.", e);
+      return false;
+    }
+  }
+
+  async function deleteWorkspace(workspaceId: string) {
+    try {
+      const res = await fetch(`/api/workspaces/${encodeURIComponent(workspaceId)}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Request failed');
+      setWorkspaces((list) => list.filter((w) => w.id !== workspaceId));
+      // Its boards stay, just without a workspace
+      state.boards
+        .filter((b) => b.workspaceId === workspaceId)
+        .forEach((b) => dispatch({ type: 'UPDATE_BOARD', boardId: b.id, updates: { workspaceId: null } }));
+      return true;
+    } catch (e) {
+      reportFailure("Couldn't delete the workspace.", e);
+      return false;
+    }
+  }
+
+  async function moveBoardToWorkspace(boardId: string, workspaceId: string | null) {
+    await handleUpdateBoard(boardId, { workspaceId });
+    refreshWorkspaces(); // board counts changed
+  }
+
+  async function createBoard(title: string, customColumns?: { title: string, color: string }[], workspaceId?: string | null) {
+    try {
+      const dbBoard = await createBoardAction(title, customColumns, workspaceId);
+      if (workspaceId) refreshWorkspaces();
       const formatted = formatPrismaBoards([{...dbBoard, cards: []}])[0];
       dispatch({ type: 'ADD_BOARD', board: formatted });
       if (session?.user?.username) {
@@ -1100,14 +1187,16 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
     }
   }
 
+  // null clears it (pages that are not a board, e.g. Home or Inbox)
   function setActiveBoardId(id: string | null) {
-    if (id) dispatch({ type: 'SET_ACTIVE_BOARD', boardId: id });
+    dispatch({ type: 'SET_ACTIVE_BOARD', boardId: id });
   }
 
   return (
     <BoardContext.Provider value={{
       state, activeBoard, dispatch,
-      createBoard, deleteBoard, createCard, createColumn, deleteColumn, moveCard, deleteCard,
+      createBoard, workspaces, workspacesLoaded, refreshWorkspaces, createWorkspace, renameWorkspace, deleteWorkspace, moveBoardToWorkspace,
+      deleteBoard, createCard, createColumn, deleteColumn, moveCard, deleteCard,
       updateCard: handleUpdateCard, moveColumn, updateColumn: handleUpdateColumn,
       updateBoard: handleUpdateBoard, toggleFavorite, archiveBoard,
       saveBoardAsTemplate: handleSaveBoardAsTemplate,

@@ -3,6 +3,7 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
+import { isReservedUsername } from '@/utils/reservedUsernames';
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 
@@ -41,6 +42,10 @@ export async function updateProfileAction(input: UpdateProfileInput) {
     const existing = await prisma.user.findUnique({ where: { username: trimmed } });
     if (existing && existing.id !== user.id) {
       throw new Error("This username is already taken");
+    }
+    // Reserved names clash with app routes; someone who already has one may keep it
+    if (!(existing && existing.id === user.id) && isReservedUsername(trimmed)) {
+      throw new Error("That username is reserved. Please choose another.");
     }
   }
 

@@ -2,12 +2,15 @@
 import { useState } from 'react';
 const VISIBLE_BOARDS = 8; // the rest sit behind "Show more"
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { useNotifications } from '@/hooks/useNotifications';
+import { workspaceInitial, workspaceTileColor } from '@/utils/workspaceTile';
 import { useBoardContext } from '@/context/BoardContext';
 import { useConfirm } from './ConfirmDialog';
 import {
   Plus, Trash2, ChevronDown, ChevronsLeft, ChevronsRight, Users, Edit2, Check, X,
-  LayoutTemplate, Star, Archive, Activity
+  LayoutTemplate, Star, Archive, Activity, Home, CheckSquare, Inbox
 } from 'lucide-react';
 import MembersPanel from './MembersPanel';
 import TemplateModal from './TemplateModal';
@@ -20,7 +23,12 @@ import { getBoardBackgroundStyle } from '@/utils/boardBackground';
 export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: boolean; onClose?: () => void }) {
   const { data: session } = useSession();
   const router = useRouter();
-  const { state, activeBoard, dispatch, createBoard, deleteBoard: contextDeleteBoard, toggleFavorite, archiveBoard, updateBoard } = useBoardContext();
+  const { state, activeBoard, dispatch, createBoard, deleteBoard: contextDeleteBoard, toggleFavorite, archiveBoard, updateBoard,
+    workspaces, createWorkspace, moveBoardToWorkspace } = useBoardContext();
+  const pathname = usePathname();
+  const { unread } = useNotifications();
+  const [addingWs, setAddingWs] = useState(false);
+  const [wsName, setWsName] = useState('');
   const confirm = useConfirm();
   const [newBoardTitle, setNewBoardTitle] = useState('');
   const [adding, setAdding] = useState(false);
@@ -55,6 +63,18 @@ export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: bool
     createBoard(newBoardTitle.trim());
     setNewBoardTitle('');
     setAdding(false);
+  }
+
+  async function handleAddWorkspace() {
+    const name = wsName.trim();
+    if (!name) return;
+    const ws = await createWorkspace(name);
+    if (ws) {
+      setWsName('');
+      setAddingWs(false);
+      router.push(`/workspaces/${ws.slug}`);
+      onClose?.();
+    }
   }
 
   function startEdit(id: string, title: string) {
@@ -119,6 +139,88 @@ export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: bool
       {/* Scrollable Boards Area */}
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto' }}>
         <div style={{ padding: '12px 8px 0 8px' }}>
+          {/* Primary navigation */}
+          <nav aria-label="Main" className={styles.navList}>
+            {[
+              { href: '/', label: 'Home', icon: <Home size={17} />, badge: 0 },
+              { href: '/my-tasks', label: 'My Tasks', icon: <CheckSquare size={17} />, badge: 0 },
+              { href: '/inbox', label: 'Inbox', icon: <Inbox size={17} />, badge: unread },
+            ].map((item) => {
+              const active = pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`${styles.navItem} ${active ? styles.navItemActive : ''}`}
+                  aria-current={active ? 'page' : undefined}
+                  title={isCollapsed ? item.label : undefined}
+                  onClick={() => onClose?.()}
+                >
+                  <span className={styles.navIcon}>{item.icon}</span>
+                  {!isCollapsed && <span className={styles.navLabel}>{item.label}</span>}
+                  {item.badge > 0 && (
+                    <span className={`${styles.navBadge} ${isCollapsed ? styles.navBadgeDot : ''}`} aria-label={`${item.badge} unread`}>
+                      {isCollapsed ? '' : item.badge > 99 ? '99+' : item.badge}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </nav>
+
+          {/* Workspaces */}
+          <div className={styles.boardsHeader}>
+            {!isCollapsed && <span className={styles.boardsHeading}>Workspaces</span>}
+            <button
+              className={styles.headerAddBtn}
+              onClick={() => { if (isCollapsed) toggleCollapsed(); setAddingWs(true); }}
+              title="New workspace"
+              aria-label="New workspace"
+            >
+              <Plus size={16} />
+            </button>
+          </div>
+          {addingWs && !isCollapsed && (
+            <div className={styles.addForm}>
+              <input
+                className="input"
+                placeholder="Workspace name..."
+                value={wsName}
+                maxLength={60}
+                onChange={(e) => setWsName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleAddWorkspace(); if (e.key === 'Escape') setAddingWs(false); }}
+                autoFocus
+              />
+              <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                <button className="btn btn-primary btn-sm" onClick={handleAddWorkspace}>Create</button>
+                <button className="btn btn-ghost btn-sm" onClick={() => setAddingWs(false)}>Cancel</button>
+              </div>
+            </div>
+          )}
+          <ul className={styles.boardList} style={{ marginBottom: 14 }}>
+            {workspaces.map((ws) => {
+              const href = `/workspaces/${ws.slug}`;
+              const active = pathname === href;
+              return (
+                <li key={ws.id}>
+                  <Link
+                    href={href}
+                    className={`${styles.navItem} ${active ? styles.navItemActive : ''}`}
+                    aria-current={active ? 'page' : undefined}
+                    title={isCollapsed ? ws.name : undefined}
+                    onClick={() => onClose?.()}
+                  >
+                    <span className={styles.wsTile} style={{ background: workspaceTileColor(ws.name) }} aria-hidden="true">{workspaceInitial(ws.name)}</span>
+                    {!isCollapsed && <span className={styles.navLabel}>{ws.name}</span>}
+                  </Link>
+                </li>
+              );
+            })}
+            {workspaces.length === 0 && !isCollapsed && !addingWs && (
+              <li className={styles.navHint}>Group boards and teammates into a workspace.</li>
+            )}
+          </ul>
+
           <div className={styles.boardsHeader}>
             {!isCollapsed && <span className={styles.boardsHeading}>Boards</span>}
             <button
@@ -193,6 +295,19 @@ export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: bool
                         <span className={styles.actionBtn} role="button" tabIndex={0} aria-label="Archive board" title="Archive board" onClick={(e) => { e.stopPropagation(); handleArchive(board.id); }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); handleArchive(board.id); } }}>
                           <Archive size={12}/>
                         </span>
+                        {workspaces.length > 0 && board.members.some((m) => m.id === session?.user?.id && m.role === 'Admin') && (
+                          <select
+                            className={styles.wsSelect}
+                            aria-label={`Workspace for ${board.title}`}
+                            title="Move to workspace"
+                            value={board.workspaceId ?? ''}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => moveBoardToWorkspace(board.id, e.target.value || null)}
+                          >
+                            <option value="">No workspace</option>
+                            {workspaces.map((ws) => <option key={ws.id} value={ws.id}>{ws.name}</option>)}
+                          </select>
+                        )}
                         <span className={styles.actionBtn} role="button" tabIndex={0} aria-label="Delete board" title="Delete board" onClick={(e) => { e.stopPropagation(); deleteBoard(board.id); }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); deleteBoard(board.id); } }}>
                           <Trash2 size={12}/>
                         </span>

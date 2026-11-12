@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
+import { isReservedUsername } from '@/utils/reservedUsernames';
 import bcrypt from "bcryptjs";
 
 export async function POST(req: Request) {
@@ -33,6 +34,9 @@ export async function POST(req: Request) {
 
     if (existingUser && existingUser.id !== session.user.id) {
       return new NextResponse("Username is already taken", { status: 400 });
+    }
+    if (!(existingUser && existingUser.id === session.user.id) && isReservedUsername(trimmedUsername)) {
+      return new NextResponse("That username is reserved. Please choose another.", { status: 400 });
     }
 
     const updateData: { username: string; password?: string } = { username: trimmedUsername };

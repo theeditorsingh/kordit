@@ -28,6 +28,7 @@ export async function loadBoardsForUser(userId: string) {
       createdAt: true,
       updatedAt: true,
       ownerId: true,
+      workspaceId: true,
       columns: { orderBy: { order: 'asc' } },
       cards: { orderBy: { order: 'asc' } },
       members: memberInclude,

@@ -1,82 +1,23 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Bell, CalendarClock, Check, MessageSquare, UserPlus, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import styles from './NotificationBell.module.css';
-
-type InboxNotification = {
-  id: string;
-  type: 'assignment' | 'comment' | 'mention' | 'invitation';
-  message: string;
-  isRead: boolean;
-  createdAt: string;
-  cardId?: string | null;
-  board?: { title: string; slug: string; owner: { username: string | null } } | null;
-};
-
-type DueSoon = {
-  id: string;
-  title: string;
-  dueDate: string;
-  board: { title: string; slug: string; owner: { username: string | null } };
-};
-
-function timeAgo(iso: string) {
-  const seconds = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
-  if (seconds < 60) return 'just now';
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-  return `${Math.floor(seconds / 86400)}d ago`;
-}
-
-function dueLabel(iso: string) {
-  const date = new Date(iso);
-  const today = new Date();
-  const day = Math.floor((date.setHours(0, 0, 0, 0) - today.setHours(0, 0, 0, 0)) / 86400000);
-  if (day < 0) return `${Math.abs(day)}d overdue`;
-  if (day === 0) return 'Today';
-  if (day === 1) return 'Tomorrow';
-  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-}
+import Link from 'next/link';
+import { useNotifications, notificationHref, timeAgo, dueLabel, type InboxNotification, type DueSoon } from '@/hooks/useNotifications';
 
 export default function NotificationBell() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [notifications, setNotifications] = useState<InboxNotification[]>([]);
-  const [dueSoon, setDueSoon] = useState<DueSoon[]>([]);
-
-  const load = useCallback(async () => {
-    const response = await fetch('/api/notifications', { cache: 'no-store' });
-    if (!response.ok) return;
-    const data = await response.json();
-    setNotifications(Array.isArray(data.notifications) ? data.notifications : []);
-    setDueSoon(Array.isArray(data.dueSoon) ? data.dueSoon : []);
-  }, []);
-
-  useEffect(() => {
-    const initial = window.setTimeout(load, 0);
-    const timer = window.setInterval(load, 30000);
-    return () => { window.clearTimeout(initial); window.clearInterval(timer); };
-  }, [load]);
-
-  const unread = notifications.filter((notification) => !notification.isRead).length;
-  const badge = unread + dueSoon.length;
-
-  async function markRead(id?: string) {
-    await fetch('/api/notifications', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(id ? { id } : { all: true }),
-    });
-    setNotifications((items) => items.map((item) => !id || item.id === id ? { ...item, isRead: true } : item));
-  }
+  // Shared store: the Inbox page and sidebar badge read the same data (one poll)
+  const { notifications, dueSoon, unread, badge, reload: load, markRead } = useNotifications();
 
   function openBoard(board: InboxNotification['board'] | DueSoon['board'], cardId?: string | null) {
-    if (!board?.owner.username) return;
-    const suffix = cardId ? `?card=${encodeURIComponent(cardId)}` : '';
+    const href = notificationHref(board, cardId);
+    if (!href) return;
     setOpen(false);
-    router.push(`/${board.owner.username}/${board.slug}${suffix}`);
+    router.push(href);
   }
 
   return (
@@ -92,7 +33,8 @@ export default function NotificationBell() {
           <section className={styles.panel} aria-label="Notifications">
             <header className={styles.header}>
               <span className={styles.headerTitle}><Bell size={14} /> Notifications</span>
-              <div style={{ display: 'flex', gap: 4 }}>
+              <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                <Link href="/inbox" className="btn btn-ghost btn-sm" onClick={() => setOpen(false)}>View all</Link>
                 {unread > 0 && <button className="btn btn-ghost btn-sm" onClick={() => markRead()}><Check size={13} /> Read all</button>}
                 <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setOpen(false)} aria-label="Close notifications"><X size={14} /></button>
               </div>

@@ -334,3 +334,39 @@
   .collapseRow { display: none; }
   .boardTitle { white-space: normal; }
 }
+
+/* ─── Primary nav + workspaces ─── */
+.navList { display: flex; flex-direction: column; gap: 2px; margin-bottom: 14px; }
+.navItem {
+  position: relative;
+  display: flex; align-items: center; gap: 10px;
+  min-height: 38px; padding: 7px 10px 7px 12px; border-radius: 10px;
+  font-size: 14px; font-weight: 500; color: var(--text-primary);
+}
+.navItem:hover { background: var(--bg-hover); }
+.navItemActive, .navItemActive:hover { background: color-mix(in srgb, var(--accent) 12%, var(--bg-surface)); font-weight: 600; }
+.navIcon { display: inline-flex; color: var(--text-secondary); flex-shrink: 0; }
+.navItemActive .navIcon { color: var(--accent); }
+.navLabel { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.navBadge {
+  min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--accent); color: #fff; font-size: 11px; font-weight: 700; flex-shrink: 0;
+}
+.navBadgeDot { position: absolute; top: 6px; right: 8px; min-width: 8px; width: 8px; height: 8px; padding: 0; }
+.collapsed .navItem { justify-content: center; padding: 7px 0; }
+.wsTile {
+  width: 24px; height: 24px; border-radius: 7px; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 13px; font-weight: 800;
+}
+.navHint { padding: 4px 12px 8px; font-size: 12px; color: var(--text-muted); line-height: 1.4; }
+.wsSelect {
+  height: 32px; max-width: 150px; padding: 0 6px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--bg-surface);
+  color: var(--text-primary); font: inherit; font-size: 12px;
+}
+@media (max-width: 768px) {
+  .navItem { min-height: 44px; }
+  .wsSelect { height: 44px; }
+}

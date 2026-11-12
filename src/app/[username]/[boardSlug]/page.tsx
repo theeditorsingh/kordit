@@ -1,7 +1,6 @@
 'use client';
 import { useBoardContext } from '@/context/BoardContext';
-import Sidebar from '@/components/Sidebar';
-import TopNav from '@/components/TopNav';
+import AppShell from '@/components/AppShell';
 import { SkeletonBoard, SkeletonListView } from '@/components/Skeleton';
 import EmptyState from '@/components/EmptyState';
 import { doneProgress } from '@/components/TopProgressBar';
@@ -23,17 +22,6 @@ export default function BoardPage({ params }: { params: Promise<{ username: stri
   const [filters, setFilters] = useState<CardFilters>(NO_FILTERS);
   const { data: session } = useSession();
   const [mounted, setMounted] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  // Body scroll lock when sidebar is open
-  useEffect(() => {
-    if (sidebarOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => { document.body.style.overflow = ''; };
-  }, [sidebarOpen]);
 
   // Unwrap params for Next.js 15+
   const unwrappedParams = use(params);
@@ -73,10 +61,6 @@ export default function BoardPage({ params }: { params: Promise<{ username: stri
     }
   }, [unwrappedParams.boardSlug, state.boards, state.activeBoardId, setActiveBoardId]);
 
-  // Close sidebar on route change (mobile)
-  useEffect(() => {
-    setSidebarOpen(false);
-  }, [unwrappedParams.boardSlug]);
 
   if (!mounted) {
     return (
@@ -93,33 +77,7 @@ export default function BoardPage({ params }: { params: Promise<{ username: stri
   }
 
   return (
-    <div className="app-layout">
-      <TopNav
-        view={view}
-        setView={setView}
-        search={search}
-        setSearch={setSearch}
-        onMenuClick={() => setSidebarOpen(prev => !prev)}
-        filters={filters}
-        setFilters={setFilters}
-        filterCounts={{ shown: shownCount, total: boardCards.length }}
-      />
-      <div className="app-body" style={{ position: 'relative' }}>
-        {/* Mobile overlay */}
-        {sidebarOpen && (
-          <div
-            style={{
-              position: 'fixed',
-              inset: 0,
-              background: 'rgba(0,0,0,0.5)',
-              zIndex: 199,
-            }}
-            className="mobile-sidebar-overlay"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
-        <Sidebar isMobileOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <main className="main-content">
+    <AppShell nav={{ view, setView, search, setSearch, filters, setFilters, filterCounts: { shown: shownCount, total: boardCards.length } }}>
           <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {state.boards.length > 0 && !boardFromSlug ? (
             <div style={{ flex: 1, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -147,12 +105,10 @@ export default function BoardPage({ params }: { params: Promise<{ username: stri
             </Suspense>
           )}
           </div>
-        </main>
-      </div>
 
       <Suspense fallback={null}>
         <OnboardingTour />
       </Suspense>
-    </div>
+    </AppShell>
   );
 }

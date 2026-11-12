@@ -57,3 +57,70 @@ export async function getOrCreateWorkspace(user: { id: string; name?: string | n
   await prisma.board.updateMany({ where: { ownerId: user.id, workspaceId: null }, data: { workspaceId: workspace.id } });
   return workspace;
 }
+
+export const WORKSPACE_ROLES = ['Owner', 'Admin', 'Member'] as const;
+export type WorkspaceRole = (typeof WORKSPACE_ROLES)[number];
+
+export function validWorkspaceName(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const name = value.trim().replace(/\s+/g, ' ');
+  return name.length >= 1 && name.length <= 60 ? name : null;
+}
+
+/** A unique, URL-safe slug for a workspace name. */
+export async function uniqueWorkspaceSlug(name: string) {
+  const base = safeSlug(name);
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const slug = attempt === 0 ? base : `${base}-${Math.random().toString(36).slice(2, 6)}`;
+    const taken = await prisma.workspace.findUnique({ where: { slug }, select: { id: true } });
+    if (!taken) return slug;
+  }
+  return `${base}-${Date.now().toString(36)}`;
+}
+
+/** Workspaces the user belongs to (read-only: never creates one). */
+export async function listWorkspacesForUser(userId: string) {
+  const memberships = await prisma.workspaceMember.findMany({
+    where: { userId },
+    orderBy: { createdAt: 'asc' },
+    select: {
+      role: true,
+      workspace: {
+        select: {
+          id: true, name: true, slug: true, createdAt: true,
+          _count: { select: { members: true, boards: { where: { isArchived: false } } } },
+        },
+      },
+    },
+  });
+  return memberships.map(({ role, workspace }) => ({
+    id: workspace.id,
+    name: workspace.name,
+    slug: workspace.slug,
+    role,
+    memberCount: workspace._count.members,
+    boardCount: workspace._count.boards,
+    createdAt: workspace.createdAt.toISOString(),
+  }));
+}
+
+/** The user's membership in a workspace, or null. With `roles`, also requires one of them. */
+export async function requireWorkspaceRole(userId: string, workspaceId: string, roles?: readonly string[]) {
+  const membership = await prisma.workspaceMember.findUnique({
+    where: { workspaceId_userId: { workspaceId, userId } },
+    include: { workspace: true },
+  });
+  if (!membership) return null;
+  if (roles && !roles.includes(membership.role)) return null;
+  return membership;
+}
+
+/** Gives a workspace's members access to a board (board role mirrors their workspace role). */
+export async function grantWorkspaceAccess(workspaceId: string, boardId: string) {
+  const members = await prisma.workspaceMember.findMany({ where: { workspaceId }, select: { userId: true, role: true } });
+  await Promise.all(members.map((member) => prisma.member.upsert({
+    where: { boardId_userId: { boardId, userId: member.userId } },
+    create: { boardId, userId: member.userId, role: member.role === 'Owner' ? 'Admin' : member.role },
+    update: {},
+  })));
+}

@@ -3,6 +3,7 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
+import { requireWorkspaceRole, grantWorkspaceAccess } from "@/lib/workspace";
 import { revalidatePath } from "next/cache";
 import { Resend } from "resend";
 import { memberInclude } from "@/lib/boardQuery";
@@ -71,7 +72,7 @@ async function logAuditEvent(actorId: string, action: string, target: string, de
 
 // ── Board Actions ───────────────────────────────────────────────────────────
 
-export async function createBoardAction(title: string, customColumns?: { title: string, color: string }[]) {
+export async function createBoardAction(title: string, customColumns?: { title: string, color: string }[], workspaceId?: string | null) {
   const user = await getAuthUser();
   const trimmedTitle = title?.trim();
   if (!trimmedTitle || trimmedTitle.length > 200) throw new Error("Board title must be 1-200 characters");
@@ -86,8 +87,13 @@ export async function createBoardAction(title: string, customColumns?: { title: 
         { title: 'Done', order: 3, color: '#36B37E' },
       ];
 
+  // A chosen workspace must be one the user belongs to; otherwise keep the original
+  // behaviour and use the user's first workspace (if any).
+  if (workspaceId && !(await requireWorkspaceRole(user.id, workspaceId))) {
+    throw new Error("You are not a member of this workspace");
+  }
   const workspaceMembership = await prisma.workspaceMember.findFirst({
-    where: { userId: user.id },
+    where: workspaceId ? { userId: user.id, workspaceId } : { userId: user.id },
     select: { workspaceId: true, workspace: { select: { members: { select: { userId: true, role: true } } } } },
     orderBy: { createdAt: 'asc' },
   });
@@ -125,8 +131,16 @@ export async function deleteBoardAction(boardId: string) {
 
 export async function updateBoardAction(boardId: string, updates: Record<string, any>) {
   const user = await getAuthUser();
-  // Who can see the board is an admin decision; everything else any member may change
-  await verifyBoardAccess(boardId, user.id, updates.visibility !== undefined ? 'Admin' : undefined);
+  // Who can see the board, and which workspace holds it, are admin decisions; everything else any member may change
+  const adminOnly = updates.visibility !== undefined || updates.workspaceId !== undefined;
+  await verifyBoardAccess(boardId, user.id, adminOnly ? 'Admin' : undefined);
+
+  // Moving to another workspace: the user must belong to it (null takes it out of any workspace)
+  if (updates.workspaceId !== undefined) {
+    if (updates.workspaceId !== null && (typeof updates.workspaceId !== 'string' || !(await requireWorkspaceRole(user.id, updates.workspaceId)))) {
+      throw new Error("You are not a member of that workspace");
+    }
+  }
   if (updates.visibility !== undefined && !VISIBILITIES.includes(updates.visibility)) {
     throw new Error("Invalid visibility");
   }
@@ -149,14 +163,19 @@ export async function updateBoardAction(boardId: string, updates: Record<string,
     }
   }
 
-  const allowedFields = ['title', 'color', 'background', 'backgroundType', 'visibility', 'labelColors'];
+  const allowedFields = ['title', 'color', 'background', 'backgroundType', 'visibility', 'labelColors', 'workspaceId'];
   const data: Record<string, any> = {};
   for (const key of allowedFields) {
     if (updates[key] !== undefined) data[key] = updates[key];
   }
 
   if (Object.keys(data).length > 0) {
-    await prisma.board.update({ where: { id: boardId }, data });
+    const board = await prisma.board.update({ where: { id: boardId }, data, select: { workspaceId: true, visibility: true } });
+    // A workspace-visible board in a workspace is open to that workspace's members
+    // (the same rule the Team invite flow applies). Leaving a workspace revokes no one.
+    if (('workspaceId' in data || 'visibility' in data) && board.workspaceId && board.visibility === 'Workspace') {
+      await grantWorkspaceAccess(board.workspaceId, boardId);
+    }
     await logActivity(boardId, user.id, 'board_updated', { fields: Object.keys(data) });
   }
 }

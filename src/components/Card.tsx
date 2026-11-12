@@ -5,6 +5,7 @@ import { Board, Card } from '@/types';
 
 import { Calendar, CheckSquare, Edit2, Trash2, CheckCircle2, Circle, AlignLeft, ArrowRightLeft, ChevronRight } from 'lucide-react';
 import { getInitials } from '@/utils/storage';
+import { getDueDateClass, formatDate } from '@/utils/dates';
 import dynamic from 'next/dynamic';
 import { useBoardContext } from '@/context/BoardContext';
 import styles from './Card.module.css';
@@ -16,27 +17,6 @@ const CardModal = dynamic(() => import('./CardModal'), { ssr: false });
 interface Props { card: Card; index: number; board: Board; columnId: string; dragDisabled?: boolean; onToggleDone?: () => void; onModalOpenChange?: (open: boolean) => void; }
 
 const PRIORITY_LABELS: Record<string, string> = { none: 'None', urgent: 'Urgent', high: 'High', medium: 'Medium', low: 'Low' };
-
-function getDueDateClass(date: string | null) {
-  if (!date) return '';
-  const d = new Date(date);
-  const now = new Date();
-  const diff = (d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
-  if (diff < 0) return 'overdue';
-  if (diff <= 2) return 'due-soon';
-  return '';
-}
-
-function formatDate(date: string) {
-  const d = new Date(date);
-  const hasTime = d.getHours() !== 0 || d.getMinutes() !== 0;
-  if (hasTime) {
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' +
-           d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-  }
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
-
 
 export default function CardItem({ card, index, board, columnId, dragDisabled, onToggleDone, onModalOpenChange }: Props) {
   const [open, setOpen] = useState(false);

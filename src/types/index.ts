@@ -82,6 +82,21 @@ export interface Board {
   isFavorite?: boolean;
   /** Custom label colours saved on this board for reuse */
   labelColors?: string[];
+  /** Workspace that holds this board, if any */
+  workspaceId?: string | null;
+}
+
+export type WorkspaceRole = 'Owner' | 'Admin' | 'Member';
+
+/** A workspace the signed-in user belongs to (from /api/workspaces) */
+export interface Workspace {
+  id: string;
+  name: string;
+  slug: string;
+  role: WorkspaceRole;
+  memberCount: number;
+  boardCount: number;
+  createdAt: string;
 }
 
 export interface Activity {

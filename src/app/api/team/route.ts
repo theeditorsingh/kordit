@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
-import { getOrCreateWorkspace } from '@/lib/workspace';
+import { getOrCreateWorkspace, requireWorkspaceRole } from '@/lib/workspace';
 import { createNotification } from '@/lib/notifications';
 import { Resend } from 'resend';
 
@@ -16,17 +16,29 @@ async function authUser() {
   return prisma.user.findUnique({ where: { id: session.user.id }, select: { id: true, name: true, username: true, email: true } });
 }
 
-async function context() {
+/**
+ * The user and the workspace being managed. With a `workspaceId` the user must be a member of it;
+ * without one this keeps the original behaviour (the user's first workspace, created if needed).
+ */
+async function context(workspaceId?: unknown) {
   const user = await authUser();
   if (!user) return null;
+  if (typeof workspaceId === 'string' && workspaceId) {
+    const membership = await requireWorkspaceRole(user.id, workspaceId);
+    if (!membership) return { user, workspace: null, membership: null };
+    return { user, workspace: membership.workspace, membership };
+  }
   const workspace = await getOrCreateWorkspace(user);
   const membership = await prisma.workspaceMember.findUnique({ where: { workspaceId_userId: { workspaceId: workspace.id, userId: user.id } } });
   return { user, workspace, membership };
 }
 
-export async function GET() {
-  const ctx = await context();
+const notMember = () => NextResponse.json({ error: 'You are not a member of this workspace' }, { status: 403 });
+
+export async function GET(request: NextRequest) {
+  const ctx = await context(request.nextUrl.searchParams.get('workspaceId'));
   if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!ctx.workspace) return notMember();
   const [members, invites] = await Promise.all([
     prisma.workspaceMember.findMany({
       where: { workspaceId: ctx.workspace.id },
@@ -41,11 +53,12 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const ctx = await context();
+  const body = await request.json().catch(() => ({}));
+  const ctx = await context(body?.workspaceId);
   if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!ctx.workspace) return notMember();
   if (!['Owner', 'Admin'].includes(ctx.membership?.role ?? '')) return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
 
-  const body = await request.json().catch(() => ({}));
   const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
   const role = body.role === 'Admin' ? 'Admin' : 'Member';
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return NextResponse.json({ error: 'Enter a valid email address' }, { status: 400 });
@@ -85,10 +98,11 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  const ctx = await context();
-  if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  if (!['Owner', 'Admin'].includes(ctx.membership?.role ?? '')) return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
   const body = await request.json().catch(() => ({}));
+  const ctx = await context(body?.workspaceId);
+  if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!ctx.workspace) return notMember();
+  if (!['Owner', 'Admin'].includes(ctx.membership?.role ?? '')) return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
   if (typeof body.memberId !== 'string' || !['Admin', 'Member'].includes(body.role)) return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   const member = await prisma.workspaceMember.findFirst({ where: { id: body.memberId, workspaceId: ctx.workspace.id } });
   if (!member || member.role === 'Owner') return NextResponse.json({ error: 'Owner role cannot be changed' }, { status: 400 });
@@ -101,10 +115,11 @@ export async function PATCH(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const ctx = await context();
-  if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  if (!['Owner', 'Admin'].includes(ctx.membership?.role ?? '')) return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
   const body = await request.json().catch(() => ({}));
+  const ctx = await context(body?.workspaceId);
+  if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!ctx.workspace) return notMember();
+  if (!['Owner', 'Admin'].includes(ctx.membership?.role ?? '')) return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
   if (typeof body.inviteId === 'string') {
     await prisma.workspaceInvite.deleteMany({ where: { id: body.inviteId, workspaceId: ctx.workspace.id } });
     return NextResponse.json({ ok: true });
