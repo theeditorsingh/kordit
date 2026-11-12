@@ -47,19 +47,30 @@ export default function CalendarView({ board, search = '', cardFilter }: Props) 
     });
   });
 
-  const todayStr = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
+  const [mobileView, setMobileView] = useState<'agenda' | 'month'>('agenda');
   const isToday = (day: number) =>
     day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
 
   return (
     <div className={styles.calView}>
       <div className={styles.calHeader}>
-        <button className="btn btn-ghost btn-icon" onClick={prevMonth}><ChevronLeft size={18}/></button>
+        <button className="btn btn-ghost btn-icon" aria-label="Previous month" onClick={prevMonth}><ChevronLeft size={18}/></button>
         <h2 className={styles.monthTitle}>{MONTHS[month]} {year}</h2>
-        <button className="btn btn-ghost btn-icon" onClick={nextMonth}><ChevronRight size={18}/></button>
+        <button className="btn btn-ghost btn-icon" aria-label="Next month" onClick={nextMonth}><ChevronRight size={18}/></button>
       </div>
 
-      <div className={styles.grid}>
+      <div className={styles.mobileControls}>
+        <button className="btn btn-ghost" aria-pressed={mobileView === 'agenda'} onClick={() => setMobileView('agenda')}>Agenda</button>
+        <button className="btn btn-ghost" aria-pressed={mobileView === 'month'} onClick={() => setMobileView('month')}>Month</button>
+      </div>
+      <div className={styles.agenda} hidden={mobileView !== 'agenda'}>
+        {Object.keys(cardsByDay).length === 0 && <p>No matching cards due this month.</p>}
+        {Object.entries(cardsByDay).map(([day, cards]) => <section key={day}>
+          <h3>{new Date(year, month, Number(day)).toLocaleDateString(undefined, {weekday: 'short', month: 'short', day: 'numeric'})}</h3>
+          {cards.map(({card, colId}) => <button key={card.id} className={styles.agendaCard} onClick={() => setSelectedCard({card, colId})}><strong>{card.title}</strong><span>{board.columns.find(col => col.id === colId)?.title}</span></button>)}
+        </section>)}
+      </div>
+      <div className={`${styles.grid} ${mobileView === 'agenda' ? styles.mobileHidden : ''}`}>
         {DAYS.map((d) => (
           <div key={d} className={styles.dayLabel}>{d}</div>
         ))}

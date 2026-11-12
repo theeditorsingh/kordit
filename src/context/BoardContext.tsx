@@ -472,7 +472,7 @@ interface BoardContextType {
   moveCard: (boardId: string, cardId: string, sourceColId: string, destColId: string, sourceIndex: number, destIndex: number) => Promise<void>;
   deleteCard: (boardId: string, columnId: string, cardId: string) => Promise<void>;
   /** `patch` limits what is sent to the server to the fields that changed */
-  updateCard: (boardId: string, card: Card, patch?: Partial<Card>) => Promise<void>;
+  updateCard: (boardId: string, card: Card, patch?: Partial<Card>) => Promise<boolean>;
   moveColumn: (boardId: string, sourceIndex: number, destIndex: number) => Promise<void>;
   updateColumn: (boardId: string, columnId: string, updates: Partial<Column>) => Promise<void>;
   updateBoard: (boardId: string, updates: Partial<Board>) => Promise<void>;
@@ -897,9 +897,11 @@ export function BoardProvider({ children, initialBoards = [] }: { children: Reac
         reminderAt: card.reminderAt,
         completedAt: card.completedAt,
       });
+      return true;
     } catch (e) {
       reportFailure("Couldn't save the card.", e);
       fetchAndSync();
+      return false;
     } finally {
       pendingOpsRef.current = Math.max(0, pendingOpsRef.current - 1);
       lastOpFinishedRef.current = Date.now();

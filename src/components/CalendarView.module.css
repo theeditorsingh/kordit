@@ -72,3 +72,23 @@
   font-size: 11px; font-weight: 500; color: var(--text-primary);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;
 }
+
+
+.mobileControls, .agenda { display: none; }
+.cell, .calCardTitle { min-width: 0; }
+@media (max-width: 768px) {
+ .calView { padding: 12px; min-height: 0; }
+ .calHeader { gap: 4px; justify-content: space-between; }
+ .monthTitle { min-width: 0; font-size: 17px; }
+ .mobileControls { display: flex; gap: 8px; }
+ .mobileControls [aria-pressed="true"] { background: var(--accent-subtle); color: var(--accent); }
+ .agenda:not([hidden]) { display: flex; flex-direction: column; gap: 20px; }
+ .agenda h3 { font-size: 14px; margin-bottom: 8px; }
+ .agendaCard { display: flex; flex-direction: column; gap: 6px; width: 100%; text-align: left; padding: 14px; margin-bottom: 8px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-surface); overflow-wrap: anywhere; }
+ .agendaCard span { color: var(--text-secondary); font-size: 13px; }
+ .mobileHidden { display: none; }
+ .grid { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
+ .cell { padding: 3px; min-height: 72px; }
+ .calCard { padding: 4px 2px; min-height: 44px; }
+ .calCardTitle { font-size: 12px; }
+}

@@ -1,6 +1,8 @@
 'use client';
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 
+import { useDialogFocus } from '@/hooks/useDialogFocus';
+
 interface ConfirmOptions {
   title?: string;
   confirmLabel?: string;
@@ -21,6 +23,8 @@ interface Pending extends ConfirmOptions {
 /** In-app replacement for window.confirm(): `if (await confirm('Delete this card?')) …` */
 export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   const [pending, setPending] = useState<Pending | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(dialogRef, !!pending);
   const confirmBtnRef = useRef<HTMLButtonElement>(null);
   const previousFocus = useRef<HTMLElement | null>(null);
 
@@ -39,7 +43,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!pending) return;
-    confirmBtnRef.current?.focus();
+    dialogRef.current?.querySelector<HTMLButtonElement>('button')?.focus();
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') {
         e.preventDefault();
@@ -64,6 +68,8 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
           onClick={(e) => { if (e.target === e.currentTarget) close(false); }}
         >
           <div
+            ref={dialogRef}
+            tabIndex={-1}
             role="alertdialog"
             aria-modal="true"
             aria-labelledby="confirm-dialog-title"

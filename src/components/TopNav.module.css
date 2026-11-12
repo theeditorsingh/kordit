@@ -338,7 +338,7 @@
     box-shadow: 0 1px 0 var(--border-subtle);
   }
   .nav.hasBoard {
-    height: 104px;
+    height: 128px;
     flex-wrap: wrap;
     align-content: center;
     row-gap: 6px;
@@ -364,7 +364,7 @@
   .profileWrap { margin-left: 0 !important; }
   .userDropdown {
     position: fixed !important;
-    top: 108px !important;
+    top: 132px !important;
     right: 8px !important;
     margin-top: 0 !important;
     width: min(240px, calc(100vw - 16px)) !important;
@@ -463,4 +463,13 @@
 @keyframes searchSlideDown {
   from { opacity: 0; transform: translateY(-8px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+
+@media (min-width: 769px) and (max-width: 1180px) { .boardName { display: block; max-width: 100px; } }
+@media (max-width: 768px) {
+ .tabLabel { display: inline; }
+ .viewTab { padding-inline: 6px; min-height: 36px; gap: 5px; }
+ .left { position: relative; align-self: stretch; align-items: center; padding-bottom: 14px; }
+ .boardName { display: block; position: absolute; bottom: 0; left: 44px; padding: 0; border: none; max-width: calc(100% - 44px); font-size: 11px; }
 }

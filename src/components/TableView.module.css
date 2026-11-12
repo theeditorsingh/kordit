@@ -356,3 +356,19 @@
   .colMembers { width: 15%; }
   .colDue    { width: 10%; }
 }
+
+
+.mobileList { display: none; }
+.cardTitle { text-align: left; color: inherit; font: inherit; }
+@media (max-width: 768px) {
+ .tableContainer { display: none; }
+ .mobileList { display: flex; flex: 1; min-height: 0; overflow-y: auto; flex-direction: column; gap: 12px; }
+ .mobileRow { padding: 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-surface); overflow-wrap: anywhere; }
+ .mobileTitle { display: block; width: 100%; text-align: left; font-size: 16px; font-weight: 600; color: var(--text-primary); min-height: 44px; }
+ .mobileMeta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; color: var(--text-secondary); font-size: 13px; margin: 8px 0; }
+ .mobileRow summary { min-height: 44px; padding: 12px 0; cursor: pointer; color: var(--text-secondary); }
+ .mobileRow p { font-size: 14px; line-height: 1.6; }
+ .addRow { flex-wrap: wrap; }
+ .addColSelect, .addInput { width: 100%; flex-basis: 100%; min-width: 0; font-size: 16px; min-height: 44px; }
+ .addConfirmBtn, .addCancelBtn, .addBtn { min-height: 44px; }
+}

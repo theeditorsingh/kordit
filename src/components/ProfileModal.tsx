@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { updateProfileAction, changePasswordAction, deleteAccountAction, getCurrentUserAction } from '@/actions/userActions';
 import styles from './ProfileModal.module.css';
+import { useDialogFocus } from '@/hooks/useDialogFocus';
 import PreferencesSettings from './PreferencesSettings';
 
 type Tab = 'profile' | 'preferences' | 'security' | 'danger';
@@ -74,6 +75,8 @@ export default function ProfileModal({ onClose, initialTab = 'profile' }: { onCl
   const [resetMsg, setResetMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const overlayRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(dialogRef);
 
   // Close on Escape
   useEffect(() => {
@@ -188,7 +191,7 @@ export default function ProfileModal({ onClose, initialTab = 'profile' }: { onCl
       ref={overlayRef}
       onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
     >
-      <div className={styles.modal} role="dialog" aria-modal="true" aria-label="User Settings">
+      <div ref={dialogRef} tabIndex={-1} className={styles.modal} role="dialog" aria-modal="true" aria-label="User Settings">
         {/* Header */}
         <div className={styles.header}>
           <div className={styles.headerTitle}>
@@ -230,6 +233,8 @@ export default function ProfileModal({ onClose, initialTab = 'profile' }: { onCl
                 key={t.id}
                 className={`${styles.tabBtn} ${tab === t.id ? styles.tabActive : ''} ${t.id === 'danger' ? styles.tabDanger : ''}`}
                 onClick={() => setTab(t.id)}
+                aria-current={tab === t.id ? 'page' : undefined}
+                aria-controls="settings-panel"
                 id={`settings-tab-${t.id}`}
               >
                 {t.icon}
@@ -274,7 +279,7 @@ export default function ProfileModal({ onClose, initialTab = 'profile' }: { onCl
           </nav>
 
           {/* Panel content */}
-          <div className={styles.panel}>
+          <div id="settings-panel" role="region" aria-labelledby={`settings-tab-${tab}`} className={styles.panel}>
             {loading ? (
               <div className={styles.loadingWrap}>
                 <Loader2 size={28} className={styles.spinner} />

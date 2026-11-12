@@ -93,6 +93,14 @@ export default function TableView({ board, search, cardFilter }: Props) {
 
   return (
     <div className={styles.wrap}>
+      <div className={styles.mobileList}>
+        {rows.length === 0 && <p className={styles.emptyCell}>{search || cardFilter ? 'No cards match these filters.' : 'No cards on this board yet.'}</p>}
+        {rows.map(({card, colId, colTitle}) => <article key={card.id} className={styles.mobileRow}>
+          <button className={styles.mobileTitle} onClick={() => setSelectedCard({card, colId})}>{card.title}</button>
+          <div className={styles.mobileMeta}><span>{colTitle}</span><span>{card.dueDate ? formatDate(card.dueDate) : 'No due date'}</span></div>
+          <details><summary>Details</summary><p>Priority: {card.priority}</p><p>Labels: {card.labels.map(label => label.name).join(', ') || 'None'}</p><p>Assignees: {board.members.filter(member => card.assigneeIds.includes(member.id)).map(member => member.name).join(', ') || 'Unassigned'}</p><p>Checklist: {card.checklist.filter(item => item.done).length}/{card.checklist.length}</p></details>
+        </article>)}
+      </div>
       <div className={styles.tableContainer}>
         <table className={styles.table}>
           <thead>
@@ -120,8 +128,8 @@ export default function TableView({ board, search, cardFilter }: Props) {
                 const done = isDone(card);
                 const assignees = (card.assigneeIds as string[]).map(id =>
                   board.members.find(m => m.id === id)
-                ).filter(Boolean);
-                const checkDone = card.checklist.filter((c: any) => c.done).length;
+                ).filter((member): member is NonNullable<typeof member> => Boolean(member));
+                const checkDone = card.checklist.filter((c) => c.done).length;
                 const checkTotal = card.checklist.length;
                 const allChecked = checkTotal > 0 && checkDone === checkTotal;
 
@@ -141,9 +149,9 @@ export default function TableView({ board, search, cardFilter }: Props) {
                       {done && (
                         <span className={styles.doneIcon} title="Done">✓</span>
                       )}
-                      <span className={`${styles.cardTitle} ${done ? styles.cardTitleDone : ''}`}>
+                      <button onClick={(event) => { event.stopPropagation(); setSelectedCard({card, colId}); }} className={`${styles.cardTitle} ${done ? styles.cardTitleDone : ''}`}>
                         {card.title}
-                      </span>
+                      </button>
                     </td>
 
                     {/* List (column) */}
@@ -160,7 +168,7 @@ export default function TableView({ board, search, cardFilter }: Props) {
                     {/* Labels */}
                     <td className={`${styles.td} ${styles.tdLabels}`}>
                       <div className={styles.labelsWrap}>
-                        {(card.labels as any[]).slice(0, 3).map((l: any) => (
+                        {card.labels.slice(0, 3).map((l) => (
                           <span
                             key={l.id}
                             className={styles.labelChip}
@@ -170,8 +178,8 @@ export default function TableView({ board, search, cardFilter }: Props) {
                             {l.name}
                           </span>
                         ))}
-                        {(card.labels as any[]).length > 3 && (
-                          <span className={styles.labelMore}>+{(card.labels as any[]).length - 3}</span>
+                        {card.labels.length > 3 && (
+                          <span className={styles.labelMore}>+{card.labels.length - 3}</span>
                         )}
                       </div>
                     </td>
@@ -179,7 +187,7 @@ export default function TableView({ board, search, cardFilter }: Props) {
                     {/* Members */}
                     <td className={`${styles.td} ${styles.tdMembers}`}>
                       <div className={styles.avatarRow}>
-                        {assignees.slice(0, 4).map((m: any) => (
+                        {assignees.slice(0, 4).map((m) => (
                           <span
                             key={m.id}
                             className={styles.avatar}

@@ -88,6 +88,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
   // Undo/Redo keyboard shortcuts (inlined from useUndoRedo)
   const handleUndoRedoKey = useCallback(
     (e: KeyboardEvent) => {
+      if (document.querySelector('[role="dialog"], [role="alertdialog"]')) return;
       // Leave Ctrl+Z alone while typing so the browser's own text undo works
       const el = e.target as HTMLElement | null;
       if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)) return;
@@ -154,7 +155,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
           <span className={styles.logoText}>Kordit</span>
         </div>
         {activeBoard && (
-          <span className={styles.boardName}>{activeBoard.title}</span>
+          <span title={activeBoard.title} className={styles.boardName}>{activeBoard.title}</span>
         )}
       </div>
 
@@ -165,7 +166,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
               className={`${styles.viewTab} ${view === 'board' ? styles.active : ''}`}
               onClick={() => setView('board')}
               title="Board View"
-              aria-label="Board View"
+              aria-label="Board View" aria-pressed={view === 'board'}
             >
               <LayoutGrid size={15} /> <span className={styles.tabLabel}>Board</span>
             </button>
@@ -173,7 +174,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
               className={`${styles.viewTab} ${view === 'table' ? styles.active : ''}`}
               onClick={() => setView('table')}
               title="Table View"
-              aria-label="Table View"
+              aria-label="Table View" aria-pressed={view === 'table'}
             >
               <Table2 size={15} /> <span className={styles.tabLabel}>Table</span>
             </button>
@@ -181,7 +182,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
               className={`${styles.viewTab} ${view === 'calendar' ? styles.active : ''}`}
               onClick={() => setView('calendar')}
               title="Calendar View"
-              aria-label="Calendar View"
+              aria-label="Calendar View" aria-pressed={view === 'calendar'}
             >
               <Calendar size={15} /> <span className={styles.tabLabel}>Calendar</span>
             </button>

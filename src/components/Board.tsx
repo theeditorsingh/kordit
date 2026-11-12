@@ -5,14 +5,14 @@ import { useBoardContext } from '@/context/BoardContext';
 import Column from './Column';
 import BulkActionBar from './BulkActionBar';
 import { Plus } from 'lucide-react';
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import styles from './Board.module.css';
 import { getBoardBackgroundStyle } from '@/utils/boardBackground';
 
 interface Props { board: BoardType; search: string; cardFilter?: (card: CardType) => boolean; }
 
 export default function Board({ board, search, cardFilter }: Props) {
-  const { dispatch, createColumn, moveCard, moveColumn } = useBoardContext();
+  const { state, createColumn, moveCard, moveColumn } = useBoardContext();
   const [addingCol, setAddingCol] = useState(false);
   const [colTitle, setColTitle] = useState('');
   const boardRef = useRef<HTMLDivElement>(null);
@@ -29,30 +29,28 @@ export default function Board({ board, search, cardFilter }: Props) {
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  // Mobile column page dots — IntersectionObserver
+  // Track the nearest column edge instead of the last intersecting narrow column.
   useEffect(() => {
-    const boardEl = boardRef.current;
-    if (!boardEl || typeof window === 'undefined') return;
-    if (window.innerWidth > 768) return; // desktop: skip
-
-    const columns = boardEl.querySelectorAll('[data-col-index]');
-    if (!columns.length) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            const idx = parseInt((entry.target as HTMLElement).dataset.colIndex || '0');
-            setActiveColIndex(idx);
-          }
-        });
-      },
-      { root: boardEl, threshold: 0.6 }
-    );
-
-    columns.forEach(col => observer.observe(col));
-    return () => observer.disconnect();
-  }, [board.columns.length]);
+    const el = boardRef.current;
+    if (!el || !isMobile) return;
+    const update = () => {
+      const left = el.getBoundingClientRect().left + 16;
+      const columns = Array.from(el.querySelectorAll<HTMLElement>('[data-col-index]'));
+      let nearest = 0;
+      let distance = Infinity;
+      columns.forEach((column, index) => {
+        const delta = Math.abs(column.getBoundingClientRect().left - left);
+        if (delta < distance) { nearest = index; distance = delta; }
+      });
+      setActiveColIndex(nearest);
+    };
+    el.addEventListener('scroll', update, {passive: true});
+    const resize = new ResizeObserver(update);
+    resize.observe(el);
+    el.querySelectorAll('[data-col-index]').forEach(column => resize.observe(column));
+    update();
+    return () => { el.removeEventListener('scroll', update); resize.disconnect(); };
+  }, [isMobile, board.id, board.columns.length]);
 
   useEffect(() => {
     const boardEl = boardRef.current;
@@ -132,14 +130,28 @@ export default function Board({ board, search, cardFilter }: Props) {
 
   return (
     <>
+      {board.columns.length > 1 && (
+        <label className={styles.columnPicker}>
+          Column
+          <select aria-label="Jump to column" value={Math.min(activeColIndex, board.columns.length - 1)} onChange={event => {
+            const index = Number(event.target.value);
+            const el = boardRef.current;
+            const column = el?.querySelector<HTMLElement>(`[data-col-index="${index}"]`);
+            if (el && column) el.scrollTo({ left: el.scrollLeft + column.getBoundingClientRect().left - el.getBoundingClientRect().left - 16, behavior: 'auto' });
+            setActiveColIndex(index);
+          }}>
+            {board.columns.map((column, index) => <option key={column.id} value={index}>{column.title}</option>)}
+          </select>
+        </label>
+      )}
       <DragDropContext onDragEnd={onDragEnd}>
         <Droppable droppableId="board-columns" direction="horizontal" type="COLUMN">
           {(provided) => (
             <div
-              className={styles.board}
+              className={`${styles.board} ${state.selectedCardIds.length ? styles.withSelection : ''}`}
               ref={(el) => {
                 provided.innerRef(el);
-                (boardRef as any).current = el;
+                boardRef.current = el;
               }}
               {...provided.droppableProps}
               style={boardStyle}
@@ -205,18 +217,6 @@ export default function Board({ board, search, cardFilter }: Props) {
       </DragDropContext>
       <BulkActionBar />
 
-      {/* Mobile column page dots */}
-      {board.columns.length > 1 && (
-        <div className={styles.pageDots}>
-          {board.columns.map((col, i) => (
-            <span
-              key={col.id}
-              className={`${styles.pageDot} ${i === activeColIndex ? styles.pageDotActive : ''}`}
-              style={{ background: i === activeColIndex ? col.color : undefined }}
-            />
-          ))}
-        </div>
-      )}
     </>
   );
 }

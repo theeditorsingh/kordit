@@ -178,7 +178,7 @@
 @media (max-width: 768px) {
   .sidebar {
     position: fixed;
-    top: 104px; /* Two-row mobile app bar */
+    top: 128px; /* Two-row mobile app bar */
     left: 0;
     bottom: 0;
     z-index: 200;
@@ -242,4 +242,22 @@
     border-radius: 9999px;
     font-size: 14px;
   }
+}
+
+
+.boardItem { padding: 0; gap: 0; }
+.boardLink { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; padding: 12px 8px; color: inherit; text-align: left; }
+.boardActions { position: static; transform: none; opacity: 1; pointer-events: auto; padding: 0; background: transparent; flex-basis: auto; display: block; flex-shrink: 0; }
+.boardActions summary { cursor: pointer; list-style: none; padding: 10px 8px; }
+.boardActions summary::-webkit-details-marker { display: none; }
+.boardActionMenu { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; }
+.boardActions[open] { flex-basis: 100%; }
+.boardItem { flex-wrap: wrap; }
+.actionBtn { width: 32px; height: 32px; }
+@media (max-width: 768px) {
+ .boardItem { border-radius: 12px; padding: 0; }
+ .boardActions { display: block; flex-basis: auto; }
+ .boardItem.active .boardActions, .boardItem:focus-within .boardActions { display: block; }
+ .boardActions summary, .actionBtn { min-width: 44px; min-height: 44px; }
+ .boardActions[open] { flex-basis: 100%; }
 }

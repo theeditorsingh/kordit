@@ -205,3 +205,5 @@
     margin-top: 8px;
   }
 }
+
+@media (pointer: coarse) { .doneBtn { width: 44px; height: 44px; margin: -8px 0 -8px -8px; } }

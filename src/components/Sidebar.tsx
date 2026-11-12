@@ -1,12 +1,12 @@
 'use client';
 import { useState } from 'react';
-import { signOut, useSession } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useBoardContext } from '@/context/BoardContext';
 import { useConfirm } from './ConfirmDialog';
 import {
   Plus, Trash2, ChevronDown, ChevronLeft, ChevronRight, LayoutGrid, Users, Edit2, Check, X,
-  LayoutTemplate, LogOut, Star, Archive, Activity, Zap
+  LayoutTemplate, Star, Archive, Activity
 } from 'lucide-react';
 import MembersPanel from './MembersPanel';
 import TemplateModal from './TemplateModal';
@@ -140,8 +140,10 @@ export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: bool
                     <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setEditingId(null)}><X size={13}/></button>
                   </div>
                 ) : (
-                  <button
+                  <div
                     className={`${styles.boardItem} ${board.id === state.activeBoardId ? styles.active : ''}`}
+                  >
+                  <button className={styles.boardLink} title={board.title} aria-current={board.id === state.activeBoardId ? 'page' : undefined}
                     onClick={() => {
                       const targetUsername = board.ownerUsername || session?.user?.username;
                       if (targetUsername) {
@@ -155,8 +157,9 @@ export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: bool
                     <span className={styles.boardDot} style={{ background: getBoardBackgroundStyle(board).background ?? BOARD_COLORS[i % BOARD_COLORS.length] }} />
                     {!isCollapsed && <span className={styles.boardTitle}>{board.title}</span>}
                     {!isCollapsed && board.isFavorite && <Star size={11} style={{ color: '#FFC400', fill: '#FFC400', flexShrink: 0 }} />}
+                  </button>
                     {!isCollapsed && (
-                      <span className={styles.boardActions}>
+                      <details className={styles.boardActions}><summary aria-label={`Actions for ${board.title}`}>...</summary><div className={styles.boardActionMenu}>
                         <span className={styles.actionBtn} role="button" tabIndex={0} aria-label={board.isFavorite ? 'Remove from favourites' : 'Add to favourites'} title={board.isFavorite ? 'Unfavorite' : 'Favorite'} onClick={(e) => { e.stopPropagation(); toggleFavorite(board.id); }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); toggleFavorite(board.id); } }}>
                           <Star size={12} style={board.isFavorite ? { color: '#FFC400', fill: '#FFC400' } : {}} />
                         </span>
@@ -169,9 +172,9 @@ export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: bool
                         <span className={styles.actionBtn} role="button" tabIndex={0} aria-label="Delete board" title="Delete board" onClick={(e) => { e.stopPropagation(); deleteBoard(board.id); }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); deleteBoard(board.id); } }}>
                           <Trash2 size={12}/>
                         </span>
-                      </span>
+                      </div></details>
                     )}
-                  </button>
+                  </div>
                 )}
               </li>
             ))}

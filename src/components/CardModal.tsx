@@ -1,14 +1,15 @@
 'use client';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Board, Card, ChecklistItem, Label, Priority } from '@/types';
 import { useBoardContext } from '@/context/BoardContext';
 
+import { useDialogFocus } from '@/hooks/useDialogFocus';
 import CommentSection from './CommentSection';
 import ColorField from './ColorField';
 import { useConfirm } from './ConfirmDialog';
 import {
   X, Plus, Trash2, Check, Calendar, Tag, Users, AlignLeft, List,
-  Image, Link2, AlertTriangle, Sparkles, Loader2, Bell, CheckCircle2, MoveRight, Copy
+  Image as ImageIcon, Sparkles, Loader2, Bell, CheckCircle2, MoveRight, Copy
 } from 'lucide-react';
 import { getInitials } from '@/utils/storage';
 import styles from './CardModal.module.css';
@@ -49,7 +50,7 @@ function toDatetimeLocal(dateStr: string): string {
 }
 
 export default function CardModal({ card, board, columnId, onClose }: Props) {
-  const { state: boardState, dispatch, deleteCard: deleteCardFn, updateCard, updateBoard, notifyError } = useBoardContext();
+  const { state: boardState, deleteCard: deleteCardFn, updateCard, updateBoard, notifyError } = useBoardContext();
   const confirm = useConfirm();
   // Custom label colours saved on this board
   const savedColors = board.labelColors ?? [];
@@ -75,7 +76,9 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
 
   // Save status indicator
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
-  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [saveError, setSaveError] = useState('');
+  const savingRef = useRef(false);
+  const closingRef = useRef(false);
 
   // AI state
   const [aiLoading, setAiLoading] = useState<'subtasks' | 'date' | 'categorize' | null>(null);
@@ -87,11 +90,9 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
   const [transferBusy, setTransferBusy] = useState<'move' | 'copy' | null>(null);
   const [transferMessage, setTransferMessage] = useState('');
 
-  // Pull-to-close state
-  const [dragY, setDragY] = useState(0);
-  const dragStartY = useRef<number | null>(null);
   const modalBoxRef = useRef<HTMLDivElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
+  useDialogFocus(modalBoxRef);
 
   // ── Auto-focus title on open ────────────────────────────────────────────
   useEffect(() => {
@@ -133,17 +134,18 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // ── Keyboard shortcuts: Ctrl+Enter to save, Escape to save & close ─────
+  // ── Keyboard shortcuts: Ctrl+Enter to save, Escape to cancel ─────
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      // Escape: save & close
+      if (e.defaultPrevented || (e.target as HTMLElement)?.closest('[role="alertdialog"]')) return;
+      // Escape: cancel with an unsaved-changes check
       if (e.key === 'Escape') {
         e.preventDefault();
-        save();
+        void requestClose();
         return;
       }
       // Ctrl+Enter: save & close
-      if (e.ctrlKey && e.key === 'Enter') {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
         e.preventDefault();
         save();
         return;
@@ -154,35 +156,23 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    dragStartY.current = null;
-    if ((e.target as HTMLElement).closest('button, input, textarea, select')) return;
-    const box = modalBoxRef.current;
-    if (!box) return;
-    const rect = box.getBoundingClientRect();
-    const touchY = e.touches[0].clientY;
-    if (touchY - rect.top < 50) {
-      dragStartY.current = touchY;
-    }
-  }, []);
+  async function requestClose() {
+    if (savingRef.current || transferBusy) return;
+    if (closingRef.current) return;
+    closingRef.current = true;
+    try {
+      const dirty = JSON.stringify(data) !== JSON.stringify(originalRef.current);
+      if (!dirty || await confirm('Discard your unsaved card changes?', { title: 'Unsaved changes', confirmLabel: 'Discard changes', danger: true })) onClose();
+    } finally { closingRef.current = false; }
+  }
 
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (dragStartY.current === null) return;
-    const dy = e.touches[0].clientY - dragStartY.current;
-    if (dy > 0) { setDragY(dy); }
-  }, []);
-
-  const handleTouchEnd = useCallback(() => {
-    if (dragY > 100) { save(); }
-    setDragY(0);
-    dragStartY.current = null;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dragY]);
-
-  function save() {
+  async function save() {
+    if (savingRef.current) return;
+    if (!data.title.trim()) { setSaveError('Enter a card title before saving.'); titleInputRef.current?.focus(); return; }
+    savingRef.current = true;
     setSaveStatus('saving');
-    // Send only the fields edited here, applied on top of the latest version of the card,
-    // so a collaborator's change to another field is not overwritten.
+    setSaveError('');
+    try {
     const original = originalRef.current;
     const patch: Partial<Card> = {};
     (Object.keys(data) as (keyof Card)[]).forEach((key) => {
@@ -192,17 +182,22 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
     });
     if (Object.keys(patch).length > 0) {
       const latest = board.cards[card.id] ?? card;
-      updateCard(board.id, { ...latest, ...patch }, patch);
+      const saved = await updateCard(board.id, { ...latest, ...patch }, patch);
+      if (!saved) throw new Error('Could not save. Your edits are still here. Please try again.');
     }
-    setSaveStatus('saved');
-    if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
-    savedTimerRef.current = setTimeout(() => setSaveStatus('idle'), 1800);
-    onClose();
+      onClose();
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Could not save. Please try again.');
+    } finally {
+      savingRef.current = false;
+      setSaveStatus('idle');
+    }
   }
 
   async function transferCard(kind: 'move' | 'copy') {
     const targetBoard = boardState.boards.find((item) => item.id === targetBoardId);
-    if (!targetBoard || !targetColumnId) return;
+    if (!targetBoard || !targetColumnId || savingRef.current) return;
+    savingRef.current = true;
     setTransferBusy(kind);
     setTransferMessage('');
     try {
@@ -211,7 +206,7 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
       (Object.keys(data) as (keyof Card)[]).forEach((key) => {
         if (JSON.stringify(data[key]) !== JSON.stringify(original[key])) (patch as Record<string, unknown>)[key] = data[key];
       });
-      if (Object.keys(patch).length) await updateCard(board.id, { ...(board.cards[card.id] ?? card), ...patch }, patch);
+      if (Object.keys(patch).length && !await updateCard(board.id, { ...(board.cards[card.id] ?? card), ...patch }, patch)) throw new Error('Save failed. Please retry before moving or copying.');
       if (kind === 'move') {
         await moveCardAcrossBoardsAction(card.id, targetBoardId, targetColumnId);
         onClose();
@@ -223,6 +218,7 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
     } catch (error) {
       setTransferMessage(error instanceof Error ? error.message : `Couldn’t ${kind} the card`);
     } finally {
+      savingRef.current = false;
       setTransferBusy(null);
     }
   }
@@ -370,8 +366,8 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
       const json = await res.json();
       if (json.error) throw new Error(json.error);
       setSuggestedSubtasks(json.subtasks || []);
-    } catch (e: any) {
-      setAiError(e.message || 'AI request failed');
+    } catch (e: unknown) {
+      setAiError(e instanceof Error ? e.message : 'AI request failed');
     } finally {
       setAiLoading(null);
     }
@@ -402,8 +398,8 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
       if (json.error) throw new Error(json.error);
       setData(d => ({ ...d, dueDate: json.suggestedDate }));
       setAiDateReasoning(json.reasoning);
-    } catch (e: any) {
-      setAiError(e.message || 'AI request failed');
+    } catch (e: unknown) {
+      setAiError(e instanceof Error ? e.message : 'AI request failed');
     } finally {
       setAiLoading(null);
     }
@@ -422,8 +418,8 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
       if (json.error) throw new Error(json.error);
       const newLabels: Label[] = json.labels.map((name: string) => ({ id: crypto.randomUUID(), name, color: LABEL_COLORS[Math.floor(Math.random() * LABEL_COLORS.length)] }));
       setData(d => ({ ...d, priority: json.priority as Priority, labels: [...d.labels, ...newLabels] }));
-    } catch (e: any) {
-      setAiError(e.message || 'AI request failed');
+    } catch (e: unknown) {
+      setAiError(e instanceof Error ? e.message : 'AI request failed');
     } finally {
       setAiLoading(null);
     }
@@ -432,7 +428,7 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
   return (
     <div
       className="modal-overlay"
-      onClick={(e) => e.target === e.currentTarget && save()}
+      onClick={(e) => e.target === e.currentTarget && requestClose()}
     >
       <div
         ref={modalBoxRef}
@@ -440,10 +436,8 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
         role="dialog"
         aria-modal="true"
         aria-label={`Card: ${data.title || 'Untitled'}`}
-        style={{ maxWidth: 860, transform: dragY > 0 ? `translateY(${dragY}px)` : undefined, opacity: dragY > 0 ? Math.max(0.5, 1 - dragY / 300) : undefined, transition: dragY === 0 ? 'transform 0.3s ease, opacity 0.3s ease' : 'none' }}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
+        style={{ maxWidth: 860 }}
+        tabIndex={-1}
       >
         {/* Cover */}
         {(data.coverColor || data.coverImage) && (
@@ -457,7 +451,7 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
 
         {/* Header */}
         <div className={styles.header}>
-          <div className={styles.priorityRow}>
+          <div className={styles.priorityRow} inert={saveStatus === 'saving' || !!transferBusy}>
             {PRIORITIES.map((p) => (
               <button
                 key={p}
@@ -468,10 +462,10 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
               </button>
             ))}
           </div>
-          <button className="btn btn-ghost btn-icon" onClick={save} aria-label="Save and close card"><X size={18}/></button>
+          <button className="btn btn-ghost btn-icon" onClick={requestClose} aria-label="Close card"><X size={18}/></button>
         </div>
 
-        <div className={styles.body}>
+        <div className={styles.body} inert={saveStatus === 'saving'}>
           {/* ── LEFT: Main Content ── */}
           <div className={styles.mainColumn}>
             {/* Title */}
@@ -579,14 +573,14 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
                 className={`${styles.quickBtn} ${showCoverPicker ? styles.quickActive : ''}`}
                 onClick={() => setShowCoverPicker(!showCoverPicker)}
               >
-                <Image size={13} /> Cover
+                <ImageIcon size={13} /> Cover
               </button>
             </div>
 
             {/* Cover Picker */}
             {showCoverPicker && (
               <div className={styles.section}>
-                <div className={styles.sectionLabel}><Image size={14} /> Cover Color</div>
+                <div className={styles.sectionLabel}><ImageIcon size={14} /> Cover Color</div>
                 <div className={styles.coverGrid}>
                   {COVER_COLORS.map(c => (
                     <button
@@ -905,11 +899,12 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
               </div>
             )}
 
-            <div className={styles.section}>
-              <div className={styles.sectionLabel}><MoveRight size={14} /> Move or copy</div>
+            <details className={styles.advancedSection}>
+              <summary>Move or copy</summary>
               <select
                 className="input"
                 style={{ width: '100%', marginBottom: 8 }}
+                aria-label="Destination board"
                 value={targetBoardId}
                 onChange={(event) => {
                   const nextBoard = boardState.boards.find((item) => item.id === event.target.value);
@@ -919,7 +914,7 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
               >
                 {boardState.boards.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
               </select>
-              <select className="input" style={{ width: '100%', marginBottom: 8 }} value={targetColumnId} onChange={(event) => setTargetColumnId(event.target.value)}>
+              <select aria-label="Destination column" className="input" style={{ width: '100%', marginBottom: 8 }} value={targetColumnId} onChange={(event) => setTargetColumnId(event.target.value)}>
                 {boardState.boards.find((item) => item.id === targetBoardId)?.columns.map((column) => <option key={column.id} value={column.id}>{column.title}</option>)}
               </select>
               <div style={{ display: 'flex', gap: 8 }}>
@@ -931,7 +926,7 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
                 </button>
               </div>
               {transferMessage && <p style={{ margin: '7px 0 0', fontSize: 11, color: 'var(--text-muted)' }}>{transferMessage}</p>}
-            </div>
+            </details>
 
 
           </div>
@@ -939,9 +934,10 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
 
         {/* Footer */}
         <div className={styles.footer}>
-          <button className="btn btn-danger btn-sm" onClick={deleteCard}>
+          <details className={styles.cardActions} inert={saveStatus === 'saving'}><summary>More actions</summary><button className="btn btn-danger btn-sm" onClick={deleteCard}>
             <Trash2 size={13}/> Delete Card
-          </button>
+          </button></details>
+          {saveError && <p className={styles.saveError} role="alert">{saveError}</p>}
           <div className={styles.footerRight}>
             {/* Saved indicator */}
             {saveStatus === 'saving' && (
@@ -957,8 +953,8 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
             {saveStatus === 'idle' && (
               <span className={styles.saveHint}>Ctrl+Enter to save</span>
             )}
-            <button className="btn btn-ghost" onClick={onClose} title="Close without saving your edits">Discard</button>
-            <button className="btn btn-primary" onClick={save}>Save Changes</button>
+            <button className="btn btn-ghost" disabled={saveStatus === 'saving' || !!transferBusy} onClick={requestClose} title="Cancel editing">Cancel</button>
+            <button className="btn btn-primary" disabled={saveStatus === 'saving'} onClick={save}>{saveStatus === 'saving' ? 'Saving...' : 'Save changes'}</button>
           </div>
         </div>
       </div>

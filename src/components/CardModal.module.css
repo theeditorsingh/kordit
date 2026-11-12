@@ -687,3 +687,18 @@
   .saveIndicator { flex-basis: 100%; justify-content: center; }
   .checkText, .memberName { overflow-wrap: anywhere; min-width: 0; }
 }
+
+
+.cardActions { position: relative; font-size: 13px; color: var(--text-secondary); }
+.cardActions summary { cursor: pointer; padding: 12px 8px; min-height: 44px; }
+.cardActions > button { position: absolute; bottom: 100%; left: 0; white-space: nowrap; background: var(--bg-surface); border: 1px solid var(--border); box-shadow: var(--shadow-lg); }
+.saveError { flex-basis: 100%; color: #c9372c; font-size: 14px; }
+.footer { flex-wrap: wrap; gap: 12px; }
+@media (max-width: 768px) {
+ .footerRight { flex: 1; width: auto; }
+ .saveIndicator { display: none; }
+ .cardActions summary { font-size: 12px; padding-inline: 0; }
+}
+
+
+.advancedSection summary { min-height: 44px; padding: 12px 0; cursor: pointer; font-weight: 600; font-size: 14px; }

@@ -97,6 +97,14 @@ export default function CardItem({ card, index, board, columnId, dragDisabled, o
                 onModalOpenChange?.(true);
               }
             }}
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.target === e.currentTarget && e.key === 'Enter') {
+                e.preventDefault();
+                setOpen(true);
+                onModalOpenChange?.(true);
+              }
+            }}
             onContextMenu={(e) => {
               e.preventDefault();
               setContextMenu({ x: e.clientX, y: e.clientY });
