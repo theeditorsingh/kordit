@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { getOrCreateWorkspace, requireWorkspaceRole } from '@/lib/workspace';
 import { createNotification } from '@/lib/notifications';
 import { Resend } from 'resend';
+import { LIMITS, consume } from '@/lib/rateLimit';
 
 function escapeHtml(value: string) {
   return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -61,7 +62,11 @@ export async function POST(request: NextRequest) {
 
   const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
   const role = body.role === 'Admin' ? 'Admin' : 'Member';
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return NextResponse.json({ error: 'Enter a valid email address' }, { status: 400 });
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) return NextResponse.json({ error: 'Enter a valid email address' }, { status: 400 });
+  // Each invite can send an email, so cap how many one person can send
+  if (!(await consume(`invite:${ctx.user.id}`, LIMITS.invites))) {
+    return NextResponse.json({ error: 'Too many invites. Please try again later.' }, { status: 429 });
+  }
 
   const invited = await prisma.user.findUnique({ where: { email } });
   const invite = await prisma.workspaceInvite.upsert({

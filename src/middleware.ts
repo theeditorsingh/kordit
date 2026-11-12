@@ -4,7 +4,8 @@ import { NextResponse } from "next/server";
 export default withAuth(
   function middleware(req) {
     const token = req.nextauth.token;
-    const isAuth = !!token;
+    // A revoked session leaves an empty token behind, so require a user id
+    const isAuth = !!(token && (token.id || token.sub));
     const isAuthPage = req.nextUrl.pathname.startsWith("/login");
     const isOnboardingPage = req.nextUrl.pathname.startsWith("/onboarding");
 

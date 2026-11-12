@@ -5,52 +5,75 @@ import { prisma } from "@/lib/prisma";
 import { isReservedUsername } from '@/utils/reservedUsernames';
 import bcrypt from "bcryptjs";
 
+// Same rule as updateProfileAction, so both paths produce the same kind of username
+const USERNAME = /^[a-z0-9_-]{3,32}$/;
+
+/**
+ * One-time account setup: pick a username and, optionally, a first password.
+ * Once a username exists this endpoint is closed. Changing the password afterwards
+ * goes through changePasswordAction, which asks for the current one.
+ */
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session || !session.user) {
+    if (!session?.user?.id) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const { username, password } = await req.json();
+    const body = await req.json().catch(() => null);
+    const username = body?.username;
+    const password = body?.password;
+
+    const dbUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { id: true, username: true, password: true },
+    });
+    if (!dbUser) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+    if (dbUser.username) {
+      return new NextResponse("Onboarding is already complete", { status: 409 });
+    }
 
     if (!username || typeof username !== "string") {
       return new NextResponse("Username is required", { status: 400 });
     }
 
-    const trimmedUsername = username.trim();
-    if (trimmedUsername.length < 3 || trimmedUsername.length > 30) {
-      return new NextResponse("Username must be between 3 and 30 characters", { status: 400 });
+    const trimmedUsername = username.trim().toLowerCase();
+    if (!USERNAME.test(trimmedUsername)) {
+      return new NextResponse("Username must be 3–32 characters: lowercase letters, numbers, _ or -", { status: 400 });
     }
-    if (!/^[a-zA-Z0-9_]+$/.test(trimmedUsername)) {
-      return new NextResponse("Username can only contain letters, numbers, and underscores", { status: 400 });
+    if (isReservedUsername(trimmedUsername)) {
+      return new NextResponse("That username is reserved. Please choose another.", { status: 400 });
     }
 
-    // Check if username is already taken
     const existingUser = await prisma.user.findUnique({
       where: { username: trimmedUsername },
+      select: { id: true },
     });
-
-    if (existingUser && existingUser.id !== session.user.id) {
+    if (existingUser && existingUser.id !== dbUser.id) {
       return new NextResponse("Username is already taken", { status: 400 });
-    }
-    if (!(existingUser && existingUser.id === session.user.id) && isReservedUsername(trimmedUsername)) {
-      return new NextResponse("That username is reserved. Please choose another.", { status: 400 });
     }
 
     const updateData: { username: string; password?: string } = { username: trimmedUsername };
 
-    if (password && typeof password === "string") {
-      if (password.length < 8) {
+    if (password !== undefined && password !== null && password !== "") {
+      if (typeof password !== "string" || password.length < 8) {
         return new NextResponse("Password must be at least 8 characters", { status: 400 });
       }
-      const hashedPassword = await bcrypt.hash(password, 10);
-      updateData.password = hashedPassword;
+      if (password.length > 72) {
+        return new NextResponse("Password must be at most 72 characters", { status: 400 });
+      }
+      // Only a first password can be set here; replacing one needs the current password
+      if (dbUser.password) {
+        return new NextResponse("A password is already set. Change it from your profile.", { status: 409 });
+      }
+      updateData.password = await bcrypt.hash(password, 12);
     }
 
     await prisma.user.update({
-      where: { id: session.user.id },
+      where: { id: dbUser.id },
       data: updateData,
     });
 

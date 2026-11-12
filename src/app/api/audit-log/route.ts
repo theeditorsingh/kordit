@@ -11,7 +11,8 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const boardId = searchParams.get('boardId');
-  const page = parseInt(searchParams.get('page') ?? '1');
+  const requestedPage = parseInt(searchParams.get('page') ?? '1', 10);
+  const page = Number.isFinite(requestedPage) && requestedPage >= 1 ? Math.min(requestedPage, 10000) : 1;
   const limit = 50;
   const skip = (page - 1) * limit;
 

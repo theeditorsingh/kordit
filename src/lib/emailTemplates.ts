@@ -1,3 +1,7 @@
+function escapeHtml(value: string) {
+  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 export function getPasswordResetEmailHtml({
   url,
   userName,
@@ -129,14 +133,14 @@ export function getPasswordResetEmailHtml({
 
       <!-- Body -->
       <div class="email-body">
-        <p>Hi ${userName},</p>
+        <p>Hi ${escapeHtml(userName)},</p>
         
         <p>We received a request to reset the password for your Kordit account.</p>
         
         <p>Click the button below to create a new password. This link will expire in <strong>30 minutes</strong> for your security.</p>
         
         <div class="btn-container">
-          <a href="${url}" class="btn" style="color: #ffffff;">Reset Password</a>
+          <a href="${escapeHtml(url)}" class="btn" style="color: #ffffff;">Reset Password</a>
         </div>
         
         <div class="security-note">
@@ -292,14 +296,14 @@ export function getSignInEmailHtml({
 
       <!-- Body -->
       <div class="email-body">
-        <p>Hi ${userName},</p>
+        <p>Hi ${escapeHtml(userName)},</p>
         
         <p>Click the button below to securely sign in to your Kordit account. No password needed!</p>
         
         <p>This link will expire in <strong>30 minutes</strong> for your security.</p>
         
         <div class="btn-container">
-          <a href="${url}" class="btn" style="color: #ffffff;">Sign in to Kordit</a>
+          <a href="${escapeHtml(url)}" class="btn" style="color: #ffffff;">Sign in to Kordit</a>
         </div>
         
         <div class="security-note">

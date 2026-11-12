@@ -11,6 +11,7 @@ import type { BoardOp } from "@/utils/boardOps";
 import { isValidBackground, isHexColor } from "@/utils/boardBackground";
 import { sanitizeColumnSettings } from "@/utils/columnSettings";
 import { createNotification, createNotifications, mentionedUsernames } from "@/lib/notifications";
+import { LIMITS, enforce } from "@/lib/rateLimit";
 
 function getResend() {
   return new Resend(process.env.RESEND_API_KEY);
@@ -53,6 +54,86 @@ function escapeHtml(value: string) {
 
 const VISIBILITIES = ['Private', 'Workspace', 'Public'];
 
+// ── Input sanitizing ────────────────────────────────────────────────────────
+// Card fields arrive straight from the client, so shape-check everything before storing it.
+
+const MAX_CARD_TITLE = 500;
+const MAX_DESCRIPTION = 20000;
+const MAX_LIST_ITEMS = 50;
+const SAFE_IMAGE_URL = /^https:\/\/[^\s"'()<>\\]+$/;
+
+function cleanString(value: unknown, max: number): string {
+  return typeof value === 'string' ? value.slice(0, max) : '';
+}
+
+/** A date from client input, or null when empty. Throws on anything unparseable. */
+function parseOptionalDate(value: unknown): Date | null {
+  if (value === null || value === undefined || value === '') return null;
+  if (typeof value !== 'string' && typeof value !== 'number') throw new Error("Invalid date");
+  const date = new Date(value);
+  if (isNaN(date.getTime())) throw new Error("Invalid date");
+  return date;
+}
+
+function cleanLabels(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, MAX_LIST_ITEMS)
+    .filter((l): l is Record<string, unknown> => !!l && typeof l === 'object')
+    .map((l) => ({
+      id: cleanString(l.id, 64),
+      name: cleanString(l.name, 50),
+      color: typeof l.color === 'string' && isHexColor(l.color) ? l.color : '#0052CC',
+    }));
+}
+
+function cleanChecklist(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, 200)
+    .filter((i): i is Record<string, unknown> => !!i && typeof i === 'object')
+    .map((i) => ({ id: cleanString(i.id, 64), text: cleanString(i.text, 500), done: i.done === true }));
+}
+
+function cleanCoverImage(value: unknown): string {
+  const url = typeof value === 'string' ? value.trim() : '';
+  if (url && (url.length > 500 || !SAFE_IMAGE_URL.test(url))) throw new Error("Cover image must be an https:// URL");
+  return url;
+}
+
+function cleanCoverColor(value: unknown): string {
+  const color = typeof value === 'string' ? value : '';
+  if (color && !isHexColor(color)) throw new Error("Invalid colour");
+  return color;
+}
+
+/** Keeps only ids of people who are members of the board (no notifying strangers). */
+async function boardMemberIds(boardId: string, ids: unknown): Promise<string[]> {
+  if (!Array.isArray(ids)) return [];
+  const wanted = [...new Set(ids.filter((id): id is string => typeof id === 'string'))].slice(0, MAX_LIST_ITEMS);
+  if (!wanted.length) return [];
+  const members = await prisma.member.findMany({ where: { boardId, userId: { in: wanted } }, select: { userId: true } });
+  const allowed = new Set(members.map((m) => m.userId));
+  return wanted.filter((id) => allowed.has(id));
+}
+
+const AUTOMATION_TRIGGERS = ['card_moved_to', 'card_created', 'checklist_completed', 'due_date_passed'];
+const AUTOMATION_ACTIONS = ['move_card', 'set_priority', 'complete_checklist', 'set_due_date'];
+
+function cleanAutomationConfig(condition: unknown, actionConfig: unknown) {
+  const c = (condition && typeof condition === 'object' ? condition : {}) as Record<string, unknown>;
+  const a = (actionConfig && typeof actionConfig === 'object' ? actionConfig : {}) as Record<string, unknown>;
+  const cleanCondition: Record<string, string> = {};
+  if (typeof c.columnId === 'string' && ID_PATTERN.test(c.columnId)) cleanCondition.columnId = c.columnId;
+  const cleanAction: Record<string, string | number> = {};
+  if (typeof a.targetColumnId === 'string' && ID_PATTERN.test(a.targetColumnId)) cleanAction.targetColumnId = a.targetColumnId;
+  if (typeof a.priority === 'string' && PRIORITIES.includes(a.priority)) cleanAction.priority = a.priority;
+  if (a.daysFromNow !== undefined) {
+    const days = Math.floor(Number(a.daysFromNow));
+    if (!Number.isFinite(days) || days < 0 || days > 365) throw new Error("Days must be between 0 and 365");
+    cleanAction.daysFromNow = days;
+  }
+  return { condition: cleanCondition, actionConfig: cleanAction };
+}
+
 async function logActivity(boardId: string, userId: string, action: string, details: Record<string, any> = {}, cardId?: string) {
   await prisma.activity.create({
     data: { boardId, userId, action, details, cardId }
@@ -78,8 +159,15 @@ export async function createBoardAction(title: string, customColumns?: { title: 
   if (!trimmedTitle || trimmedTitle.length > 200) throw new Error("Board title must be 1-200 characters");
   const slug = generateSlug(trimmedTitle);
 
+  if (customColumns !== undefined && (!Array.isArray(customColumns) || customColumns.length > 20)) {
+    throw new Error("A board can start with at most 20 columns");
+  }
   const columnsToCreate = customColumns
-    ? customColumns.map((col, idx) => ({ title: col.title, color: col.color, order: idx }))
+    ? customColumns.map((col, idx) => ({
+        title: cleanString(col?.title, 100).trim() || 'Untitled',
+        color: typeof col?.color === 'string' && isHexColor(col.color) ? col.color : '#0052CC',
+        order: idx,
+      }))
     : [
         { title: 'To Do', order: 0, color: '#0052CC' },
         { title: 'In Progress', order: 1, color: '#FF991F' },
@@ -353,11 +441,11 @@ export async function createCardAction(boardId: string, columnId: string, title:
   const card = await prisma.card.create({
     data: {
       title: trimmedTitle,
-      description,
+      description: cleanString(description, MAX_DESCRIPTION),
       boardId,
       columnId,
       order: lastCard ? lastCard.order + 1 : 0,
-      dueDate: dueDate ? new Date(dueDate) : null,
+      dueDate: parseOptionalDate(dueDate),
       ...(colSettings.defaultPriority ? { priority: colSettings.defaultPriority } : {}),
       ...(colSettings.defaultLabel ? { labels: [colSettings.defaultLabel] as any } : {}),
     }
@@ -464,34 +552,35 @@ export async function updateCardAction(boardId: string, cardId: string, updates:
   });
   if (card?.boardId !== boardId) throw new Error("Unauthorized");
 
+  if (!updates || typeof updates !== 'object') throw new Error("Invalid request");
   const data: Record<string, any> = {};
-  const directFields = ['title', 'description', 'priority', 'coverImage', 'coverColor'];
-  for (const key of directFields) {
-    if (updates[key] !== undefined) data[key] = updates[key];
+  if (updates.title !== undefined) {
+    const title = typeof updates.title === 'string' ? updates.title.trim() : '';
+    if (!title || title.length > MAX_CARD_TITLE) throw new Error("Card title must be 1-500 characters");
+    data.title = title;
   }
+  if (updates.description !== undefined) data.description = cleanString(updates.description, MAX_DESCRIPTION);
+  if (updates.priority !== undefined) {
+    if (!PRIORITIES.includes(updates.priority)) throw new Error("Invalid priority");
+    data.priority = updates.priority;
+  }
+  if (updates.coverImage !== undefined) data.coverImage = cleanCoverImage(updates.coverImage);
+  if (updates.coverColor !== undefined) data.coverColor = cleanCoverColor(updates.coverColor);
 
-  if (updates.dueDate !== undefined) {
-    data.dueDate = updates.dueDate ? new Date(updates.dueDate) : null;
-  }
+  if (updates.dueDate !== undefined) data.dueDate = parseOptionalDate(updates.dueDate);
+  if (updates.reminderAt !== undefined) data.reminderAt = parseOptionalDate(updates.reminderAt);
+  if (updates.completedAt !== undefined) data.completedAt = parseOptionalDate(updates.completedAt);
 
-  if (updates.reminderAt !== undefined) {
-    data.reminderAt = updates.reminderAt ? new Date(updates.reminderAt) : null;
-  }
-  if (updates.completedAt !== undefined) {
-    data.completedAt = updates.completedAt ? new Date(updates.completedAt) : null;
-  }
-
-  const jsonFields = ['labels', 'checklist', 'assigneeIds'];
-  for (const key of jsonFields) {
-    if (updates[key] !== undefined) data[key] = updates[key];
-  }
+  if (updates.labels !== undefined) data.labels = cleanLabels(updates.labels);
+  if (updates.checklist !== undefined) data.checklist = cleanChecklist(updates.checklist);
+  if (updates.assigneeIds !== undefined) data.assigneeIds = await boardMemberIds(boardId, updates.assigneeIds);
 
   if (Object.keys(data).length > 0) {
     await prisma.card.update({ where: { id: cardId }, data });
 
-    if (Array.isArray(updates.assigneeIds)) {
+    if (Array.isArray(data.assigneeIds)) {
       const previous = Array.isArray(card.assigneeIds) ? card.assigneeIds.filter((id): id is string => typeof id === 'string') : [];
-      const added = updates.assigneeIds.filter((id: unknown): id is string => typeof id === 'string' && !previous.includes(id));
+      const added = (data.assigneeIds as string[]).filter((id) => !previous.includes(id));
       if (added.length) {
         const actor = user.name || user.email || 'A teammate';
         await createNotifications(added.map((userId) => ({
@@ -508,8 +597,8 @@ export async function updateCardAction(boardId: string, cardId: string, updates:
     const changedFields = Object.keys(data);
     await logActivity(boardId, user.id, 'card_updated', { cardId, fields: changedFields }, cardId);
 
-    if (updates.checklist) {
-      const allDone = updates.checklist.length > 0 && updates.checklist.every((item: any) => item.done);
+    if (data.checklist) {
+      const allDone = data.checklist.length > 0 && data.checklist.every((item: { done: boolean }) => item.done);
       if (allDone) {
         await runAutomations(boardId, 'checklist_completed', { cardId });
       }
@@ -549,6 +638,7 @@ export async function deleteCardAction(boardId: string, cardId: string) {
 export async function bulkDeleteCardsAction(boardId: string, cardIds: string[]) {
   const user = await getAuthUser();
   await verifyBoardAccess(boardId, user.id);
+  if (!Array.isArray(cardIds) || cardIds.length > 1000) throw new Error("Invalid request");
   await prisma.card.deleteMany({ where: { id: { in: cardIds }, boardId } });
   await logActivity(boardId, user.id, 'cards_bulk_deleted', { count: cardIds.length });
   await logAuditEvent(user.id, 'cards_bulk_deleted', boardId, { count: cardIds.length, boardId });
@@ -741,18 +831,21 @@ export async function applyBoardOpsAction(boardId: string, ops: BoardOp[]) {
       if (column?.boardId !== boardId) continue; // column no longer exists
       const existing = await tx.card.findUnique({ where: { id: card.id } });
       if (existing && existing.boardId !== boardId) throw new Error("Unauthorized");
+      const coverImage = typeof card.coverImage === 'string' ? card.coverImage.trim() : '';
+      const coverColor = typeof card.coverColor === 'string' ? card.coverColor : '';
       const data = {
-        title: String(card.title ?? '').trim().slice(0, 500) || 'Untitled',
-        description: String(card.description ?? ''),
+        title: String(card.title ?? '').trim().slice(0, MAX_CARD_TITLE) || 'Untitled',
+        description: cleanString(card.description, MAX_DESCRIPTION),
         priority: PRIORITIES.includes(card.priority) ? card.priority : 'none',
-        dueDate: card.dueDate ? new Date(card.dueDate) : null,
-        reminderAt: card.reminderAt ? new Date(card.reminderAt) : null,
-        completedAt: card.completedAt ? new Date(card.completedAt) : null,
-        coverImage: String(card.coverImage ?? ''),
-        coverColor: String(card.coverColor ?? ''),
-        labels: (Array.isArray(card.labels) ? card.labels : []) as any,
-        checklist: (Array.isArray(card.checklist) ? card.checklist : []) as any,
-        assigneeIds: (Array.isArray(card.assigneeIds) ? card.assigneeIds : []) as any,
+        dueDate: parseOptionalDate(card.dueDate),
+        reminderAt: parseOptionalDate(card.reminderAt),
+        completedAt: parseOptionalDate(card.completedAt),
+        // Undo restores old values: drop anything unsafe rather than fail the whole undo
+        coverImage: coverImage.length <= 500 && SAFE_IMAGE_URL.test(coverImage) ? coverImage : '',
+        coverColor: isHexColor(coverColor) ? coverColor : '',
+        labels: cleanLabels(card.labels) as any,
+        checklist: cleanChecklist(card.checklist) as any,
+        assigneeIds: (await boardMemberIds(boardId, card.assigneeIds)) as any,
       };
       if (existing) {
         await tx.card.update({ where: { id: card.id }, data });
@@ -814,6 +907,8 @@ export async function inviteMemberAction(boardId: string, email: string, role: '
     throw new Error("Please enter a valid email address");
   }
   if (role !== 'Admin' && role !== 'Member') throw new Error("Invalid role");
+  // Each invite sends an email, so cap how many one person can send
+  await enforce(`invite:${authUser.id}`, LIMITS.invites, "Too many invites. Please try again later.");
 
   let invitedUser = await prisma.user.findUnique({ where: { email } });
 
@@ -898,6 +993,9 @@ export async function addCommentAction(boardId: string, cardId: string, content:
   const card = await prisma.card.findUnique({ where: { id: cardId } });
   if (card?.boardId !== boardId) throw new Error("Unauthorized");
 
+  content = typeof content === 'string' ? content.trim() : '';
+  if (!content || content.length > 5000) throw new Error("Comment must be 1-5000 characters");
+
   const comment = await prisma.comment.create({
     data: { cardId, userId: user.id, content },
     include: { user: { select: { name: true, username: true, image: true } } }
@@ -957,8 +1055,14 @@ export async function createAutomationAction(
   const user = await getAuthUser();
   await verifyBoardAccess(boardId, user.id, 'Admin');
 
+  const cleanName = cleanString(name, 100).trim();
+  if (!cleanName) throw new Error("Automation name is required");
+  if (!AUTOMATION_TRIGGERS.includes(trigger)) throw new Error("Invalid trigger");
+  if (!AUTOMATION_ACTIONS.includes(action)) throw new Error("Invalid action");
+  const clean = cleanAutomationConfig(condition, actionConfig);
+
   const automation = await prisma.automation.create({
-    data: { boardId, name, trigger, condition, action, actionConfig }
+    data: { boardId, name: cleanName, trigger, condition: clean.condition, action, actionConfig: clean.actionConfig }
   });
 
   await logActivity(boardId, user.id, 'automation_created', { name, trigger, action });
@@ -973,10 +1077,26 @@ export async function updateAutomationAction(boardId: string, automationId: stri
   const auto = await prisma.automation.findUnique({ where: { id: automationId } });
   if (auto?.boardId !== boardId) throw new Error("Unauthorized");
 
-  const allowedFields = ['name', 'isActive', 'trigger', 'condition', 'action', 'actionConfig'];
+  if (!updates || typeof updates !== 'object') throw new Error("Invalid request");
   const data: Record<string, any> = {};
-  for (const key of allowedFields) {
-    if (updates[key] !== undefined) data[key] = updates[key];
+  if (updates.name !== undefined) {
+    const name = cleanString(updates.name, 100).trim();
+    if (!name) throw new Error("Automation name is required");
+    data.name = name;
+  }
+  if (updates.isActive !== undefined) data.isActive = updates.isActive === true;
+  if (updates.trigger !== undefined) {
+    if (!AUTOMATION_TRIGGERS.includes(updates.trigger)) throw new Error("Invalid trigger");
+    data.trigger = updates.trigger;
+  }
+  if (updates.action !== undefined) {
+    if (!AUTOMATION_ACTIONS.includes(updates.action)) throw new Error("Invalid action");
+    data.action = updates.action;
+  }
+  if (updates.condition !== undefined || updates.actionConfig !== undefined) {
+    const clean = cleanAutomationConfig(updates.condition ?? auto.condition, updates.actionConfig ?? auto.actionConfig);
+    if (updates.condition !== undefined) data.condition = clean.condition;
+    if (updates.actionConfig !== undefined) data.actionConfig = clean.actionConfig;
   }
 
   await prisma.automation.update({ where: { id: automationId }, data });
@@ -1080,8 +1200,10 @@ export async function getBoardLabelsAction(boardId: string) {
 export async function upsertBoardLabelAction(boardId: string, name: string, color: string) {
   const user = await getAuthUser();
   await verifyBoardAccess(boardId, user.id);
-  const trimmed = name.trim();
+  const trimmed = typeof name === 'string' ? name.trim() : '';
   if (!trimmed) throw new Error('Label name cannot be empty');
+  if (trimmed.length > 50) throw new Error('Label name must be at most 50 characters');
+  if (typeof color !== 'string' || !isHexColor(color)) throw new Error('Invalid colour');
   return prisma.boardLabel.upsert({
     where: { boardId_name: { boardId, name: trimmed } },
     update: { color },

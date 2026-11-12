@@ -10,31 +10,31 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
-    "@auth/prisma-adapter": "^2.11.2",
+    "@auth/prisma-adapter": "^2.11.3",
     "@hello-pangea/dnd": "^18.0.1",
-    "@prisma/adapter-pg": "^7.8.0",
-    "@prisma/client": "^7.8.0",
+    "@prisma/adapter-pg": "^7.10.1",
+    "@prisma/client": "^7.10.1",
     "@supabase/supabase-js": "^2.104.1",
     "@types/bcryptjs": "^2.4.6",
     "@types/pg": "^8.20.0",
     "bcryptjs": "^3.0.3",
     "groq-sdk": "^1.1.2",
     "lucide-react": "^1.9.0",
-    "next": "16.2.4",
-    "next-auth": "^4.24.14",
+    "next": "^16.4.6",
+    "next-auth": "^4.24.15",
     "nodemailer": "^7.0.13",
     "pg": "^8.20.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "resend": "^6.12.2"
+    "resend": "^6.38.0"
   },
   "devDependencies": {
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.4",
-    "prisma": "^7.8.0",
+    "eslint-config-next": "^16.4.6",
+    "prisma": "^7.10.1",
     "typescript": "^5"
   }
 }

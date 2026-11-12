@@ -3,6 +3,16 @@ import Groq from 'groq-sdk';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
+import { LIMITS, consume } from '@/lib/rateLimit';
+
+const PRIORITIES = ['urgent', 'high', 'medium', 'low'];
+
+/** A trimmed string no longer than `max`, or null when the value isn't a usable string. */
+function text(value: unknown, max: number): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed.slice(0, max) : null;
+}
 
 // Lazy client — instantiated at request time so build doesn't fail without GROQ_API_KEY
 let _groq: Groq | null = null;
@@ -63,10 +73,16 @@ export async function POST(req: NextRequest) {
 
   const { action, payload } = body;
 
+  // Every call costs Groq tokens, so cap how often one account can ask
+  if (!(await consume(`ai:${session.user.id}`, LIMITS.ai))) {
+    return NextResponse.json({ error: 'AI limit reached. Please try again later.' }, { status: 429 });
+  }
+
   try {
     switch (action) {
       case 'subtasks': {
-        const { cardTitle, cardDescription } = payload ?? {};
+        const cardTitle = text(payload?.cardTitle, 500);
+        const cardDescription = text(payload?.cardDescription, 2000);
         if (!cardTitle) return NextResponse.json({ error: 'cardTitle is required' }, { status: 400 });
         const safeTitle = sanitizeUserInput(cardTitle);
         const safeDescription = cardDescription ? sanitizeUserInput(cardDescription) : undefined;
@@ -80,11 +96,13 @@ export async function POST(req: NextRequest) {
         } catch {
           subtasks = raw.split('\n').map(s => s.replace(/^[-*\d.]+\s*/, '').trim()).filter(Boolean);
         }
-        return NextResponse.json({ subtasks: subtasks.slice(0, 8) });
+        if (!Array.isArray(subtasks)) subtasks = [];
+        return NextResponse.json({ subtasks: subtasks.filter((s) => typeof s === 'string').map((s) => s.slice(0, 200)).slice(0, 8) });
       }
 
       case 'smart_due_date': {
-        const { cardTitle, priority } = payload ?? {};
+        const cardTitle = text(payload?.cardTitle, 500);
+        const priority = PRIORITIES.includes(payload?.priority) ? payload.priority : 'medium';
         if (!cardTitle) return NextResponse.json({ error: 'cardTitle is required' }, { status: 400 });
         const system = `You are a project planning assistant. Suggest a realistic due date. Priority: urgent=1 day, high=3 days, medium=7 days, low=21 days. Respond ONLY with valid JSON: {"daysFromNow": number, "reasoning": "one short sentence"}`;
         const user = `Task: "${sanitizeUserInput(cardTitle)}"\nPriority: ${priority ?? 'medium'}`;
@@ -95,15 +113,17 @@ export async function POST(req: NextRequest) {
           if (match) result = JSON.parse(match[0]);
         } catch { /* use default */ }
         const suggestedDate = new Date();
-        suggestedDate.setDate(suggestedDate.getDate() + (result.daysFromNow ?? 7));
+        // The model's numbers are untrusted: keep them to a sane whole number of days
+        const days = Number.isFinite(Number(result.daysFromNow)) ? Math.min(365, Math.max(0, Math.round(Number(result.daysFromNow)))) : 7;
+        suggestedDate.setDate(suggestedDate.getDate() + days);
         return NextResponse.json({
           suggestedDate: suggestedDate.toISOString().split('T')[0],
-          reasoning: result.reasoning,
+          reasoning: typeof result.reasoning === 'string' ? result.reasoning.slice(0, 300) : '',
         });
       }
 
       case 'auto_categorize': {
-        const { cardTitle } = payload ?? {};
+        const cardTitle = text(payload?.cardTitle, 500);
         if (!cardTitle) return NextResponse.json({ error: 'cardTitle is required' }, { status: 400 });
         const system = `You are a task categorization assistant. Given a task title, suggest a priority and up to 3 labels. Priority must be one of: urgent, high, medium, low. Labels should be 1-2 words. Respond ONLY with valid JSON: {"priority": "medium", "labels": ["Design","Frontend"]}`;
         const user = `Task: "${sanitizeUserInput(cardTitle)}"`;
@@ -114,13 +134,13 @@ export async function POST(req: NextRequest) {
           if (match) result = JSON.parse(match[0]);
         } catch { /* use default */ }
         return NextResponse.json({
-          priority: result.priority ?? 'medium',
-          labels: (result.labels ?? []).slice(0, 3),
+          priority: PRIORITIES.includes(result.priority) ? result.priority : 'medium',
+          labels: (Array.isArray(result.labels) ? result.labels : []).filter((l) => typeof l === 'string').map((l) => l.slice(0, 30)).slice(0, 3),
         });
       }
 
       case 'weekly_digest': {
-        const { boardId } = payload ?? {};
+        const boardId = text(payload?.boardId, 64);
         if (!boardId) return NextResponse.json({ error: 'boardId is required' }, { status: 400 });
 
         // Verify the user is a member of this board
@@ -168,12 +188,11 @@ export async function POST(req: NextRequest) {
       }
 
       default:
-        return NextResponse.json({ error: `Unknown action: "${action}"` }, { status: 400 });
+        return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
     }
   } catch (error) {
-    // Surface the REAL error message — critical for debugging Groq issues
-    const msg = getErrorMessage(error);
-    console.error('[AI route error]', action, msg);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    // Full details go to the server log only; provider errors can reveal configuration
+    console.error('[AI route error]', action, getErrorMessage(error));
+    return NextResponse.json({ error: 'The AI assistant is unavailable right now. Please try again.' }, { status: 500 });
   }
 }

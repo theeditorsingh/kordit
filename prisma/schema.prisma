@@ -35,16 +35,18 @@ model Session {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  username      String?   @unique
-  password      String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-  workspaceRole String    @default("Member") // Owner, Admin, Member, Guest
-  accounts      Account[]
-  sessions      Session[]
+  id             String    @id @default(cuid())
+  name           String?
+  username       String?   @unique
+  password       String?
+  email          String?   @unique
+  emailVerified  DateTime?
+  image          String?
+  workspaceRole  String    @default("Member") // Owner, Admin, Member, Guest
+  // Bumped on password change; JWTs carrying an older value are rejected
+  sessionVersion Int       @default(0)
+  accounts       Account[]
+  sessions       Session[]
 
   // Kordit Relations
   ownedBoards            Board[]                 @relation("BoardOwner")
@@ -353,4 +355,13 @@ model WorkspaceInvite {
 
   @@unique([workspaceId, email])
   @@index([email, status])
+}
+
+// Fixed-window counters for rate limiting (login, magic links, AI, invites)
+model RateLimit {
+  key     String   @id
+  count   Int      @default(0)
+  resetAt DateTime
+
+  @@index([resetAt])
 }
