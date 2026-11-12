@@ -10,7 +10,8 @@ import styles from '@/components/Pages.module.css';
 /** Every open card assigned to me, across all boards, grouped by when it's due. */
 export default function MyTasksPage() {
   const { state } = useBoardContext();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
+  const sessionLoading = status === 'loading'; // don't show "nothing assigned" before we know who you are
   const username = session?.user?.username;
 
   const items = useMemo(() => getAssignedOpenCards(state.boards, session?.user?.id), [state.boards, session?.user?.id]);
@@ -25,13 +26,13 @@ export default function MyTasksPage() {
             <div>
               <h1 className={styles.pageTitle}>My Tasks</h1>
               <p className={styles.pageSub}>
-                {items.length} open task{items.length === 1 ? '' : 's'} assigned to you
-                {boardCount > 0 && ` across ${boardCount} board${boardCount === 1 ? '' : 's'}`}
+                {sessionLoading ? 'Loading…' : <>{items.length} open task{items.length === 1 ? '' : 's'} assigned to you
+                {boardCount > 0 && ` across ${boardCount} board${boardCount === 1 ? '' : 's'}`}</>}
               </p>
             </div>
           </header>
 
-          {items.length === 0 ? (
+          {sessionLoading ? null : items.length === 0 ? (
             <div className={styles.panel}>
               <p className={styles.empty}>Nothing is assigned to you right now. Cards you&apos;re assigned to on any board show up here.</p>
             </div>

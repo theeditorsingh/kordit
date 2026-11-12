@@ -20,7 +20,9 @@ function greeting(now: Date) {
 /** Home: what's due for you, your boards and your workspaces. New users pick a template. */
 export default function Home() {
   const { state, createBoard, workspaces, createWorkspace } = useBoardContext();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
+  // Until the session is known we can't tell which tasks are yours (avoid flashing "0")
+  const sessionLoading = status === 'loading';
   const router = useRouter();
   const username = session?.user?.username;
   const [addingWs, setAddingWs] = useState(false);
@@ -113,12 +115,14 @@ export default function Home() {
           <section className={styles.section} aria-labelledby="home-due">
             <div className={styles.sectionHead}>
               <h2 id="home-due" className={styles.sectionTitle}>
-                Due for you <span className={styles.sectionCount}>{due.length}</span>
+                Due for you {!sessionLoading && <span className={styles.sectionCount}>{due.length}</span>}
               </h2>
               <Link href="/my-tasks" className={styles.sectionLink}>All my tasks</Link>
             </div>
             <div className={styles.panel}>
-              {due.length === 0
+              {sessionLoading
+                ? <p className={styles.empty}>Loading…</p>
+                : due.length === 0
                 ? <p className={styles.empty}>Nothing assigned to you is due in the next 7 days.</p>
                 : due.slice(0, DUE_PREVIEW).map((item) => <TaskRow key={item.card.id} item={item} username={username} />)}
             </div>
