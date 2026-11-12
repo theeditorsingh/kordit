@@ -512,6 +512,8 @@
 .desktopHide {}
 @media (min-width: 769px) {
   .desktopHide { display: none !important; }
+  /* Every toolbar control shares one height and radius */
+  .nav { --tb-h: 38px; --tb-r: 10px; }
 
   .nav { padding: 0 16px 0 20px; gap: 10px; }
   .logo img { width: 30px; height: 30px; border-radius: 8px; }
@@ -522,18 +524,19 @@
   .boardSwitchWrap { position: relative; min-width: 0; }
   .desktopBoardBtn {
     display: inline-flex; align-items: center; gap: 6px;
-    height: 36px; padding: 0 8px; border-radius: 8px;
+    height: var(--tb-h); padding: 0 8px; border-radius: var(--tb-r);
     color: var(--text-primary); font: inherit; font-size: 17px; font-weight: 700; letter-spacing: -0.2px;
     max-width: 240px;
   }
   .desktopBoardBtn:hover { background: var(--bg-hover); }
   .desktopBoardName { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 
-  .center { margin: 0 0 0 8px; gap: 10px; }
-  .right { flex: 1 1 auto; min-width: 0; justify-content: flex-end; gap: 8px; }
+  .center { margin: 0 0 0 8px; gap: clamp(8px, 0.7vw, 14px); }
+  /* Search grows into the free space and stays centred in it, so there is no empty hole */
+  .right { flex: 1 1 auto; min-width: 0; justify-content: flex-end; gap: clamp(8px, 0.6vw, 12px); padding-left: 16px; }
 
-  .viewTabs { background: var(--bg-overlay); border-radius: 10px; padding: 3px; gap: 2px; }
-  .viewTab { height: 32px; padding: 0 12px; gap: 6px; border-radius: 8px; font-size: 13px; font-weight: 500; }
+  .viewTabs { height: var(--tb-h); background: var(--bg-overlay); border-radius: var(--tb-r); padding: 3px; gap: 2px; }
+  .viewTab { height: calc(var(--tb-h) - 6px); padding: 0 12px; gap: 6px; border-radius: 8px; font-size: 13px; font-weight: 500; }
   .viewTab.active {
     background: color-mix(in srgb, var(--accent) 12%, var(--bg-surface));
     color: var(--accent);
@@ -542,7 +545,7 @@
 
   .boardColorBtn {
     display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
-    height: 36px; padding: 0 10px 0 12px; border-radius: 10px;
+    height: var(--tb-h); padding: 0 10px 0 12px; border-radius: var(--tb-r);
     border: 1px solid var(--border); background: var(--bg-surface);
     color: var(--text-primary); font: inherit; font-size: 13px; font-weight: 500;
     transition: background 0.15s, color 0.15s, border-color 0.15s;
@@ -550,27 +553,36 @@
   .boardColorBtn:hover { background: var(--bg-hover); }
   .boardColorBtnOpen, .boardColorBtnOpen:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
 
-  .searchWrap { flex: 0 1 260px; width: auto; min-width: 120px; height: 36px; border-radius: 10px; padding: 0 8px 0 10px; }
-  .searchWrap:focus-within { width: auto; }
-  .searchInput { padding: 0; min-width: 0; }
+  .searchWrap {
+    flex: 1 1 280px; width: auto; min-width: 140px; max-width: 560px;
+    margin-inline: auto; /* leftover space splits evenly around it */
+    height: var(--tb-h); border-radius: var(--tb-r); padding: 0 8px 0 12px;
+    gap: 8px; /* .desktopOnly would otherwise zero it and glue the icon to the text */
+    background: color-mix(in srgb, var(--bg-overlay) 55%, var(--bg-surface));
+    border: 1px solid var(--border-subtle);
+  }
+  .searchWrap:hover { border-color: var(--border); }
+  .searchWrap:focus-within { width: auto; background: var(--bg-surface); border-color: var(--accent); }
+  .searchIcon { width: 16px; height: 16px; }
+  .searchInput { padding: 0; min-width: 0; font-size: 13.5px; }
   .kbd {
     flex-shrink: 0; font: inherit; font-size: 11px; font-weight: 500; line-height: 1;
     padding: 4px 6px; border-radius: 6px; border: 1px solid var(--border);
     background: var(--bg-surface); color: var(--text-muted);
   }
 
-  .aiBtn { height: 36px; border-radius: 10px !important; padding: 0 12px !important; flex-shrink: 0; }
-  .toolBtn { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 10px; border-radius: 10px; font-size: 13px; color: var(--text-primary); }
+  .aiBtn { height: var(--tb-h); border-radius: var(--tb-r) !important; padding: 0 12px !important; flex-shrink: 0; }
+  .toolBtn { display: inline-flex; align-items: center; gap: 6px; height: var(--tb-h); padding: 0 10px; border-radius: var(--tb-r); font-size: 13px; color: var(--text-primary); }
   .toolBtnOn { color: var(--accent); background: var(--accent-subtle); }
   .filterCount {
     min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
     background: var(--accent); color: #fff; font-size: 11px; font-weight: 700;
     display: inline-flex; align-items: center; justify-content: center;
   }
-  .shareBtn { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 16px; border-radius: 10px; font-size: 13px; flex-shrink: 0; }
+  .shareBtn { display: inline-flex; align-items: center; gap: 6px; height: var(--tb-h); padding: 0 16px; border-radius: var(--tb-r); font-size: 13px; flex-shrink: 0; }
 
   .right > :global(.btn-icon),
-  .right > div > :global(.btn-icon) { width: 38px; height: 38px; justify-content: center; border-radius: 10px; color: var(--text-primary); }
+  .right > div > :global(.btn-icon) { width: var(--tb-h); height: var(--tb-h); justify-content: center; border-radius: var(--tb-r); color: var(--text-primary); }
   .right > :global(.btn-icon) svg,
   .right > div > :global(.btn-icon) svg { width: 19px; height: 19px; }
 
@@ -617,8 +629,11 @@
   .boardColorBtn { padding: 0 8px 0 10px; }
   .desktopBoardBtn { max-width: 180px; }
 }
-@media (min-width: 769px) and (max-width: 1180px) {
+/* The shortcut hint needs room; below 1367px the search box is too narrow for it (the shortcut still works) */
+@media (min-width: 769px) and (max-width: 1366px) {
   .kbd { display: none; }
+}
+@media (min-width: 769px) and (max-width: 1180px) {
   .desktopBoardBtn { max-width: 140px; font-size: 15px; }
   .logoText { display: none; }
 }
