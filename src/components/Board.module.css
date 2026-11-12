@@ -6,8 +6,13 @@
   overflow-x: auto;
   overflow-y: hidden;
   height: 100%;
-  align-items: flex-start;
+  /* Wrappers stretch to the board height; each column keeps its content height and
+     shrinks (scrolling its cards) when taller than the board */
+  align-items: stretch;
 }
+.board > div { display: flex; flex-direction: column; align-items: flex-start; min-height: 0; }
+.board > div > [data-col-index] { display: flex; flex-direction: column; min-height: 0; flex: 0 1 auto; }
+.board > div > [data-col-index] > * { flex: 0 1 auto; min-height: 0; }
 
 .addColWrap { flex-shrink: 0; }
 
@@ -110,13 +115,7 @@
     scroll-padding-inline: 16px;
     overscroll-behavior-x: contain;
     touch-action: pan-x pan-y;
-    /* Columns fill the board height and scroll their cards inside */
-    align-items: stretch;
   }
-  /* Draggable wrapper → [data-col-index] → column: a flex chain so a tall column shrinks to fit */
-  .board > div { display: flex; flex-direction: column; align-items: flex-start; min-height: 0; }
-  .board > div > [data-col-index] { display: flex; flex-direction: column; min-height: 0; flex: 0 1 auto; }
-  .board > div > [data-col-index] > * { flex: 0 1 auto; min-height: 0; }
   /* Lets the board reach its end so the last column is fully visible */
   .addColWrap { scroll-snap-align: end; padding-right: 16px; }
   .addColBtn { width: 200px; min-height: 44px; }

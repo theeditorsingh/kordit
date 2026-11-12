@@ -18,7 +18,8 @@ interface Props {
   onClose: () => void;
 }
 
-type Tab = 'presets' | 'solid' | 'gradient';
+// Solid colours, preset gradients, or a custom gradient built from two colours
+type Tab = 'solid' | 'gradient' | 'custom';
 
 // Clockwise from "to top"; the arrow icon is rotated by the same angle
 const DIRECTIONS = [
@@ -40,7 +41,7 @@ export default function BoardBackgroundPicker({ board, anchorRect, onApply, onCl
   const currentSolid = board.backgroundType === 'color' && isHexColor(current) ? current.toUpperCase() : null;
 
   const [tab, setTab] = useState<Tab>(
-    currentSolid ? 'solid' : currentGradient && !PRESET_GRADIENTS.includes(current) ? 'gradient' : 'presets'
+    currentSolid ? 'solid' : currentGradient && !PRESET_GRADIENTS.includes(current) ? 'custom' : 'gradient'
   );
   const [solid, setSolid] = useState(currentSolid ?? PRESET_COLORS[0]);
   const [from, setFrom] = useState((currentGradient?.from ?? DEFAULT_GRADIENT.from).toUpperCase());
@@ -70,7 +71,7 @@ export default function BoardBackgroundPicker({ board, anchorRect, onApply, onCl
   }, [onClose]);
 
   const gradient = buildGradient(angle, from, to);
-  const preview = tab === 'solid' ? solid : tab === 'gradient' ? gradient : current;
+  const preview = tab === 'solid' ? solid : tab === 'custom' ? gradient : current;
 
   function apply(background: string, type: BackgroundType) {
     if (!isValidBackground(type, background)) return;
@@ -84,7 +85,7 @@ export default function BoardBackgroundPicker({ board, anchorRect, onApply, onCl
       <div
         className={styles.picker}
         role="dialog"
-        aria-label="Board background"
+        aria-label="Board color"
         style={{ ...swipe.dragStyle, ...position }}
         onTouchStart={swipe.onTouchStart}
         onTouchMove={swipe.onTouchMove}
@@ -92,21 +93,14 @@ export default function BoardBackgroundPicker({ board, anchorRect, onApply, onCl
       >
         <div className={styles.grabber} />
         <div className={styles.header}>
-          <span className={styles.title}>Board background</span>
+          <span className={styles.title}>Board color</span>
           <button className="btn btn-ghost btn-icon btn-sm" onClick={onClose} aria-label="Close">
             <X size={15} />
           </button>
         </div>
 
-        <div
-          className={`${styles.preview} ${preview ? '' : styles.previewEmpty}`}
-          style={preview ? { background: preview } : undefined}
-        >
-          {!preview && 'No background'}
-        </div>
-
         <div className={styles.tabs} role="tablist">
-          {(['presets', 'solid', 'gradient'] as Tab[]).map((t) => (
+          {(['solid', 'gradient', 'custom'] as Tab[]).map((t) => (
             <button
               key={t}
               role="tab"
@@ -114,12 +108,12 @@ export default function BoardBackgroundPicker({ board, anchorRect, onApply, onCl
               className={`${styles.tab} ${tab === t ? styles.tabActive : ''}`}
               onClick={() => setTab(t)}
             >
-              {t === 'presets' ? 'Presets' : t === 'solid' ? 'Solid' : 'Gradient'}
+              {t === 'solid' ? 'Solid' : t === 'gradient' ? 'Gradient' : 'Custom'}
             </button>
           ))}
         </div>
 
-        {tab === 'presets' && (
+        {tab === 'gradient' && (
           <div className={styles.grid}>
             {PRESET_GRADIENTS.map((g) => (
               <button
@@ -129,7 +123,7 @@ export default function BoardBackgroundPicker({ board, anchorRect, onApply, onCl
                 onClick={() => apply(g, 'gradient')}
                 aria-label="Preset gradient"
               >
-                {current === g && <Check size={14} />}
+                {current === g && <span className={styles.check}><Check size={13} strokeWidth={3} /></span>}
               </button>
             ))}
             <button
@@ -145,7 +139,7 @@ export default function BoardBackgroundPicker({ board, anchorRect, onApply, onCl
 
         {tab === 'solid' && (
           <>
-            <div className={styles.grid}>
+            <div className={`${styles.grid} ${styles.gridSmall}`}>
               {PRESET_COLORS.map((c) => (
                 <button
                   key={c}
@@ -163,8 +157,9 @@ export default function BoardBackgroundPicker({ board, anchorRect, onApply, onCl
           </>
         )}
 
-        {tab === 'gradient' && (
+        {tab === 'custom' && (
           <>
+            <div className={styles.preview} style={{ background: preview }} aria-hidden="true" />
             <div className={styles.gradientRow}>
               <ColorField label="Start" value={from} onChange={setFrom} />
               <button

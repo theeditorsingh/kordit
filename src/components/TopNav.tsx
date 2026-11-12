@@ -5,7 +5,7 @@ import { useBoardContext } from '@/context/BoardContext';
 import { useTheme } from '@/context/ThemeContext';
 import {
   Sun, Moon, Search, LayoutGrid, Table2, Calendar, X, Share2, User, LogOut,
-  Zap, Palette, Copy, Sparkles, Undo2, Redo2, Menu, Settings, ListFilter, ChevronDown, BarChart3, Users, Check
+  Zap, Palette, Copy, Sparkles, Undo2, Redo2, Menu, Settings, ListFilter, ChevronDown, BarChart3, Users, Check, MoreHorizontal
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
@@ -46,6 +46,9 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
   const router = useRouter();
   const { data: session } = useSession();
   const [showBoardMenu, setShowBoardMenu] = useState(false);
+  const [showDesktopMore, setShowDesktopMore] = useState(false);
+  // TopNav only renders after mount (both pages wait for it), so navigator is available
+  const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
   const confirm = useConfirm();
   const desktopSearchRef = useRef<HTMLInputElement>(null);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -94,6 +97,11 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
   const handleUndoRedoKey = useCallback(
     (e: KeyboardEvent) => {
       if (document.querySelector('[role="dialog"], [role="alertdialog"]')) return;
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k' && desktopSearchRef.current && desktopSearchRef.current.offsetParent) {
+        e.preventDefault();
+        desktopSearchRef.current.focus();
+        return;
+      }
       // Leave Ctrl+Z alone while typing so the browser's own text undo works
       const el = e.target as HTMLElement | null;
       if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)) return;
@@ -146,6 +154,27 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
     if (targetUsername) router.push(`/${targetUsername}/${board.slug}`);
   }
 
+  const boardMenu = showBoardMenu && activeBoard && (
+    <>
+      <div className={styles.boardMenuScrim} onClick={() => setShowBoardMenu(false)} />
+      <ul className={styles.boardMenu} role="listbox" aria-label="Switch board">
+        {switchableBoards.map((b) => (
+          <li key={b.id}>
+            <button
+              role="option"
+              aria-selected={b.id === activeBoard.id}
+              className={`${styles.boardMenuItem} ${b.id === activeBoard.id ? styles.boardMenuItemActive : ''}`}
+              onClick={() => openBoard(b.id)}
+            >
+              <span className={styles.boardMenuName}>{b.title}</span>
+              {b.id === activeBoard.id && <Check size={16} />}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+
   // On mobile, Profile opens the actions sheet (it also holds the account items); desktop keeps the dropdown
   function onProfileClick() {
     if (window.matchMedia('(max-width: 768px)').matches) setShowMore(true);
@@ -184,7 +213,23 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
           <span className={styles.logoText}>Kordit</span>
         </div>
         {activeBoard && (
-          <span title={activeBoard.title} className={styles.boardName}>{activeBoard.title}</span>
+          <div className={`${styles.desktopBoardSwitch} ${styles.desktopOnly}`}>
+            <span className={styles.headerDivider} aria-hidden="true" />
+            <div className={styles.boardSwitchWrap}>
+              <button
+                className={styles.desktopBoardBtn}
+                onClick={() => setShowBoardMenu(!showBoardMenu)}
+                aria-haspopup="listbox"
+                aria-expanded={showBoardMenu}
+                title={activeBoard.title}
+                aria-label={`Board: ${activeBoard.title}. Switch board`}
+              >
+                <span className={styles.desktopBoardName}>{activeBoard.title}</span>
+                <ChevronDown size={16} />
+              </button>
+              {boardMenu}
+            </div>
+          </div>
         )}
       </div>
 
@@ -217,68 +262,44 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
             </button>
           </div>
         )}
+        {activeBoard && (
+          <button
+            className={`${styles.boardColorBtn} ${showBgPicker ? styles.boardColorBtnOpen : ''}`}
+            onClick={(e) => { setBgAnchor(e.currentTarget.getBoundingClientRect()); setShowBgPicker(!showBgPicker); }}
+            aria-haspopup="dialog"
+            aria-expanded={showBgPicker}
+            title="Board color"
+            aria-label="Board color"
+          >
+            <Palette size={15} />
+            <span className={styles.boardColorLabel}>Board color</span>
+            <ChevronDown size={13} />
+          </button>
+        )}
       </div>
 
       <div className={styles.right}>
         {activeBoard && (
           <>
-            {/* Undo / Redo — desktop only (available in More sheet on mobile) */}
-            <div className={`${styles.btnGroup} ${styles.desktopOnly}`}>
-              <button
-                className="btn btn-ghost btn-icon btn-sm"
-                onClick={undo}
-                disabled={!canUndo}
-                title="Undo (Ctrl+Z)"
-                aria-label="Undo (Ctrl+Z)"
-                style={{ opacity: canUndo ? 1 : 0.35 }}
-              >
-                <Undo2 size={15} />
-              </button>
-              <button
-                className="btn btn-ghost btn-icon btn-sm"
-                onClick={redo}
-                disabled={!canRedo}
-                title="Redo (Ctrl+Shift+Z)"
-                aria-label="Redo (Ctrl+Shift+Z)"
-                style={{ opacity: canRedo ? 1 : 0.35 }}
-              >
-                <Redo2 size={15} />
-              </button>
-            </div>
-
-            {/* Desktop-only secondary board actions */}
-            <div className={`${styles.desktopTools} ${styles.desktopOnly}`}>
-              <button
-                className="btn btn-ghost btn-icon btn-sm"
-                onClick={(e) => { setBgAnchor(e.currentTarget.getBoundingClientRect()); setShowBgPicker(!showBgPicker); }}
-                title="Board background"
-                aria-label="Board background"
-                aria-expanded={showBgPicker}
-              >
-                <Palette size={15} />
-              </button>
-
-              <button
-                className="btn btn-ghost btn-icon btn-sm"
-                onClick={() => setShowAutomations(true)}
-                title="Automations"
-                aria-label="Automations"
-              >
-                <Zap size={15} />
-              </button>
-
-              <button
-                className="btn btn-ghost btn-icon btn-sm"
-                onClick={async () => {
-                  if (await confirm('A copy of this board will be created with the same columns and no cards.', { title: 'Save as template', confirmLabel: 'Create copy', danger: false })) {
-                    saveBoardAsTemplate(activeBoard.id);
-                  }
-                }}
-                title="Save as template"
-                aria-label="Save as template"
-              >
-                <Copy size={15} />
-              </button>
+            {/* Desktop search */}
+            <div className={`${styles.searchWrap} ${styles.desktopOnly}`}>
+              <Search size={14} className={styles.searchIcon} />
+              <input
+                ref={desktopSearchRef}
+                className={styles.searchInput}
+                placeholder="Search cards..."
+                aria-label="Search cards"
+                aria-keyshortcuts="/ Control+K Meta+K"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              {search ? (
+                <button className={styles.searchClear} onClick={() => setSearch('')} aria-label="Clear search">
+                  <X size={12} />
+                </button>
+              ) : (
+                <kbd className={styles.kbd}>{isMac ? '⌘K' : 'Ctrl K'}</kbd>
+              )}
             </div>
 
             {/* AI Digest */}
@@ -293,51 +314,23 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
               <span className={styles.aiBtnLabel}>AI Digest</span>
             </button>
 
-            {/* Filter dropdown — desktop (on mobile it is in the More sheet) */}
+            {/* Filter dropdown — desktop (on mobile it is in the Profile sheet) */}
             {filters && setFilters && (
               <div className={styles.desktopOnly}>
                 <button
-                  className="btn btn-ghost btn-sm"
+                  className={`btn btn-ghost btn-sm ${styles.toolBtn} ${activeFilterCount > 0 ? styles.toolBtnOn : ''}`}
                   onClick={(e) => { setFilterAnchor(e.currentTarget.getBoundingClientRect()); setShowFilters(!showFilters); }}
                   aria-haspopup="menu"
                   aria-expanded={showFilters}
                   title="Filter cards"
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 6,
-                    ...(activeFilterCount > 0 ? { color: 'var(--accent)', background: 'var(--accent-subtle)' } : {}),
-                  }}
                 >
-                  <ListFilter size={14} />
+                  <ListFilter size={15} />
                   <span className={styles.filterBtnLabel}>Filter</span>
-                  {activeFilterCount > 0 && (
-                    <span style={{
-                      minWidth: 18, height: 18, padding: '0 5px', borderRadius: 9,
-                      background: 'var(--accent)', color: '#fff', fontSize: 11, fontWeight: 700,
-                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                    }}>{activeFilterCount}</span>
-                  )}
+                  {activeFilterCount > 0 && <span className={styles.filterCount}>{activeFilterCount}</span>}
                   <ChevronDown size={13} />
                 </button>
               </div>
             )}
-
-            {/* Desktop search (hidden on mobile) */}
-            <div className={`${styles.searchWrap} ${styles.desktopOnly}`}>
-              <Search size={14} className={styles.searchIcon} />
-              <input
-                ref={desktopSearchRef}
-                className={styles.searchInput}
-                placeholder="Search cards...  ( / )"
-                aria-label="Search cards"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-              {search && (
-                <button className={styles.searchClear} onClick={() => setSearch('')}>
-                  <X size={12} />
-                </button>
-              )}
-            </div>
 
             {/* Mobile search icon */}
             <button
@@ -350,15 +343,53 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
             </button>
 
             {/* Share */}
-            <button className={`btn btn-primary btn-sm ${styles.mobileHide}`} onClick={() => setShowShareModal(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <button className={`btn btn-primary btn-sm ${styles.shareBtn} ${styles.mobileHide}`} onClick={() => setShowShareModal(true)}>
               <Share2 size={14} /> <span className={styles.shareBtnLabel}>Share</span>
             </button>
 
-            <div className={`${styles.divider} ${styles.desktopOnly}`} />
+            {/* Desktop More: undo/redo, automations, template, theme */}
+            <div className={`${styles.moreWrap} ${styles.desktopOnly}`}>
+              <button
+                className="btn btn-ghost btn-icon"
+                onClick={() => setShowDesktopMore(!showDesktopMore)}
+                aria-haspopup="menu"
+                aria-expanded={showDesktopMore}
+                title="More actions"
+                aria-label="More actions"
+              >
+                <MoreHorizontal size={18} />
+              </button>
+              {showDesktopMore && (
+                <>
+                  <div className={styles.boardMenuScrim} onClick={() => setShowDesktopMore(false)} />
+                  <div className={styles.moreMenu} role="menu">
+                    {[
+                      { icon: <Undo2 size={15} />, label: 'Undo', hint: isMac ? '⌘Z' : 'Ctrl+Z', action: undo, disabled: !canUndo },
+                      { icon: <Redo2 size={15} />, label: 'Redo', hint: isMac ? '⇧⌘Z' : 'Ctrl+Shift+Z', action: redo, disabled: !canRedo },
+                      { icon: <Zap size={15} />, label: 'Automations', action: () => setShowAutomations(true) },
+                      { icon: <Copy size={15} />, label: 'Save as template', action: async () => { if (await confirm('A copy of this board will be created with the same columns and no cards.', { title: 'Save as template', confirmLabel: 'Create copy', danger: false })) saveBoardAsTemplate(activeBoard.id); } },
+                      { icon: theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />, label: theme === 'dark' ? 'Light theme' : 'Dark theme', action: toggleTheme },
+                    ].map((item) => (
+                      <button
+                        key={item.label}
+                        role="menuitem"
+                        className={styles.moreItem}
+                        disabled={item.disabled}
+                        onClick={() => { setShowDesktopMore(false); item.action(); }}
+                      >
+                        {item.icon}
+                        <span className={styles.moreLabel}>{item.label}</span>
+                        {item.hint && <span className={styles.moreHint}>{item.hint}</span>}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
           </>
         )}
 
-        <button className={`btn btn-ghost btn-icon ${styles.mobileHide}`} onClick={toggleTheme} title="Toggle theme" aria-label="Toggle theme">
+        <button className={`btn btn-ghost btn-icon ${styles.mobileHide} ${activeBoard ? styles.desktopHide : ''}`} onClick={toggleTheme} title="Toggle theme" aria-label="Toggle theme">
           {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
         </button>
 
@@ -620,26 +651,7 @@ export default function TopNav({ view, setView, search, setSearch, onMenuClick, 
           <div className={styles.boardMeta}>
             {activeBoard.columns.length} column{activeBoard.columns.length === 1 ? '' : 's'} · {openTaskCount} task{openTaskCount === 1 ? '' : 's'}
           </div>
-          {showBoardMenu && (
-            <>
-              <div className={styles.boardMenuScrim} onClick={() => setShowBoardMenu(false)} />
-              <ul className={styles.boardMenu} role="listbox" aria-label="Switch board">
-                {switchableBoards.map((b) => (
-                  <li key={b.id}>
-                    <button
-                      role="option"
-                      aria-selected={b.id === activeBoard.id}
-                      className={`${styles.boardMenuItem} ${b.id === activeBoard.id ? styles.boardMenuItemActive : ''}`}
-                      onClick={() => openBoard(b.id)}
-                    >
-                      <span className={styles.boardMenuName}>{b.title}</span>
-                      {b.id === activeBoard.id && <Check size={16} />}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
+          {boardMenu}
         </div>
         <div className={styles.viewIcons} role="group" aria-label="View" id="view-switcher-mobile">
           {([

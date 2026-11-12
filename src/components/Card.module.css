@@ -208,93 +208,110 @@
 
 @media (pointer: coarse) { .doneBtn { width: 44px; height: 44px; margin: -8px 0 -8px -8px; } }
 
-/* Avatar variants: desktop shows full initials; mobile shows one tinted initial */
-.initialOne, .moreAssignees { display: none; }
 
-/* ─── MOBILE COMPACT CARD (≤768px) ───
-   checkbox | label pill / title / due | avatar
+/* ─── COMPACT CARD (all widths) ───
+   labels · priority
+   [○]  title                [avatar]
+        due · indicators
    Grid on .card; the title row and footer wrappers dissolve with display: contents. */
+.card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  column-gap: 8px;
+  align-items: center;
+  padding: 10px 10px 10px 8px;
+}
+.card:hover { transform: none; }
+
+.cardCover { grid-column: 1 / -1; grid-row: 1; margin: -10px -10px 8px -8px; }
+
+.topRow { grid-column: 2 / 4; grid-row: 2; margin-bottom: 5px; align-items: center; }
+.labels { gap: 4px; }
+.labelChip {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  line-height: 1.35;
+}
+.priorityBadge { font-size: 11px; padding: 2px 8px; border-radius: 999px; line-height: 1.3; }
+
+.titleRow { display: contents; }
+.doneBtn {
+  grid-column: 1;
+  grid-row: 3 / 5;
+  align-self: center;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  color: var(--text-secondary);
+}
+.doneBtn svg { width: 18px; height: 18px; stroke-width: 1.6; }
+.titleRow .title,
+.title { grid-column: 2; grid-row: 3; line-height: 1.38; }
+
+.footer { display: contents; }
+.footerLeft { grid-column: 2; grid-row: 4; margin-top: 5px; gap: 10px; flex-wrap: wrap; }
+.footerLeft:empty { display: none; }
+.due { font-size: 12px; gap: 5px; color: var(--text-secondary); }
+.due svg { width: 14px; height: 14px; }
+/* Readable status colours on white (≥4.5:1) */
+.due:global(.overdue) { color: #DE350B !important; }
+.due:global(.due-soon) { color: #A54800 !important; }
+
+.avatars { grid-column: 3; grid-row: 3 / 5; align-self: center; gap: 4px; }
+.avatar {
+  width: 28px;
+  height: 28px;
+  font-size: 12.5px;
+  font-weight: 700;
+  margin-left: 0 !important;
+  background: color-mix(in srgb, var(--member-color) 16%, var(--bg-surface)) !important;
+  color: color-mix(in srgb, var(--member-color) 80%, #000);
+}
+.avatar ~ .avatar { display: none; }
+.initialsFull { display: none; }
+.initialOne { display: inline; }
+.moreAssignees { display: inline-flex; font-size: 11px; font-weight: 600; color: var(--text-secondary); }
+
+.card > :global(.progress-bar) { grid-column: 2 / 4; grid-row: 5; }
+
+/* ─── MOBILE sizes (≤768px) ─── */
 @media (max-width: 768px) {
   .card {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
     column-gap: 10px;
-    align-items: center;
     padding: 12px 12px 12px 8px;
     background: var(--bg-surface);
     border: 1px solid var(--border-subtle);
     border-radius: 14px;
     box-shadow: 0 1px 2px rgba(9, 30, 66, 0.06), 0 2px 8px rgba(9, 30, 66, 0.04);
   }
-  .card:hover { transform: none; box-shadow: 0 1px 2px rgba(9, 30, 66, 0.06), 0 2px 8px rgba(9, 30, 66, 0.04); }
+  .card:hover { box-shadow: 0 1px 2px rgba(9, 30, 66, 0.06), 0 2px 8px rgba(9, 30, 66, 0.04); }
   .card:active { transform: scale(0.99); }
-  @media (prefers-reduced-motion: reduce) { .card:active { transform: none; } }
 
-  .cardCover { grid-column: 1 / -1; grid-row: 1; margin: -12px -12px 10px -8px; border-radius: 14px 14px 0 0; }
-
-  .topRow { grid-column: 2; grid-row: 2; margin-bottom: 6px; align-items: center; }
+  .cardCover { margin: -12px -12px 10px -8px; border-radius: 14px 14px 0 0; }
+  .topRow { margin-bottom: 6px; }
   .labels { gap: 6px; margin-bottom: 0; }
-  .labelChip {
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.3px;
-    text-transform: uppercase;
-    padding: 3px 10px;
-    border-radius: 999px;
-    line-height: 1.3;
-  }
-  .priorityBadge { min-height: 0; font-size: 11px; padding: 2px 8px; border-radius: 999px; }
+  .labelChip { font-size: 11px; font-weight: 700; padding: 3px 10px; line-height: 1.3; }
+  .priorityBadge { min-height: 0; }
 
-  .titleRow { display: contents; }
-  .doneBtn {
-    grid-column: 1;
-    grid-row: 2 / 5;
-    align-self: center;
-    width: 44px;
-    height: 44px;
-    margin: -10px -6px -10px -4px;
-    color: var(--text-secondary);
-  }
-  .doneBtn svg { width: 22px; height: 22px; stroke-width: 1.6; }
+  .doneBtn { width: 44px; height: 44px; margin: -10px -6px -10px -4px; }
+  .doneBtn svg { width: 22px; height: 22px; }
   .titleRow .title,
-  .title {
-    grid-column: 2;
-    grid-row: 3;
-    font-size: 16px;
-    font-weight: 500;
-    line-height: 1.35;
-    color: var(--text-primary);
-  }
+  .title { font-size: 16px; font-weight: 500; line-height: 1.35; color: var(--text-primary); }
 
-  .footer { display: contents; }
-  .footerLeft { grid-column: 2; grid-row: 4; margin-top: 6px; gap: 10px; flex-wrap: wrap; }
-  .footerLeft:empty { display: none; }
-  .due { font-size: 14px; gap: 6px; color: var(--text-secondary); }
+  .footerLeft { margin-top: 6px; }
+  .due { font-size: 14px; gap: 6px; }
   .due svg { width: 16px; height: 16px; }
-  /* Accessible status colours on white (≥4.5:1) */
-  .due:global(.overdue) { color: #DE350B !important; }
-  .due:global(.due-soon) { color: #A54800 !important; }
   .checklist { font-size: 13px; }
 
-  .avatars { grid-column: 3; grid-row: 2 / 5; align-self: center; gap: 4px; }
-  .avatar {
-    width: 34px;
-    height: 34px;
-    font-size: 15px;
-    font-weight: 700;
-    margin-left: 0 !important;
-    background: color-mix(in srgb, var(--member-color) 16%, var(--bg-surface)) !important;
-    color: color-mix(in srgb, var(--member-color) 80%, #000);
-  }
-  .avatar ~ .avatar { display: none; }
-  .initialsFull { display: none; }
-  .initialOne { display: inline; }
-  .moreAssignees {
-    display: inline-flex;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-secondary);
-  }
-
-  .card > :global(.progress-bar) { grid-column: 2 / 4; grid-row: 5; }
+  .avatar { width: 34px; height: 34px; font-size: 15px; }
+  .moreAssignees { font-size: 12px; }
+}
+@media (max-width: 768px) and (prefers-reduced-motion: reduce) {
+  .card:active { transform: none; }
+}
+/* Touch screens wider than a phone (tablets): keep a large tick target */
+@media (pointer: coarse) and (min-width: 769px) {
+  .doneBtn { width: 40px; height: 40px; margin: -8px -6px -8px -8px; }
 }

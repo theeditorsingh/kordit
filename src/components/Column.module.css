@@ -7,8 +7,8 @@
   box-shadow: var(--ui-column-shadow);
   display: flex;
   flex-direction: column;
-  max-height: calc(100vh - 100px);
-  max-height: calc(100dvh - var(--ui-nav-height) - 48px);
+  /* Height comes from the board's flex chain (Board.module.css) */
+  max-height: 100%;
   transition: box-shadow 0.15s, border-color 0.15s;
 }
 
@@ -539,20 +539,37 @@
 }
 
 /* Desktop/mobile variants of the same control */
-.mobileOnlyIcon, .emptyMobile, .addBtnMobileOnly { display: none; }
+.mobileOnlyIcon { display: none; }
+
+/* ─── DESKTOP COLUMN (Kordit board design) ─── */
+.headerLeft { min-width: 0; flex: 1; }
+.title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; font-size: 14px; }
+.count { flex-shrink: 0; min-width: 22px; text-align: center; font-size: 12px; padding: 1px 7px; }
+.cardList { padding: 4px 10px 6px; }
+.emptyNote { padding: 14px 8px; text-align: center; font-size: 12px; color: var(--text-muted); }
+.addBtn {
+  width: calc(100% - 20px);
+  margin: 4px 10px 10px;
+  min-height: 36px;
+  padding: 0 12px;
+  gap: 8px;
+  border: none;
+  border-radius: 10px;
+  background: var(--accent-subtle);
+  color: var(--accent);
+  font-size: 13.5px;
+  font-weight: 500;
+}
+.addBtn:hover { background: color-mix(in srgb, var(--accent) 14%, var(--bg-surface)); color: var(--accent); }
+.addBtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.addIcon { flex-shrink: 0; }
 
 /* ─── MOBILE COLUMN (≤768px) ─── */
 @media (max-width: 768px) {
-  .desktopOnlyIcon, .emptyDesktop { display: none; }
+  .desktopOnlyIcon { display: none; }
   .mobileOnlyIcon { display: inline-flex; }
-  .addBtnMobileOnly { display: flex; }
-  .emptyMobile {
-    display: block;
-    padding: 18px 8px;
-    text-align: center;
-    font-size: 13px;
-    color: var(--text-muted);
-  }
+  .emptyNote { padding: 18px 8px; font-size: 13px; }
+  .addIcon { width: 20px; height: 20px; }
 
   /* ~85% (320px) to ~89% (430px) of the viewport; the next column peeks in */
   .column {

@@ -178,7 +178,7 @@
 @media (max-width: 768px) {
   .sidebar {
     position: fixed;
-    top: 128px; /* Two-row mobile app bar */
+    top: 60px; /* Below the mobile app bar */
     left: 0;
     bottom: 0;
     z-index: 200;
@@ -260,4 +260,77 @@
  .boardItem.active .boardActions, .boardItem:focus-within .boardActions { display: block; }
  .boardActions summary, .actionBtn { min-width: 44px; min-height: 44px; }
  .boardActions[open] { flex-basis: 100%; }
+}
+
+/* ═══ Sidebar design: Boards section + bottom collapse (all widths unless noted) ═══ */
+.sidebar { border-right-color: var(--border-subtle); }
+
+.boardsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 6px 6px 6px 12px;
+  margin-bottom: 4px;
+}
+.collapsed .boardsHeader { justify-content: center; padding: 6px 0; }
+.boardsHeading { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.headerAddBtn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; border-radius: 8px;
+  color: var(--text-secondary);
+}
+.headerAddBtn:hover { background: var(--bg-hover); color: var(--text-primary); }
+.addForm { padding: 4px 4px 8px; }
+
+.boardItem { border-radius: 10px; color: var(--text-primary); }
+.boardItem.active { background: color-mix(in srgb, var(--accent) 12%, var(--bg-surface)); color: var(--text-primary); }
+.boardItem.active .boardTitle { font-weight: 600; }
+.boardLink { gap: 10px; padding: 8px 10px 8px 12px; }
+.boardDot { width: 10px; height: 10px; }
+.boardTitle {
+  font-size: 14px;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.boardActions summary { padding: 6px 8px; border-radius: 6px; color: var(--text-muted); }
+.boardActions summary:hover { background: var(--bg-hover); color: var(--text-primary); }
+/* Desktop with a mouse: the ⋯ appears on hover/focus, on the active board, or while open */
+@media (hover: hover) and (min-width: 769px) {
+  .boardItem:not(:hover):not(:focus-within):not(.active) .boardActions:not([open]) summary { opacity: 0; }
+}
+
+.showMore {
+  display: flex; align-items: center; gap: 4px;
+  margin: 4px 0 0; padding: 6px 12px; border-radius: 8px;
+  font-size: 13px; font-weight: 500; color: var(--text-secondary);
+}
+.showMore:hover { background: var(--bg-hover); color: var(--text-primary); }
+.boardLinks { display: flex; flex-direction: column; gap: 0; margin: 8px 0 12px; padding-top: 8px; border-top: 1px solid var(--border-subtle); }
+.boardLinkMuted {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 12px; border-radius: 8px;
+  font-size: 13px; color: var(--text-secondary); text-align: left;
+}
+.boardLinkMuted:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+.collapseRow { flex-shrink: 0; padding: 10px 12px 14px; display: flex; }
+.collapsed .collapseRow { justify-content: center; padding-inline: 0; }
+.collapseRow .collapseBtn {
+  width: 34px; height: 34px;
+  border: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  box-shadow: 0 1px 2px rgba(9, 30, 66, 0.06);
+}
+.collapseRow .collapseBtn:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+@media (max-width: 768px) {
+  .collapseRow { display: none; }
+  .boardTitle { white-space: normal; }
 }

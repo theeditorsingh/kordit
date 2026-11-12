@@ -10,7 +10,6 @@ import ColumnSettingsModal from './ColumnSettingsModal';
 import CardItem from './Card';
 import dynamic from 'next/dynamic';
 const CardModal = dynamic(() => import('./CardModal'), { ssr: false });
-import EmptyState from './EmptyState';
 import { Plus, MoreHorizontal, MoreVertical, Trash2, AlignLeft, Calendar as CalendarIcon, Edit2, Settings, AlertCircle, Copy, Check, ChevronsRightLeft, ChevronsLeftRight, ChevronRight, CheckCircle2 } from 'lucide-react';
 import styles from './Column.module.css';
 
@@ -319,16 +318,8 @@ export default function Column({ column, board, search, cardFilter, onModalOpenC
             ))}
             {provided.placeholder}
             {cards.length === 0 && completedCards.length === 0 && !addingCard && (
-              <>
-                <div className={styles.emptyDesktop}>
-                  <EmptyState
-                    variant="no-cards"
-                    action={{ label: '+ Add a card', onClick: () => setAddingCard(true) }}
-                  />
-                </div>
-                {/* Mobile: the column's single create action is the "Add a task" bar below */}
-                <div className={styles.emptyMobile}>No tasks yet</div>
-              </>
+              // The column's single create action is the "Add a task" bar below
+              <div className={styles.emptyNote}>No tasks yet</div>
             )}
             {allCards.length > displayLimit && (
               <button 
@@ -471,16 +462,9 @@ export default function Column({ column, board, search, cardFilter, onModalOpenC
           </div>
         </div>
       ) : (
-        // Desktop shows this only when the column has cards (the empty state has its own button);
-        // mobile always shows it, so every column has exactly one create action.
-        <button
-          className={`${styles.addBtn} ${cards.length === 0 && completedCards.length === 0 ? styles.addBtnMobileOnly : ''}`}
-          onClick={() => setAddingCard(true)}
-        >
-          <Plus size={14} className={styles.desktopOnlyIcon}/>
-          <Plus size={20} className={styles.mobileOnlyIcon}/>
-          <span className={styles.desktopOnlyIcon}>Add a card</span>
-          <span className={styles.mobileOnlyIcon}>Add a task</span>
+        // Every column has exactly one create action
+        <button className={styles.addBtn} onClick={() => setAddingCard(true)}>
+          <Plus size={16} className={styles.addIcon}/> Add a task
         </button>
       )}
 

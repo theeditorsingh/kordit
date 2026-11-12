@@ -1,11 +1,12 @@
 'use client';
 import { useState } from 'react';
+const VISIBLE_BOARDS = 8; // the rest sit behind "Show more"
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useBoardContext } from '@/context/BoardContext';
 import { useConfirm } from './ConfirmDialog';
 import {
-  Plus, Trash2, ChevronDown, ChevronLeft, ChevronRight, LayoutGrid, Users, Edit2, Check, X,
+  Plus, Trash2, ChevronDown, ChevronsLeft, ChevronsRight, Users, Edit2, Check, X,
   LayoutTemplate, Star, Archive, Activity
 } from 'lucide-react';
 import MembersPanel from './MembersPanel';
@@ -30,6 +31,7 @@ export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: bool
   const [editTitle, setEditTitle] = useState('');
   const [showTemplates, setShowTemplates] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+  const [showAllBoards, setShowAllBoards] = useState(false);
   const [collapsed, setCollapsed] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('kordit-sidebar-collapsed') === 'true';
@@ -91,6 +93,13 @@ export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: bool
     return 0;
   });
 
+  // First VISIBLE_BOARDS boards, always including the active one; the rest behind "Show more"
+  const indexed = sortedBoards.map((board, i) => ({ board, i }));
+  const firstSlice = indexed.slice(0, VISIBLE_BOARDS);
+  const activeHidden = indexed.slice(VISIBLE_BOARDS).find(({ board }) => board.id === state.activeBoardId);
+  const visibleBoards = showAllBoards || isCollapsed ? indexed : activeHidden ? [...firstSlice, activeHidden] : firstSlice;
+  const hiddenCount = Math.max(0, sortedBoards.length - VISIBLE_BOARDS - (activeHidden ? 1 : 0));
+
   return (
     <>
       {/* Mobile overlay backdrop */}
@@ -106,26 +115,41 @@ export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: bool
         id="sidebar-boards-section"
       >
 
-      {/* Collapse toggle — desktop only */}
-      <button
-        className={styles.collapseBtn}
-        onClick={toggleCollapsed}
-        title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-      >
-        {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-      </button>
 
       {/* Scrollable Boards Area */}
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto' }}>
         <div style={{ padding: '12px 8px 0 8px' }}>
-          <div className={styles.sectionHeader}>
-            <LayoutGrid size={13} />
-            {!isCollapsed && <span>Boards</span>}
+          <div className={styles.boardsHeader}>
+            {!isCollapsed && <span className={styles.boardsHeading}>Boards</span>}
+            <button
+              className={styles.headerAddBtn}
+              onClick={() => { if (isCollapsed) toggleCollapsed(); setAdding(true); }}
+              title="New board"
+              aria-label="New board"
+              id="btn-new-board"
+            >
+              <Plus size={16} />
+            </button>
           </div>
+          {adding && !isCollapsed && (
+            <div className={styles.addForm}>
+              <input
+                className="input"
+                placeholder="Board name..."
+                value={newBoardTitle}
+                onChange={(e) => setNewBoardTitle(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); if (e.key === 'Escape') setAdding(false); }}
+                autoFocus
+              />
+              <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                <button className="btn btn-primary btn-sm" onClick={handleAdd}>Add</button>
+                <button className="btn btn-ghost btn-sm" onClick={() => setAdding(false)}>Cancel</button>
+              </div>
+            </div>
+          )}
 
           <ul className={styles.boardList}>
-            {sortedBoards.map((board, i) => (
+            {visibleBoards.map(({ board, i }) => (
               <li key={board.id}>
                 {editingId === board.id ? (
                   <div className={styles.editRow}>
@@ -179,46 +203,24 @@ export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: bool
               </li>
             ))}
           </ul>
-        </div>
-
-        {/* Sticky Add Board Button */}
-        <div style={{ position: 'sticky', bottom: 0, background: 'var(--bg-surface)', padding: '12px 8px', zIndex: 5 }}>
-          {adding ? (
-            <div className={styles.addForm}>
-              <input
-                className="input"
-                placeholder="Board name..."
-                value={newBoardTitle}
-                onChange={(e) => setNewBoardTitle(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); if (e.key === 'Escape') setAdding(false); }}
-                autoFocus
-              />
-              <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-                <button className="btn btn-primary btn-sm" onClick={handleAdd}>Add</button>
-                <button className="btn btn-ghost btn-sm" onClick={() => setAdding(false)}>Cancel</button>
-              </div>
-            </div>
-          ) : isCollapsed ? (
-            /* Collapsed: just a + icon that expands on click */
-            <div style={{ display: 'flex', justifyContent: 'center' }}>
-              <button className="btn btn-ghost btn-icon btn-sm" onClick={toggleCollapsed} title="Expand sidebar to add board">
-                <Plus size={14} />
+          {!isCollapsed && hiddenCount > 0 && (
+            <button className={styles.showMore} onClick={() => setShowAllBoards(!showAllBoards)} aria-expanded={showAllBoards}>
+              {showAllBoards ? 'Show less' : `Show more (${hiddenCount})`}
+              <ChevronDown size={14} style={{ transform: showAllBoards ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+            </button>
+          )}
+          {!isCollapsed && (
+            <div className={styles.boardLinks}>
+              <button className={styles.boardLinkMuted} onClick={() => setShowTemplates(true)}>
+                <LayoutTemplate size={14} /> Templates
               </button>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', gap: 4 }}>
-              <button className={styles.addBoardBtn} onClick={() => setAdding(true)} style={{ flex: 1, marginTop: 0 }} id="btn-new-board">
-                <Plus size={14}/> New Board
-              </button>
-              <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowTemplates(true)} title="Create from template" style={{ alignSelf: 'center', marginTop: 0 }}>
-                <LayoutTemplate size={14} />
-              </button>
-              <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowArchived(true)} title="Archived Boards" style={{ alignSelf: 'center', marginTop: 0 }}>
-                <Archive size={14} />
+              <button className={styles.boardLinkMuted} onClick={() => setShowArchived(true)}>
+                <Archive size={14} /> Archived boards
               </button>
             </div>
           )}
         </div>
+
       </div>
 
       {/* Fixed Bottom Sections — hidden when collapsed */}
@@ -272,6 +274,18 @@ export default function Sidebar({ isMobileOpen, onClose }: { isMobileOpen?: bool
           </div>
         </>
       )}
+
+      {/* Collapse toggle — desktop only, bottom-left */}
+      <div className={styles.collapseRow}>
+        <button
+          className={styles.collapseBtn}
+          onClick={toggleCollapsed}
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {collapsed ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
+        </button>
+      </div>
 
       {showTemplates && <TemplateModal onClose={() => setShowTemplates(false)} />}
       {showArchived && <ArchivedBoardsModal onClose={() => setShowArchived(false)} />}
