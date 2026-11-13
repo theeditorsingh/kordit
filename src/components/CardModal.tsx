@@ -49,6 +49,19 @@ function toDatetimeLocal(dateStr: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+/** Split a stored due date into the local "YYYY-MM-DD" and "HH:mm" parts (time is '' at midnight = no time set) */
+function splitDue(dateStr: string | null): { date: string; time: string } {
+  const local = dateStr ? toDatetimeLocal(dateStr) : '';
+  if (!local) return { date: '', time: '' };
+  const [date, time] = local.split('T');
+  return { date, time: time === '00:00' ? '' : time };
+}
+
+/** Join local date + optional time back into an ISO string (no time = midnight) */
+function joinDue(date: string, time: string): string {
+  return new Date(`${date}T${time || '00:00'}`).toISOString();
+}
+
 export default function CardModal({ card, board, columnId, onClose }: Props) {
   const { state: boardState, deleteCard: deleteCardFn, updateCard, updateBoard, notifyError } = useBoardContext();
   const confirm = useConfirm();
@@ -840,28 +853,55 @@ export default function CardModal({ card, board, columnId, onClose }: Props) {
                   <span>📌 {aiDateReasoning}</span>
                 </div>
               )}
-              <input
-                type="datetime-local"
-                className="input"
-                style={{ width: '100%' }}
-                value={data.dueDate ? toDatetimeLocal(data.dueDate) : ''}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (val) {
-                    const iso = new Date(val).toISOString();
-                    setData((d) => ({
-                      ...d,
-                      dueDate: iso,
-                      reminderAt: d.reminderAt ? d.reminderAt : iso,
-                    }));
-                    if (typeof window !== 'undefined') {
-                      localStorage.setItem('kordit-has-reminder', 'true');
-                    }
-                  } else {
+              {/* Separate date + optional time: the date picker closes as soon as a day is picked
+                  (the combined datetime picker had no Done button and looked unsaveable) */}
+              {(() => {
+                const due = splitDue(data.dueDate);
+                const setDue = (date: string, time: string) => {
+                  if (!date) {
                     setData((d) => ({ ...d, dueDate: null, reminderAt: null }));
+                    return;
                   }
-                }}
-              />
+                  const iso = joinDue(date, time);
+                  setData((d) => ({ ...d, dueDate: iso, reminderAt: d.reminderAt ? d.reminderAt : iso }));
+                  try { localStorage.setItem('kordit-has-reminder', 'true'); } catch { /* storage unavailable */ }
+                };
+                return (
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <input
+                      type="date"
+                      className="input"
+                      aria-label="Due date"
+                      style={{ flex: '1 1 140px', minWidth: 0 }}
+                      value={due.date}
+                      onChange={(e) => setDue(e.target.value, due.time)}
+                    />
+                    {due.date && (
+                      <input
+                        type="time"
+                        className="input"
+                        aria-label="Due time (optional)"
+                        title="Optional time"
+                        style={{ flex: '0 1 120px', minWidth: 0 }}
+                        value={due.time}
+                        onChange={(e) => setDue(due.date, e.target.value)}
+                      />
+                    )}
+                    {due.date && (
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        aria-label="Remove due date"
+                        title="Remove due date"
+                        onClick={() => setDue('', '')}
+                        style={{ padding: 6 }}
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Reminder Picker */}

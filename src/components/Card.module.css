@@ -256,7 +256,10 @@
 .title { grid-column: 2 / 4; grid-row: 2; line-height: 1.38; }
 
 /* Labels: soft tint of the label colour, with darker (light mode) / lighter (dark mode) text */
-.topRow { grid-column: 2 / 4; grid-row: 3; margin: 6px 0 0; align-items: center; }
+/* Labels start at the card's left edge, under the tick circle */
+.topRow { grid-column: 1 / 4; grid-row: 3; margin: 6px 0 0; align-items: center; }
+.avatarsUp .topRow { grid-column: 1 / 3; }
+.avatarsUp .avatars { grid-row: 3; margin-top: 6px; }
 .labels { gap: 4px; }
 .labels .labelChip {
   font-size: 10.5px;
@@ -331,6 +334,7 @@
   .title { font-size: 14px; font-weight: 500; line-height: 1.35; color: var(--text-primary); }
 
   .footerLeft, .avatars, .progressRow { margin-top: 10px; }
+  .avatarsUp .avatars { margin-top: 8px; }
   .due { font-size: 12px; gap: 5px; }
   .due svg { width: 14px; height: 14px; }
   .checklist { font-size: 12px; }

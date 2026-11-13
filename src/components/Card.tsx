@@ -58,6 +58,8 @@ export default function CardItem({ card, index, board, columnId, dragDisabled, o
   const priorityColor = PRIORITY_COLORS[card.priority];
   const progressPercent = totalItems > 0 ? (doneItems / totalItems) * 100 : 0;
   const checklistDone = totalItems > 0 && doneItems === totalItems;
+  // Nothing below the labels (no checklist, due date or description): avatars move up beside the labels
+  const avatarsUp = assignees.length > 0 && totalItems === 0 && !card.dueDate && !card.description;
 
   return (
     <>
@@ -67,7 +69,7 @@ export default function CardItem({ card, index, board, columnId, dragDisabled, o
             ref={provided.innerRef}
             {...provided.draggableProps}
             {...provided.dragHandleProps}
-            className={`${styles.card} ${styles.cardAnimated} ${priorityColor ? styles.hasPriority : ''} ${snapshot.isDragging ? styles.dragging : ''} ${isSelected ? styles.selected : ''}`}
+            className={`${styles.card} ${styles.cardAnimated} ${priorityColor ? styles.hasPriority : ''} ${avatarsUp ? styles.avatarsUp : ''} ${snapshot.isDragging ? styles.dragging : ''} ${isSelected ? styles.selected : ''}`}
             style={{
               ...provided.draggableProps.style,
               ...(isSelected ? { border: '2px solid #0052CC', backgroundColor: 'rgba(0, 82, 204, 0.05)' } : {}),
