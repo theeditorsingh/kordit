@@ -3,7 +3,7 @@ import { useState, useRef, useCallback, useEffect, type CSSProperties } from 're
 import { Draggable } from '@hello-pangea/dnd';
 import { Board, Card } from '@/types';
 
-import { Calendar, CheckSquare, Edit2, Trash2, CheckCircle2, Circle, AlignLeft, ArrowRightLeft, ChevronRight } from 'lucide-react';
+import { Calendar, Clock, CheckSquare, Edit2, Trash2, CheckCircle2, Circle, AlignLeft, ArrowRightLeft, ChevronRight } from 'lucide-react';
 import { getInitials } from '@/utils/storage';
 import { getDueDateClass, formatCardDate } from '@/utils/dates';
 import dynamic from 'next/dynamic';
@@ -56,6 +56,7 @@ export default function CardItem({ card, index, board, columnId, dragDisabled, o
   const assignees = card.assigneeIds.map((id) => board.members.find((m) => m.id === id)).filter(Boolean);
 
   const priorityColor = PRIORITY_COLORS[card.priority];
+  const due = card.dueDate ? formatCardDate(card.dueDate) : null;
   const progressPercent = totalItems > 0 ? (doneItems / totalItems) * 100 : 0;
   const checklistDone = totalItems > 0 && doneItems === totalItems;
   // Nothing below the labels (no checklist, due date or description): avatars move up beside the labels
@@ -174,9 +175,10 @@ export default function CardItem({ card, index, board, columnId, dragDisabled, o
             {(assignees.length > 0 || card.description || card.dueDate) && (
               <div className={styles.footer}>
                 <div className={styles.footerLeft}>
-                  {card.dueDate && (
+                  {due && (
                     <span className={`${styles.due} ${getDueDateClass(card.dueDate)}`}>
-                      <Calendar size={11}/> {formatCardDate(card.dueDate)}
+                      <Calendar size={11}/> {due.date}
+                      {due.time && <span className={styles.dueTime}><Clock size={11}/> {due.time}</span>}
                     </span>
                   )}
                   {card.description && (

@@ -290,6 +290,8 @@
 .footerLeft:empty { display: none; }
 .due { font-size: 12px; gap: 5px; color: var(--text-secondary); }
 .due svg { width: 14px; height: 14px; }
+/* Time sits after the date with its own clock icon and a little breathing room */
+.dueTime { display: inline-flex; align-items: center; gap: 5px; margin-left: 6px; }
 /* Readable status colours on white (≥4.5:1) */
 .due:global(.overdue) { color: #DE350B !important; }
 .due:global(.due-soon) { color: #A54800 !important; }
