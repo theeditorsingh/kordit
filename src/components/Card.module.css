@@ -298,15 +298,15 @@
   .doneBtn { width: 44px; height: 44px; margin: -10px -6px -10px -4px; }
   .doneBtn svg { width: 22px; height: 22px; }
   .titleRow .title,
-  .title { font-size: 16px; font-weight: 500; line-height: 1.35; color: var(--text-primary); }
+  .title { font-size: 14px; font-weight: 500; line-height: 1.35; color: var(--text-primary); }
 
   .footerLeft { margin-top: 6px; }
-  .due { font-size: 14px; gap: 6px; }
-  .due svg { width: 16px; height: 16px; }
-  .checklist { font-size: 13px; }
+  .due { font-size: 12px; gap: 5px; }
+  .due svg { width: 14px; height: 14px; }
+  .checklist { font-size: 12px; }
 
-  .avatar { width: 34px; height: 34px; font-size: 15px; }
-  .moreAssignees { font-size: 12px; }
+  .avatar { width: 28px; height: 28px; font-size: 12px; }
+  .moreAssignees { font-size: 11px; }
 }
 @media (max-width: 768px) and (prefers-reduced-motion: reduce) {
   .card:active { transform: none; }

@@ -272,7 +272,7 @@
   .logo img { width: 30px; height: 30px; border-radius: 8px; }
   .logoText {
     display: inline;
-    font-size: 21px;
+    font-size: 18px;
     font-weight: 800;
     letter-spacing: -0.6px;
     color: var(--text-primary);
@@ -302,7 +302,7 @@
 }
 
 @media (max-width: 360px) {
-  .logoText { font-size: 18px; }
+  .logoText { font-size: 16px; }
   .logo img { width: 26px; height: 26px; }
   .left > .hamburger,
   .right > :global(.btn-icon),
@@ -336,7 +336,7 @@
     text-align: left;
   }
   .boardTitleText {
-    font-size: 22px;
+    font-size: 18px;
     font-weight: 800;
     letter-spacing: -0.4px;
     line-height: 1.2;
@@ -409,7 +409,7 @@
 }
 @media (max-width: 360px) {
   .boardBar { gap: 8px; padding-inline: 12px; }
-  .boardTitleText { font-size: 20px; }
+  .boardTitleText { font-size: 17px; }
   .viewIcons { gap: 4px; }
   .viewIcon { width: 40px; height: 40px; }
 }

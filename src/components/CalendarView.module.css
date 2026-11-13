@@ -79,7 +79,7 @@
 @media (max-width: 768px) {
  .calView { padding: 12px; min-height: 0; }
  .calHeader { gap: 4px; justify-content: space-between; }
- .monthTitle { min-width: 0; font-size: 17px; }
+ .monthTitle { min-width: 0; font-size: 15px; }
  .mobileControls { display: flex; gap: 8px; }
  .mobileControls [aria-pressed="true"] { background: var(--accent-subtle); color: var(--accent); }
  .agenda:not([hidden]) { display: flex; flex-direction: column; gap: 20px; }
