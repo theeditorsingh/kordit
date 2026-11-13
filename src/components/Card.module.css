@@ -272,7 +272,7 @@
 }
 
 /* Checklist progress row: gradient bar + "2/5" */
-.progressRow { grid-column: 2 / 4; grid-row: 4; display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.progressRow { grid-column: 1 / 4; grid-row: 4; display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 .progressTrack {
   flex: 1; min-width: 0; height: 6px; border-radius: 999px; overflow: hidden;
   background: color-mix(in srgb, var(--text-primary) 10%, transparent);
@@ -286,7 +286,7 @@
 .progressRow .checklist { flex-shrink: 0; }
 
 .footer { display: contents; }
-.footerLeft { grid-column: 2; grid-row: 5; margin-top: 8px; gap: 12px; flex-wrap: wrap; }
+.footerLeft { grid-column: 1 / 3; grid-row: 5; margin-top: 8px; gap: 12px; flex-wrap: wrap; }
 .footerLeft:empty { display: none; }
 .due { font-size: 12px; gap: 5px; color: var(--text-secondary); }
 .due svg { width: 14px; height: 14px; }

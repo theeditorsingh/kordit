@@ -15,13 +15,13 @@ function ordinal(n: number) {
   return `${n}${({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th'}`;
 }
 
-/** Card footer date: "15th Nov, 26", or "15th Nov, 26 3:30 PM" when a time was set. */
+/** Card footer date: "15th Nov, 26", or "15th Nov, 26 · 3:30 PM" when a time was set. */
 export function formatCardDate(date: string) {
   const d = new Date(date);
   const month = d.toLocaleDateString('en-US', { month: 'short' });
   const text = `${ordinal(d.getDate())} ${month}, ${String(d.getFullYear()).slice(-2)}`;
   const hasTime = d.getHours() !== 0 || d.getMinutes() !== 0;
-  return hasTime ? `${text} ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : text;
+  return hasTime ? `${text} · ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : text;
 }
 
 /** "Nov 14", or "Nov 14 3:30 PM" when a time was set. */
