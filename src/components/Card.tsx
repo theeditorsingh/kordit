@@ -5,7 +5,7 @@ import { Board, Card } from '@/types';
 
 import { Calendar, CheckSquare, Edit2, Trash2, CheckCircle2, Circle, AlignLeft, ArrowRightLeft, ChevronRight } from 'lucide-react';
 import { getInitials } from '@/utils/storage';
-import { getDueDateClass, formatDate } from '@/utils/dates';
+import { getDueDateClass, formatCardDate } from '@/utils/dates';
 import dynamic from 'next/dynamic';
 import { useBoardContext } from '@/context/BoardContext';
 import styles from './Card.module.css';
@@ -17,6 +17,8 @@ const CardModal = dynamic(() => import('./CardModal'), { ssr: false });
 interface Props { card: Card; index: number; board: Board; columnId: string; dragDisabled?: boolean; onToggleDone?: () => void; onModalOpenChange?: (open: boolean) => void; }
 
 const PRIORITY_LABELS: Record<string, string> = { none: 'None', urgent: 'Urgent', high: 'High', medium: 'Medium', low: 'Low' };
+// Colour of the left-edge stripe; same palette as the global .badge-* classes
+const PRIORITY_COLORS: Record<string, string> = { urgent: '#FF5630', high: '#FF991F', medium: '#0052CC', low: '#36B37E' };
 
 export default function CardItem({ card, index, board, columnId, dragDisabled, onToggleDone, onModalOpenChange }: Props) {
   const [open, setOpen] = useState(false);
@@ -53,7 +55,9 @@ export default function CardItem({ card, index, board, columnId, dragDisabled, o
   const totalItems = card.checklist.length;
   const assignees = card.assigneeIds.map((id) => board.members.find((m) => m.id === id)).filter(Boolean);
 
+  const priorityColor = PRIORITY_COLORS[card.priority];
   const progressPercent = totalItems > 0 ? (doneItems / totalItems) * 100 : 0;
+  const checklistDone = totalItems > 0 && doneItems === totalItems;
 
   return (
     <>
@@ -63,11 +67,11 @@ export default function CardItem({ card, index, board, columnId, dragDisabled, o
             ref={provided.innerRef}
             {...provided.draggableProps}
             {...provided.dragHandleProps}
-            className={`${styles.card} ${styles.cardAnimated} ${snapshot.isDragging ? styles.dragging : ''} ${isSelected ? styles.selected : ''}`}
+            className={`${styles.card} ${styles.cardAnimated} ${priorityColor ? styles.hasPriority : ''} ${snapshot.isDragging ? styles.dragging : ''} ${isSelected ? styles.selected : ''}`}
             style={{
               ...provided.draggableProps.style,
               ...(isSelected ? { border: '2px solid #0052CC', backgroundColor: 'rgba(0, 82, 204, 0.05)' } : {}),
-              ...({ '--card-index': index } as Record<string, number>),
+              ...({ '--card-index': index, '--priority-color': priorityColor } as CSSProperties),
             }}
             onClick={(e) => {
               if (e.ctrlKey || e.metaKey || isSelectionMode) {
@@ -111,25 +115,7 @@ export default function CardItem({ card, index, board, columnId, dragDisabled, o
               />
             )}
 
-            {/* Top row: labels on the left, priority badge on the right */}
-            {(card.labels.length > 0 || card.priority !== 'none') && (
-              <div className={styles.topRow}>
-                <div className={styles.labels}>
-                  {card.labels.map((l) => (
-                    <span key={l.id} className={`card-chip ${styles.labelChip}`} style={{ background: l.color }} title={l.name}>
-                      {l.name}
-                    </span>
-                  ))}
-                </div>
-                {card.priority !== 'none' && (
-                  <span className={`badge badge-${card.priority} ${styles.priorityBadge}`}>
-                    {PRIORITY_LABELS[card.priority] || card.priority}
-                  </span>
-                )}
-              </div>
-            )}
-
-            {/* Title — full width */}
+            {/* Title first, next to the tick circle. Priority is shown by the left-edge stripe. */}
             <div className={styles.titleRow}>
               {onToggleDone && (
                 <button
@@ -141,27 +127,59 @@ export default function CardItem({ card, index, board, columnId, dragDisabled, o
                   <Circle size={15} />
                 </button>
               )}
-              <div className={styles.title}>{card.title}</div>
+              <div className={styles.title}>
+                {card.title}
+                {priorityColor && <span className={styles.srOnly}> ({PRIORITY_LABELS[card.priority]} priority)</span>}
+              </div>
             </div>
 
+            {/* Labels: soft tinted pills under the title */}
+            {card.labels.length > 0 && (
+              <div className={styles.topRow}>
+                <div className={styles.labels}>
+                  {card.labels.map((l) => (
+                    <span key={l.id} className={`card-chip ${styles.labelChip}`} style={{ '--label-color': l.color } as CSSProperties} title={l.name}>
+                      {l.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
 
-            {/* Footer: checklist + time on left, avatars on right */}
-            {(totalItems > 0 || assignees.length > 0 || card.description || card.dueDate) && (
+            {/* Checklist progress: gradient bar with the done/total count beside it */}
+            {totalItems > 0 && (
+              <div className={styles.progressRow}>
+                <div
+                  className={styles.progressTrack}
+                  role="progressbar"
+                  aria-label="Checklist progress"
+                  aria-valuemin={0}
+                  aria-valuemax={totalItems}
+                  aria-valuenow={doneItems}
+                >
+                  <div
+                    className={`${styles.progressFill} ${checklistDone ? styles.progressFillDone : ''}`}
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
+                <span className={`${styles.checklist} ${checklistDone ? styles.allDone : ''}`}>
+                  <CheckSquare size={11}/> {doneItems}/{totalItems}
+                </span>
+              </div>
+            )}
+
+            {/* Footer: due date + description on left, avatars on right */}
+            {(assignees.length > 0 || card.description || card.dueDate) && (
               <div className={styles.footer}>
                 <div className={styles.footerLeft}>
                   {card.dueDate && (
                     <span className={`${styles.due} ${getDueDateClass(card.dueDate)}`}>
-                      <Calendar size={11}/> {formatDate(card.dueDate)}
+                      <Calendar size={11}/> {formatCardDate(card.dueDate)}
                     </span>
                   )}
                   {card.description && (
                     <span className={styles.descBadge} title="This card has a description">
                       <AlignLeft size={11} />
-                    </span>
-                  )}
-                  {totalItems > 0 && (
-                    <span className={`${styles.checklist} ${doneItems === totalItems ? styles.allDone : ''}`}>
-                      <CheckSquare size={11}/> {doneItems}/{totalItems}
                     </span>
                   )}
                 </div>
@@ -183,16 +201,6 @@ export default function CardItem({ card, index, board, columnId, dragDisabled, o
                     )}
                   </div>
                 )}
-              </div>
-            )}
-
-            {/* Animated checklist progress */}
-            {totalItems > 0 && (
-              <div className="progress-bar" style={{ marginTop: 8 }}>
-                <div
-                  className={`progress-fill ${styles.progressAnimated}`}
-                  style={{ width: `${progressPercent}%` }}
-                />
               </div>
             )}
           </div>
